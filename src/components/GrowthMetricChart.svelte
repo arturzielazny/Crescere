@@ -74,7 +74,7 @@
 
   function getChartData() {
     const child = $activeChild;
-    if (!child || !child.profile.birthDate || !child.profile.sex) {
+    if (!child?.profile?.birthDate || !child?.profile?.sex) {
       return { measurements: [], band: [] };
     }
 
