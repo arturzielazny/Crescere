@@ -6,7 +6,8 @@
     updateMeasurement,
     deleteMeasurement
   } from '../stores/childStore.js';
-  import { formatAge, getZScoreClass } from '../lib/zscore.js';
+  import { formatAge } from '../lib/zscore.js';
+  import { isFutureDate, formatZScore, getZScoreColorClass } from '../lib/utils.js';
   import { t } from '../stores/i18n.js';
 
   // New measurement form
@@ -16,7 +17,9 @@
   let newHeadCirc = '';
 
   function handleAddMeasurement() {
+    // Require date and at least one measurement value
     if (!newDate) return;
+    if (!newWeight && !newLength && !newHeadCirc) return;
 
     addMeasurement({
       date: newDate,
@@ -36,29 +39,10 @@
     updateMeasurement(id, { [field]: field === 'date' ? value : numValue });
   }
 
-  function isFutureDate(value) {
-    if (!value) return false;
-    const today = new Date().toISOString().slice(0, 10);
-    return value > today;
-  }
-
-
   function handleDelete(id) {
     if (confirm($t('measurements.delete.confirm'))) {
       deleteMeasurement(id);
     }
-  }
-
-  function formatZScore(z) {
-    if (z === null || z === undefined || isNaN(z)) return '—';
-    return z.toFixed(2);
-  }
-
-  function getZScoreColor(z) {
-    const cls = getZScoreClass(z);
-    if (cls === 'severe') return 'text-red-600 font-semibold';
-    if (cls === 'warning') return 'text-amber-600';
-    return 'text-green-600';
   }
 </script>
 
@@ -145,23 +129,23 @@
                 class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
                 />
               </td>
-              <td class="py-2 px-2 text-center {getZScoreColor(m.zscores?.waz)}">
+              <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.waz)}">
                 {formatZScore(m.zscores?.waz)}
               </td>
-              <td class="py-2 px-2 text-center {getZScoreColor(m.zscores?.lhaz)}">
+              <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.lhaz)}">
                 {formatZScore(m.zscores?.lhaz)}
               </td>
-              <td class="py-2 px-2 text-center {getZScoreColor(m.zscores?.headcz)}">
+              <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.headcz)}">
                 {formatZScore(m.zscores?.headcz)}
               </td>
-              <td class="py-2 px-2 text-center {getZScoreColor(m.zscores?.wflz)}">
+              <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.wflz)}">
                 {formatZScore(m.zscores?.wflz)}
               </td>
               <td class="py-2 px-2">
                 <button
                   on:click={() => handleDelete(m.id)}
                   class="text-red-500 hover:text-red-700 text-sm"
-                  title={$t('measurements.delete.title')}
+                  aria-label={$t('measurements.delete.title')}
                 >
                   ✕
                 </button>

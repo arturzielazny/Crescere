@@ -31,12 +31,14 @@ export function loadFromStorage() {
 
 /**
  * Save data to localStorage
+ * @param {Object} data - Data to save
+ * @returns {boolean} True if save succeeded
  */
 export function saveToStorage(data) {
   try {
     if (!data.children || data.children.length === 0) {
       localStorage.removeItem(STORAGE_KEY);
-      return;
+      return true;
     }
 
     const toSave = {
@@ -45,8 +47,15 @@ export function saveToStorage(data) {
       lastModified: new Date().toISOString()
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    return true;
   } catch (e) {
-    console.error('Failed to save to storage:', e);
+    // Handle quota exceeded specifically
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      console.error('Storage quota exceeded. Data may not be saved.');
+    } else {
+      console.error('Failed to save to storage:', e);
+    }
+    return false;
   }
 }
 

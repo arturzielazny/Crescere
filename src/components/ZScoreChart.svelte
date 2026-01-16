@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { Chart, registerables } from 'chart.js';
   import { measurementsWithZScores } from '../stores/childStore.js';
+  import { isFutureDate, hexToRgba } from '../lib/utils.js';
   import { t } from '../stores/i18n.js';
 
   Chart.register(...registerables);
@@ -42,21 +43,6 @@
 
   const MAX_Z = 5;
   const DISPLAY_RANGE = 3;
-
-  function hexToRgba(hex, alpha) {
-    const normalized = hex.replace('#', '');
-    const bigint = parseInt(normalized, 16);
-    const r = (bigint >> 16) & 255;
-    const g = (bigint >> 8) & 255;
-    const b = bigint & 255;
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-
-  function isFutureDate(value) {
-    if (!value) return false;
-    const today = new Date().toISOString().slice(0, 10);
-    return value > today;
-  }
 
   function clampZScore(z) {
     if (z === null || z === undefined || isNaN(z)) return z;
@@ -258,7 +244,7 @@
 <div class="bg-white rounded-lg shadow p-6 mb-6">
   <h2 class="text-lg font-semibold text-gray-800 mb-4">{resolvedTitle}</h2>
 
-  <div class="h-80">
+  <div class="h-80" role="img" aria-label={resolvedTitle}>
     <canvas bind:this={canvas}></canvas>
   </div>
 

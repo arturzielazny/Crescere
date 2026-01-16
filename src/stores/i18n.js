@@ -5,6 +5,7 @@ const STORAGE_KEY = 'who-growth-tracker-lang';
 const translations = {
   en: {
     'app.title': 'WHO Growth Tracker',
+    'app.share': 'Share',
     'app.export': 'Export',
     'app.import': 'Import',
     'app.clear': 'Clear',
@@ -75,10 +76,24 @@ const translations = {
     'explain.calc': 'Calculated with the WHO LMS method (L, M, S parameters) and bounded z-scores for extreme values.',
     'age.invalid': 'Invalid',
     'age.month': 'm',
-    'age.day': 'd'
+    'age.day': 'd',
+    'share.title': 'Share Child Data',
+    'share.description': 'Copy this link to share this child\'s growth data. The recipient can add this child to their tracker.',
+    'share.copy': 'Copy',
+    'share.copied': 'Copied!',
+    'share.close': 'Close',
+    'share.urlLength': 'URL length',
+    'share.chars': 'characters',
+    'share.import.title': 'Import Shared Child',
+    'share.import.description': 'Someone shared a child\'s growth data with you. Would you like to add this child to your tracker?',
+    'share.import.name': 'Name',
+    'share.import.measurements': 'Measurements',
+    'share.import.confirm': 'Add Child',
+    'share.import.cancel': 'Cancel'
   },
   pl: {
     'app.title': 'WHO Growth Tracker',
+    'app.share': 'Udostępnij',
     'app.export': 'Eksportuj',
     'app.import': 'Importuj',
     'app.clear': 'Wyczyść',
@@ -149,7 +164,20 @@ const translations = {
     'explain.calc': 'Obliczenia bazują na metodzie LMS WHO (parametry L, M, S) z ograniczeniem wartości skrajnych.',
     'age.invalid': 'Nieprawidłowy',
     'age.month': 'm',
-    'age.day': 'd'
+    'age.day': 'd',
+    'share.title': 'Udostępnij dane dziecka',
+    'share.description': 'Skopiuj ten link, aby udostępnić dane wzrostu tego dziecka. Odbiorca może dodać to dziecko do swojego trackera.',
+    'share.copy': 'Kopiuj',
+    'share.copied': 'Skopiowano!',
+    'share.close': 'Zamknij',
+    'share.urlLength': 'Długość URL',
+    'share.chars': 'znaków',
+    'share.import.title': 'Importuj udostępnione dziecko',
+    'share.import.description': 'Ktoś udostępnił Ci dane wzrostu dziecka. Czy chcesz dodać to dziecko do swojego trackera?',
+    'share.import.name': 'Imię',
+    'share.import.measurements': 'Pomiary',
+    'share.import.confirm': 'Dodaj dziecko',
+    'share.import.cancel': 'Anuluj'
   }
 };
 

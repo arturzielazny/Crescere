@@ -5,13 +5,26 @@
   import MeasurementTable from './components/MeasurementTable.svelte';
   import GrowthMetricChart from './components/GrowthMetricChart.svelte';
   import ZScoreChart from './components/ZScoreChart.svelte';
-  import { childStore, setStore, resetStore, createExampleState } from './stores/childStore.js';
+  import ShareModal from './components/ShareModal.svelte';
+  import ImportConfirmModal from './components/ImportConfirmModal.svelte';
+  import { childStore, activeChild, setStore, resetStore, createExampleState } from './stores/childStore.js';
   import { loadFromStorage, saveToStorage, exportData, clearStorage } from './lib/storage.js';
+  import { generateShareUrl, parseShareUrl, clearShareHash } from './lib/share.js';
   import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
 
   let loaded = false;
+  let showShareModal = false;
+  let shareUrl = '';
+  let pendingImport = null;
 
   onMount(() => {
+    // Check for share URL first
+    const sharedChild = parseShareUrl();
+    if (sharedChild) {
+      pendingImport = sharedChild;
+      clearShareHash();
+    }
+
     const saved = loadFromStorage();
     if (saved) {
       setStore(saved);
@@ -55,6 +68,28 @@
     reader.readAsText(file);
     event.target.value = '';
   }
+
+  function handleShare() {
+    if ($activeChild) {
+      shareUrl = generateShareUrl($activeChild);
+      showShareModal = true;
+    }
+  }
+
+  function handleImportConfirm() {
+    if (pendingImport) {
+      childStore.update(state => ({
+        ...state,
+        children: [...state.children, pendingImport],
+        activeChildId: pendingImport.id
+      }));
+      pendingImport = null;
+    }
+  }
+
+  function handleImportCancel() {
+    pendingImport = null;
+  }
 </script>
 
 <div class="min-h-screen bg-gray-100">
@@ -64,10 +99,11 @@
         {$t('app.title')}
       </h1>
       <div class="flex gap-2 items-center">
-        <label class="text-sm text-gray-600 hidden sm:block">
+        <label for="language-select" class="text-sm text-gray-600 hidden sm:block">
           {$t('app.language.label')}
         </label>
         <select
+          id="language-select"
           value={$language}
           on:change={(event) => setLanguage(event.target.value)}
           class="px-2 py-1.5 text-sm border border-gray-200 rounded bg-white"
@@ -79,6 +115,13 @@
             </option>
           {/each}
         </select>
+        <button
+          on:click={handleShare}
+          disabled={!$activeChild}
+          class="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {$t('app.share')}
+        </button>
         <button
           on:click={handleExport}
           class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded"
@@ -143,4 +186,16 @@
     </p>
     <p class="mt-1">{$t('app.footer.storage')}</p>
   </footer>
-  </div>
+</div>
+
+{#if showShareModal}
+  <ShareModal url={shareUrl} onClose={() => showShareModal = false} />
+{/if}
+
+{#if pendingImport}
+  <ImportConfirmModal
+    child={pendingImport}
+    onConfirm={handleImportConfirm}
+    onCancel={handleImportCancel}
+  />
+{/if}
