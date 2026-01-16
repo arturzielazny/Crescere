@@ -1,6 +1,15 @@
 <script>
   import { onDestroy, onMount } from 'svelte';
-  import { Chart, registerables } from 'chart.js';
+  import {
+    Chart,
+    LineController,
+    LineElement,
+    PointElement,
+    LinearScale,
+    Filler,
+    Legend,
+    Tooltip
+  } from 'chart.js';
   import annotationPlugin from 'chartjs-plugin-annotation';
   import { activeChild } from '../stores/childStore.js';
   import { calculateAgeInDays } from '../lib/zscore.js';
@@ -10,7 +19,16 @@
   import { WHO_HEADC } from '../data/who-headc.js';
   import { t } from '../stores/i18n.js';
 
-  Chart.register(...registerables, annotationPlugin);
+  Chart.register(
+    LineController,
+    LineElement,
+    PointElement,
+    LinearScale,
+    Filler,
+    Legend,
+    Tooltip,
+    annotationPlugin
+  );
 
   export let metric = 'weight'; // weight | length | headCirc
   export let title = '';

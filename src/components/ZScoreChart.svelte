@@ -1,13 +1,31 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Chart, registerables } from 'chart.js';
+  import {
+    Chart,
+    LineController,
+    LineElement,
+    PointElement,
+    LinearScale,
+    Filler,
+    Legend,
+    Tooltip
+  } from 'chart.js';
   import annotationPlugin from 'chartjs-plugin-annotation';
   import { measurementsWithZScores, activeChild } from '../stores/childStore.js';
   import { calculateAgeInDays } from '../lib/zscore.js';
   import { isFutureDate, hexToRgba } from '../lib/utils.js';
   import { t } from '../stores/i18n.js';
 
-  Chart.register(...registerables, annotationPlugin);
+  Chart.register(
+    LineController,
+    LineElement,
+    PointElement,
+    LinearScale,
+    Filler,
+    Legend,
+    Tooltip,
+    annotationPlugin
+  );
 
   export let metric = 'all'; // 'waz', 'lhaz', 'headcz', 'wflz', or 'all'
   export let title = null;
