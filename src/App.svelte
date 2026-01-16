@@ -29,7 +29,7 @@
     if (saved) {
       setStore(saved);
     } else {
-      setStore(createExampleState());
+      setStore(createExampleState($t('children.example')));
     }
     loaded = true;
   });
@@ -161,19 +161,32 @@
     </div>
 
     <section class="bg-white rounded-lg shadow p-6 mt-6">
-      <h2 class="text-lg font-semibold text-gray-800 mb-2">{$t('explain.title')}</h2>
+      <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
       <p class="text-sm text-gray-600 mb-3">
         {$t('explain.summary')}
       </p>
-      <ul class="text-sm text-gray-600 space-y-1">
-        <li>{$t('explain.waz')}</li>
-        <li>{$t('explain.lhaz')}</li>
-        <li>{$t('explain.headcz')}</li>
-        <li>{$t('explain.wflz')}</li>
-      </ul>
-      <p class="text-sm text-gray-600 mt-3">
-        {$t('explain.calc')}
+      <p class="text-sm text-gray-600 mb-4">
+        {$t('explain.meaning')}
       </p>
+      <h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('explain.shortcuts')}</h3>
+      <dl class="text-sm text-gray-600 space-y-3">
+        <div>
+          <dt class="font-medium text-gray-700">{$t('explain.waz.title')}</dt>
+          <dd class="ml-0 mt-0.5">{$t('explain.waz.desc')}</dd>
+        </div>
+        <div>
+          <dt class="font-medium text-gray-700">{$t('explain.lhaz.title')}</dt>
+          <dd class="ml-0 mt-0.5">{$t('explain.lhaz.desc')}</dd>
+        </div>
+        <div>
+          <dt class="font-medium text-gray-700">{$t('explain.headcz.title')}</dt>
+          <dd class="ml-0 mt-0.5">{$t('explain.headcz.desc')}</dd>
+        </div>
+        <div>
+          <dt class="font-medium text-gray-700">{$t('explain.wflz.title')}</dt>
+          <dd class="ml-0 mt-0.5">{$t('explain.wflz.desc')}</dd>
+        </div>
+      </dl>
     </section>
   </main>
 

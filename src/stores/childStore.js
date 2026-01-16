@@ -156,19 +156,43 @@ export function addChild() {
   }));
 }
 
-export function createExampleState() {
+export function createExampleState(exampleName = 'Example Child') {
   const id = crypto.randomUUID();
+
+  // Calculate dates relative to today (child is 90 days old)
+  const today = new Date();
+  const birthDate = new Date(today);
+  birthDate.setDate(birthDate.getDate() - 90);
+
+  const formatDate = (date) => date.toISOString().slice(0, 10);
+  const dateAtAge = (days) => {
+    const d = new Date(birthDate);
+    d.setDate(d.getDate() + days);
+    return formatDate(d);
+  };
+
   const exampleChild = {
     id,
     profile: {
-      name: 'Example Child',
-      birthDate: '2023-01-15',
+      name: exampleName,
+      birthDate: formatDate(birthDate),
       sex: 1
     },
     measurements: [
-      { id: crypto.randomUUID(), date: '2023-02-15', weight: 4500, length: 55, headCirc: 38 },
-      { id: crypto.randomUUID(), date: '2023-04-15', weight: 6200, length: 61.5, headCirc: 40.5 },
-      { id: crypto.randomUUID(), date: '2023-06-15', weight: 7400, length: 67, headCirc: 42.5 }
+      // Birth (day 0)
+      { id: crypto.randomUUID(), date: dateAtAge(0), weight: 3400, length: 50, headCirc: 35 },
+      // Day 14 - weight only (showing omitted values are OK)
+      { id: crypto.randomUUID(), date: dateAtAge(14), weight: 3800, length: null, headCirc: null },
+      // Day 30 - no head circumference
+      { id: crypto.randomUUID(), date: dateAtAge(30), weight: 4400, length: 54, headCirc: null },
+      // Day 45 - no length
+      { id: crypto.randomUUID(), date: dateAtAge(45), weight: 5100, length: null, headCirc: 38 },
+      // Day 60 - all values
+      { id: crypto.randomUUID(), date: dateAtAge(60), weight: 5700, length: 58, headCirc: 39.5 },
+      // Day 90 (today) - all values
+      { id: crypto.randomUUID(), date: dateAtAge(90), weight: 6300, length: 61, headCirc: 41 },
+      // Day 120 (future projection) - showing forecasting feature
+      { id: crypto.randomUUID(), date: dateAtAge(120), weight: 6900, length: 64, headCirc: 42.5 }
     ]
   };
 
