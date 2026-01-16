@@ -38,7 +38,7 @@
         <input
           id="child-name"
           type="text"
-          value={profile.name}
+          value={profile?.name ?? ''}
           on:input={handleNameChange}
           placeholder={$t('profile.name.placeholder')}
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -52,7 +52,7 @@
         <input
           id="child-birthdate"
           type="date"
-          value={profile.birthDate || ''}
+          value={profile?.birthDate ?? ''}
           on:change={handleBirthDateChange}
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
@@ -68,7 +68,7 @@
               type="radio"
               name="sex"
               value="1"
-              checked={profile.sex === 1}
+              checked={profile?.sex === 1}
               on:change={handleSexChange}
               class="form-radio text-blue-600"
             />
@@ -79,7 +79,7 @@
               type="radio"
               name="sex"
               value="2"
-              checked={profile.sex === 2}
+              checked={profile?.sex === 2}
               on:change={handleSexChange}
               class="form-radio text-pink-600"
             />
@@ -95,7 +95,7 @@
       </div>
     {/if}
 
-    {#if !profile.birthDate || !profile.sex}
+    {#if !profile?.birthDate || !profile?.sex}
       <p class="mt-4 text-sm text-amber-600">
         {$t('profile.age.missing')}
       </p>
