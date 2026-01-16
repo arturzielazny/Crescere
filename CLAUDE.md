@@ -27,7 +27,11 @@ This is a Svelte 5 SPA for pediatric growth monitoring using WHO child growth st
 
 4. **Persistence** (`src/lib/storage.js`): localStorage with schema versioning (current: v2). Handles v1→v2 migration (single→multiple children). Auto-saves on state changes.
 
-5. **i18n** (`src/stores/i18n.js`): Client-side translations for English (en) and Polish (pl). Auto-detects browser language.
+5. **Sharing** (`src/lib/share.js`): URL-based sharing using LZ-String compression. Data is encoded in hash fragment (`#share=...`) for privacy. Compact format strips UUIDs and uses single-char keys.
+
+6. **Utilities** (`src/lib/utils.js`): Shared helpers for date checking, color conversion, and z-score formatting.
+
+7. **i18n** (`src/stores/i18n.js`): Client-side translations for English (en) and Polish (pl). Auto-detects browser language.
 
 ### Key Data Models
 
@@ -42,12 +46,14 @@ This is a Svelte 5 SPA for pediatric growth monitoring using WHO child growth st
 
 ### Component Structure
 
-- `App.svelte` - Root layout, component orchestration
+- `App.svelte` - Root layout, component orchestration, share URL handling
 - `ChildList.svelte` - Child selection and management
 - `ChildProfile.svelte` - Profile form (name, DOB, sex)
-- `MeasurementTable.svelte` - Inline editable measurements table
+- `MeasurementTable.svelte` - Inline editable measurements table (requires at least one value)
 - `GrowthMetricChart.svelte` - Weight/length/head circumference vs age charts
 - `ZScoreChart.svelte` - Z-score trend charts (WAZ, LAZ, HCZ, WFLZ)
+- `ShareModal.svelte` - Display shareable URL with copy button
+- `ImportConfirmModal.svelte` - Confirm import of shared child data
 
 Charts use Chart.js with WHO reference bands (±1SD, ±2SD). Z-scores are color-coded: green (normal), amber (±2SD warning), red (>±3SD severe).
 
