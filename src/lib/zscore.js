@@ -94,20 +94,20 @@ export function calculateZScores(measurement, sex, ageInDays) {
 
   // Weight-for-age (bounded)
   if (measurement.weight && WHO_WEIGHT[sexKey]?.[age]) {
-    const { l, m, s } = WHO_WEIGHT[sexKey][age];
+    const [l, m, s] = WHO_WEIGHT[sexKey][age];
     const weightKg = measurement.weight / 1000;
     result.waz = calcZScoreBounded(weightKg, l, m, s);
   }
 
   // Length-for-age (standard)
   if (measurement.length && WHO_LENGTH[sexKey]?.[age]) {
-    const { l, m, s } = WHO_LENGTH[sexKey][age];
+    const [l, m, s] = WHO_LENGTH[sexKey][age];
     result.lhaz = calcZScoreStandard(measurement.length, l, m, s);
   }
 
   // Head circumference-for-age (standard)
   if (measurement.headCirc && WHO_HEADC[sexKey]?.[age]) {
-    const { l, m, s } = WHO_HEADC[sexKey][age];
+    const [l, m, s] = WHO_HEADC[sexKey][age];
     result.headcz = calcZScoreStandard(measurement.headCirc, l, m, s);
   }
 
@@ -115,7 +115,7 @@ export function calculateZScores(measurement, sex, ageInDays) {
   if (ageInDays <= 730 && measurement.weight && measurement.length) {
     const lengthKey = measurement.length.toFixed(1);
     if (WHO_WFL[sexKey]?.[lengthKey]) {
-      const { l, m, s } = WHO_WFL[sexKey][lengthKey];
+      const [l, m, s] = WHO_WFL[sexKey][lengthKey];
       const weightKg = measurement.weight / 1000;
       result.wflz = calcZScoreBounded(weightKg, l, m, s);
     }

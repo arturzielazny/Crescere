@@ -100,10 +100,11 @@
     const band = measurements.map(m => {
         const ref = getReferenceForAge(config.dataset, child.profile.sex, m.ageInDays);
         if (!ref) return null;
-        const sd1Low = valueAtZ(ref.l, ref.m, ref.s, -1);
-        const sd1High = valueAtZ(ref.l, ref.m, ref.s, 1);
-        const sd2Low = valueAtZ(ref.l, ref.m, ref.s, -2);
-        const sd2High = valueAtZ(ref.l, ref.m, ref.s, 2);
+        const [l, m_, s] = ref;
+        const sd1Low = valueAtZ(l, m_, s, -1);
+        const sd1High = valueAtZ(l, m_, s, 1);
+        const sd2Low = valueAtZ(l, m_, s, -2);
+        const sd2High = valueAtZ(l, m_, s, 2);
         const scale = metric === 'weight' ? 1000 : 1;
         return {
           x: m.ageInDays,
