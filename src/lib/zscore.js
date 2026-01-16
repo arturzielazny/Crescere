@@ -129,7 +129,9 @@ export function calculateZScores(measurement, sex, ageInDays) {
  */
 export function getZScoreClass(z) {
   if (z === null || z === undefined || isNaN(z)) return 'unknown';
-  if (z < -3 || z > 3) return 'severe';
-  if (z < -2 || z > 2) return 'warning';
+  const absZ = Math.abs(z);
+  if (absZ > 3) return 'severe';
+  if (absZ > 2) return 'moderate';
+  if (absZ > 1) return 'mild';
   return 'normal';
 }
