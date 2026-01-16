@@ -23,7 +23,7 @@ This is a Svelte 5 SPA for pediatric growth monitoring using WHO child growth st
    - Standard LMS for length-for-age, head circumference-for-age
    - Bounded LMS for weight-for-age, weight-for-length (clamps at ±3 SD with linear extrapolation)
 
-3. **WHO Reference Data** (`src/data/`): Four large datasets (weight, length, headc, wfl) structured as `{ [sex]: { [age_in_days]: { l, m, s } } }`. Sex: 1=male, 2=female. Age range: 0-1826 days (0-5 years).
+3. **WHO Reference Data** (`src/data/`): Four datasets (weight, length, headc, wfl) in compact array format `{ [sex]: [[l,m,s], ...] }` where array index = day. Sex: 1=male, 2=female. Age range: 0-1826 days (0-5 years). WFL uses length strings as keys instead of arrays.
 
 4. **Persistence** (`src/lib/storage.js`): localStorage with schema versioning (current: v2). Handles v1→v2 migration (single→multiple children). Auto-saves on state changes.
 
@@ -55,7 +55,7 @@ This is a Svelte 5 SPA for pediatric growth monitoring using WHO child growth st
 - `ShareModal.svelte` - Display shareable URL with copy button
 - `ImportConfirmModal.svelte` - Confirm import of shared child data
 
-Charts use Chart.js with WHO reference bands (±1SD, ±2SD). Z-scores are color-coded: green (normal), amber (±2SD warning), red (>±3SD severe).
+Charts use Chart.js with WHO reference bands (±1SD, ±2SD) and a vertical "now" line at current age. Z-scores use 4-level color coding: green bold (±1SD), yellow (±1-2SD), red (±2-3SD), red bold (>±3SD). Future measurements appear as faded triangles for forecasting.
 
 ## Code Style
 
@@ -64,3 +64,17 @@ Charts use Chart.js with WHO reference bands (±1SD, ±2SD). Z-scores are color-
 - PascalCase for `.svelte` components, lowercase for `.js` utilities
 - Tailwind CSS for styling via `@import "tailwindcss"` in `app.css`
 - JavaScript with JSDoc type hints (`checkJs: true` in jsconfig.json)
+
+## Build Optimizations
+
+The bundle is optimized to ~553 KB (172 KB gzipped):
+
+1. **Tree-shaken Chart.js**: Only imports used components (LineController, LineElement, PointElement, LinearScale, Filler, Legend, Tooltip) instead of all registerables. Saves ~42 KB.
+
+2. **Compact WHO data format**: Reference data uses arrays `[l,m,s]` instead of objects `{l,m,s}`. Reduces data files by ~50%. Run `node scripts/compress-who-data.js` to recompress if data changes.
+
+Further optimization options if needed:
+- Lazy-load charts via dynamic imports
+- Reduce decimal precision in WHO data
+- Use binary encoding with runtime decompression
+- External CDN for Chart.js
