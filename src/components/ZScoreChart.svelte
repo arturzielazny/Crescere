@@ -1,11 +1,13 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { Chart, registerables } from 'chart.js';
-  import { measurementsWithZScores } from '../stores/childStore.js';
+  import annotationPlugin from 'chartjs-plugin-annotation';
+  import { measurementsWithZScores, activeChild } from '../stores/childStore.js';
+  import { calculateAgeInDays } from '../lib/zscore.js';
   import { isFutureDate, hexToRgba } from '../lib/utils.js';
   import { t } from '../stores/i18n.js';
 
-  Chart.register(...registerables);
+  Chart.register(...registerables, annotationPlugin);
 
   export let metric = 'all'; // 'waz', 'lhaz', 'headcz', 'wflz', or 'all'
   export let title = null;
@@ -146,6 +148,36 @@
     return datasets;
   }
 
+  function getCurrentAgeInDays() {
+    const child = $activeChild;
+    if (!child?.profile?.birthDate) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    return calculateAgeInDays(child.profile.birthDate, today);
+  }
+
+  function getNowAnnotation() {
+    const nowAge = getCurrentAgeInDays();
+    if (nowAge === null || nowAge < 0) return {};
+    return {
+      nowLine: {
+        type: 'line',
+        xMin: nowAge,
+        xMax: nowAge,
+        borderColor: 'rgba(107, 114, 128, 0.6)',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        label: {
+          display: true,
+          content: $t('chart.now'),
+          position: 'start',
+          backgroundColor: 'rgba(107, 114, 128, 0.8)',
+          color: 'white',
+          font: { size: 11 }
+        }
+      }
+    };
+  }
+
   function getChartOptions(maxAbs = DISPLAY_RANGE) {
     const range = Math.min(MAX_Z, Math.max(DISPLAY_RANGE, Math.ceil(maxAbs)));
     return {
@@ -177,7 +209,10 @@
                 return `${label}: ${capped.toFixed(2)}${suffix}`;
               }
             }
-          }
+          },
+        annotation: {
+          annotations: getNowAnnotation()
+        }
         },
       scales: {
         x: {

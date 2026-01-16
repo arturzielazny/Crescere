@@ -1,6 +1,7 @@
 <script>
   import { onDestroy, onMount } from 'svelte';
   import { Chart, registerables } from 'chart.js';
+  import annotationPlugin from 'chartjs-plugin-annotation';
   import { activeChild } from '../stores/childStore.js';
   import { calculateAgeInDays } from '../lib/zscore.js';
   import { isFutureDate, hexToRgba } from '../lib/utils.js';
@@ -9,7 +10,7 @@
   import { WHO_HEADC } from '../data/who-headc.js';
   import { t } from '../stores/i18n.js';
 
-  Chart.register(...registerables);
+  Chart.register(...registerables, annotationPlugin);
 
   export let metric = 'weight'; // weight | length | headCirc
   export let title = '';
@@ -187,6 +188,36 @@
     ];
   }
 
+  function getCurrentAgeInDays() {
+    const child = $activeChild;
+    if (!child?.profile?.birthDate) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    return calculateAgeInDays(child.profile.birthDate, today);
+  }
+
+  function getNowAnnotation() {
+    const nowAge = getCurrentAgeInDays();
+    if (nowAge === null || nowAge < 0) return {};
+    return {
+      nowLine: {
+        type: 'line',
+        xMin: nowAge,
+        xMax: nowAge,
+        borderColor: 'rgba(107, 114, 128, 0.6)',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        label: {
+          display: true,
+          content: $t('chart.now'),
+          position: 'start',
+          backgroundColor: 'rgba(107, 114, 128, 0.8)',
+          color: 'white',
+          font: { size: 11 }
+        }
+      }
+    };
+  }
+
   function getChartOptions(range) {
     const unitLabel = unit || metricConfig[metric].unit;
     const stepSize = getStepSize(unitLabel, range);
@@ -218,6 +249,9 @@
               return `${label}: ${value.toFixed(decimals)} ${unitLabel}`;
             }
           }
+        },
+        annotation: {
+          annotations: getNowAnnotation()
         }
       },
       scales: {
