@@ -96,25 +96,30 @@
       .filter((m) => m.y !== null && m.y !== undefined && !isNaN(m.y))
       .sort((a, b) => a.ageInDays - b.ageInDays);
 
-    const band = measurements
-      .map((m) => {
-        const ref = getReferenceForAge(config.dataset, child.profile.sex, m.ageInDays);
-        if (!ref) return null;
-        const [l, m_, s] = ref;
-        const sd1Low = valueAtZ(l, m_, s, -1);
-        const sd1High = valueAtZ(l, m_, s, 1);
-        const sd2Low = valueAtZ(l, m_, s, -2);
-        const sd2High = valueAtZ(l, m_, s, 2);
-        const scale = metric === 'weight' ? 1000 : 1;
-        return {
-          x: m.ageInDays,
-          sd1Low: sd1Low * scale,
-          sd1High: sd1High * scale,
-          sd2Low: sd2Low * scale,
-          sd2High: sd2High * scale
-        };
-      })
-      .filter(Boolean);
+    const maxMeasurementAge = measurements.at(-1)?.ageInDays ?? 0;
+    const maxBandAge =
+      maxAge && maxAge > 0 ? Math.ceil(maxAge * 1.1) : Math.max(0, maxMeasurementAge);
+    const maxReferenceAge = (config.dataset?.[String(child.profile.sex)]?.length || 1) - 1;
+    const bandEndAge = Math.min(maxBandAge, maxReferenceAge);
+    const scale = metric === 'weight' ? 1000 : 1;
+    const band = [];
+
+    for (let age = 0; age <= bandEndAge; age += 1) {
+      const ref = getReferenceForAge(config.dataset, child.profile.sex, age);
+      if (!ref) continue;
+      const [l, m_, s] = ref;
+      const sd1Low = valueAtZ(l, m_, s, -1);
+      const sd1High = valueAtZ(l, m_, s, 1);
+      const sd2Low = valueAtZ(l, m_, s, -2);
+      const sd2High = valueAtZ(l, m_, s, 2);
+      band.push({
+        x: age,
+        sd1Low: sd1Low * scale,
+        sd1High: sd1High * scale,
+        sd2Low: sd2Low * scale,
+        sd2High: sd2High * scale
+      });
+    }
 
     return { measurements, band };
   }
