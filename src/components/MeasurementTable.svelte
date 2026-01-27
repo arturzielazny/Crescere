@@ -176,6 +176,7 @@
               <input
                 type="date"
                 bind:value={newDate}
+                on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                 class="w-32 px-2 py-1 border border-blue-200 rounded text-sm"
               />
             </td>
@@ -185,6 +186,7 @@
                 type="number"
                 step="25"
                 bind:value={newWeight}
+                on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                 placeholder="g"
                 class="w-20 px-2 py-1 border border-blue-200 rounded text-sm"
               />
@@ -194,6 +196,7 @@
                 type="number"
                 step="0.5"
                 bind:value={newLength}
+                on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                 placeholder="cm"
                 class="w-20 px-2 py-1 border border-blue-200 rounded text-sm"
               />
@@ -203,6 +206,7 @@
                 type="number"
                 step="0.5"
                 bind:value={newHeadCirc}
+                on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                 placeholder="cm"
                 class="w-20 px-2 py-1 border border-blue-200 rounded text-sm"
               />
