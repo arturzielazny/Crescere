@@ -22,6 +22,17 @@
       4: 'md:grid-cols-4'
     }[$columnsPerRow] || 'md:grid-cols-3';
 
+  // Reactive titles that update when language changes
+  $: chartTitles = {
+    weight: $t('chart.weight.title'),
+    length: $t('chart.length.title'),
+    headCirc: $t('chart.head.title'),
+    waz: $t('chart.waz'),
+    lhaz: $t('chart.lhaz'),
+    headcz: $t('chart.headcz'),
+    wflz: $t('chart.wflz')
+  };
+
   function handleDragStart(event, index) {
     draggedIndex = index;
     event.dataTransfer.effectAllowed = 'move';
@@ -60,25 +71,6 @@
   function handleKeydown(event) {
     if (event.key === 'Escape' && $maximizedChart) {
       closeMaximize();
-    }
-  }
-
-  function getChartTitle(chart) {
-    if (chart.type === 'growth') {
-      const titles = {
-        weight: $t('chart.weight.title'),
-        length: $t('chart.length.title'),
-        headCirc: $t('chart.head.title')
-      };
-      return titles[chart.id] || '';
-    } else {
-      const titles = {
-        waz: $t('chart.waz'),
-        lhaz: $t('chart.lhaz'),
-        headcz: $t('chart.headcz'),
-        wflz: $t('chart.wflz')
-      };
-      return titles[chart.id] || '';
     }
   }
 
@@ -162,12 +154,12 @@
       {#if chart.type === 'growth'}
         <GrowthMetricChart
           metric={chart.id}
-          title={getChartTitle(chart)}
+          title={chartTitles[chart.id]}
           unit={getChartUnit(chart)}
           maxAge={$maxAgeInDays}
         />
       {:else}
-        <ZScoreChart metric={chart.id} title={getChartTitle(chart)} maxAge={$maxAgeInDays} />
+        <ZScoreChart metric={chart.id} title={chartTitles[chart.id]} maxAge={$maxAgeInDays} />
       {/if}
     </div>
   {/each}
@@ -212,14 +204,14 @@
               {#if chart.type === 'growth'}
                 <GrowthMetricChart
                   metric={chart.id}
-                  title={getChartTitle(chart)}
+                  title={chartTitles[chart.id]}
                   unit={getChartUnit(chart)}
                   maxAge={$maxAgeInDays}
                 />
               {:else}
                 <ZScoreChart
                   metric={chart.id}
-                  title={getChartTitle(chart)}
+                  title={chartTitles[chart.id]}
                   maxAge={$maxAgeInDays}
                 />
               {/if}
