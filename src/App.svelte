@@ -15,7 +15,13 @@
     discardTemporaryChild,
     temporaryChildId
   } from './stores/childStore.js';
-  import { loadFromStorage, saveToStorage, exportData, clearStorage } from './lib/storage.js';
+  import {
+    loadFromStorage,
+    saveToStorage,
+    exportData,
+    clearStorage,
+    migrateData
+  } from './lib/storage.js';
   import { generateShareUrl, parseShareUrl, clearShareHash } from './lib/share.js';
   import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
 
@@ -89,8 +95,25 @@
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = JSON.parse(e.target.result);
-        setStore(data);
+        const rawData = JSON.parse(e.target.result);
+        const importedData = migrateData(rawData);
+
+        // Merge imported children with existing ones
+        const existingIds = new Set($childStore.children.map((c) => c.id));
+        const newChildren = importedData.children.map((child) => {
+          // Generate new ID if it conflicts with existing
+          if (existingIds.has(child.id)) {
+            return { ...child, id: crypto.randomUUID() };
+          }
+          return child;
+        });
+
+        childStore.update((state) => ({
+          ...state,
+          children: [...state.children, ...newChildren],
+          activeChildId: state.activeChildId || newChildren[0]?.id || null
+        }));
+
         saveToStorage($childStore);
         alert($t('app.import.success'));
       } catch (_err) {
