@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Crescere** (v0.1.0) - A pediatric growth tracker using WHO child growth standards.
+
 ## Build & Development Commands
 
 ```bash
@@ -23,7 +25,7 @@ npm run format:check # Check formatting without changes
 
 ## Architecture Overview
 
-Svelte 5 SPA for pediatric growth monitoring using WHO child growth standards. Runs entirely client-side with localStorage persistence.
+Svelte 5 SPA for pediatric growth monitoring. Runs entirely client-side with localStorage persistence.
 
 ### Core Data Flow
 

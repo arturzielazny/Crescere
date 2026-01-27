@@ -4,7 +4,7 @@ const STORAGE_KEY = 'crescere-lang';
 
 const translations = {
   en: {
-    'app.title': 'Crescere',
+    'app.title': 'Crescere - Growth Tracker',
     'app.share': 'Share',
     'app.export': 'Export',
     'app.import': 'Import',
@@ -124,7 +124,7 @@ const translations = {
     'confirm.measurement.message': 'Are you sure you want to delete this measurement?'
   },
   pl: {
-    'app.title': 'Crescere',
+    'app.title': 'Crescere - Tracker Wzrostu',
     'app.share': 'Udostępnij',
     'app.export': 'Eksportuj',
     'app.import': 'Importuj',
