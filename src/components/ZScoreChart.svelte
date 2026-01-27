@@ -54,12 +54,6 @@
   };
 
   $: resolvedTitle = title || $t('chart.title');
-  $: bandSwatch = metric !== 'all' && colors[metric]
-    ? {
-        sd1: hexToRgba(colors[metric].border, 0.12),
-        sd2: hexToRgba(colors[metric].border, 0.08)
-      }
-    : null;
 
   const MAX_Z = 5;
   const DISPLAY_RANGE = 3;
@@ -72,8 +66,8 @@
   function getPointRadius(z) {
     if (z === null || z === undefined || isNaN(z)) return 0;
     const abs = Math.min(Math.abs(z), MAX_Z);
-    if (abs <= DISPLAY_RANGE) return 5;
-    return 5 + Math.round((abs - DISPLAY_RANGE) * 2);
+    if (abs <= DISPLAY_RANGE) return 3.5;
+    return 3.5 + Math.round((abs - DISPLAY_RANGE) * 1.4);
   }
 
   function getMaxAbsZScore(measurements) {
@@ -115,8 +109,8 @@
       borderColor: colors[m].border,
       backgroundColor: colors[m].bg,
       borderWidth: 2,
-      pointRadius: (ctx) => ctx.raw?.pointRadius ?? 5,
-      pointHoverRadius: (ctx) => (ctx.raw?.pointRadius ?? 5) + 2,
+      pointRadius: (ctx) => ctx.raw?.pointRadius ?? 3.5,
+      pointHoverRadius: (ctx) => (ctx.raw?.pointRadius ?? 3.5) + 1.5,
       pointStyle: (ctx) => ctx.raw?.pointStyle ?? 'circle',
       pointBackgroundColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
       pointBorderColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
@@ -300,17 +294,4 @@
   <div class="h-80" role="img" aria-label={resolvedTitle}>
     <canvas bind:this={canvas}></canvas>
   </div>
-
-  {#if bandSwatch}
-    <div class="mt-4 flex flex-wrap gap-4 text-xs text-gray-500">
-      <div class="flex items-center gap-1">
-        <span class="w-4 h-2 rounded-sm" style={`background-color: ${bandSwatch.sd2}`}></span>
-        <span>{$t('chart.band.sd2')}</span>
-      </div>
-      <div class="flex items-center gap-1">
-        <span class="w-4 h-2 rounded-sm" style={`background-color: ${bandSwatch.sd1}`}></span>
-        <span>{$t('chart.band.sd1')}</span>
-      </div>
-    </div>
-  {/if}
 </div>

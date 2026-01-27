@@ -93,7 +93,7 @@
 
 <div class="min-h-screen bg-gray-100">
   <header class="bg-white shadow-sm">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+    <div class="px-4 py-4 flex justify-between items-center">
       <h1 class="text-xl font-bold text-gray-800">
         {$t('app.title')}
       </h1>
@@ -141,7 +141,7 @@
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-6">
+  <main class="px-4 py-6">
     <ChildList />
     <ChildProfile />
     <MeasurementTable />
