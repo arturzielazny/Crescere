@@ -3,8 +3,7 @@
   import ChildProfile from './components/ChildProfile.svelte';
   import ChildList from './components/ChildList.svelte';
   import MeasurementTable from './components/MeasurementTable.svelte';
-  import GrowthMetricChart from './components/GrowthMetricChart.svelte';
-  import ZScoreChart from './components/ZScoreChart.svelte';
+  import ChartGrid from './components/ChartGrid.svelte';
   import ShareModal from './components/ShareModal.svelte';
   import ImportConfirmModal from './components/ImportConfirmModal.svelte';
   import { childStore, activeChild, setStore, resetStore, createExampleState } from './stores/childStore.js';
@@ -147,18 +146,7 @@
     <ChildProfile />
     <MeasurementTable />
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-      <GrowthMetricChart metric="weight" title={$t('chart.weight.title')} unit="g" />
-      <GrowthMetricChart metric="length" title={$t('chart.length.title')} unit="cm" />
-      <GrowthMetricChart metric="headCirc" title={$t('chart.head.title')} unit="cm" />
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-      <ZScoreChart metric="waz" title={$t('chart.waz')} />
-      <ZScoreChart metric="lhaz" title={$t('chart.lhaz')} />
-      <ZScoreChart metric="headcz" title={$t('chart.headcz')} />
-      <ZScoreChart metric="wflz" title={$t('chart.wflz')} />
-    </div>
+    <ChartGrid />
 
     <section class="bg-white rounded-lg shadow p-6 mt-6">
       <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
