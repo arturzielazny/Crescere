@@ -78,7 +78,10 @@ export function validateSchema(data) {
   }
 
   if (data.version !== CURRENT_VERSION) {
-    return { valid: false, error: `Invalid version: expected ${CURRENT_VERSION}, got ${data.version}` };
+    return {
+      valid: false,
+      error: `Invalid version: expected ${CURRENT_VERSION}, got ${data.version}`
+    };
   }
 
   if (!Array.isArray(data.children)) {
@@ -196,7 +199,7 @@ export function importData(file) {
         const data = JSON.parse(e.target.result);
         saveToStorage(data);
         resolve(data);
-      } catch (err) {
+      } catch (_err) {
         reject(new Error('Invalid JSON file'));
       }
     };

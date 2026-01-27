@@ -56,10 +56,7 @@ export function calculateAgeInDays(birthDate, measurementDate) {
 /**
  * Format age for display
  */
-export function formatAge(
-  ageInDays,
-  labels = { invalid: 'Invalid', month: 'm', day: 'd' }
-) {
+export function formatAge(ageInDays, labels = { invalid: 'Invalid', month: 'm', day: 'd' }) {
   if (ageInDays < 0) return labels.invalid;
 
   const months = Math.floor(ageInDays / 30.4375);

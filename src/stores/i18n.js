@@ -32,7 +32,8 @@ const translations = {
     'profile.save': 'Save child',
     'profile.discard': 'Discard',
     'profile.delete': 'Delete child profile',
-    'profile.temporary.hint': 'This child was shared with you. Click "Save child" to add them to your saved children.',
+    'profile.temporary.hint':
+      'This child was shared with you. Click "Save child" to add them to your saved children.',
     'children.title': 'Children',
     'children.add': 'Add child',
     'children.empty': 'No children yet. Add one to get started.',
@@ -80,36 +81,45 @@ const translations = {
     'chart.drag': 'Drag to reorder',
     'chart.columns': 'Columns',
     'explain.title': 'What do these indicators mean?',
-    'explain.summary': 'Doctors and midwives don\'t just look at a child\'s weight or height alone — they check how these values compare to other children of the same age and sex. This is what Z-scores are for.',
-    'explain.meaning': 'In practice, it answers the question: is the child developing similarly to most children, or noticeably slower or faster?',
+    'explain.summary':
+      "Doctors and midwives don't just look at a child's weight or height alone — they check how these values compare to other children of the same age and sex. This is what Z-scores are for.",
+    'explain.meaning':
+      'In practice, it answers the question: is the child developing similarly to most children, or noticeably slower or faster?',
     'explain.shortcuts': 'Key abbreviations:',
     'explain.waz.title': 'WAZ (Weight-for-Age)',
-    'explain.waz.desc': 'Checks whether the child weighs appropriately for their age. Helps assess if body weight is too low or too high for the age.',
+    'explain.waz.desc':
+      'Checks whether the child weighs appropriately for their age. Helps assess if body weight is too low or too high for the age.',
     'explain.lhaz.title': 'LAZ (Length/Height-for-Age)',
-    'explain.lhaz.desc': 'Shows whether the child is appropriately long (or tall) for their age. This is an indicator of long-term growth.',
+    'explain.lhaz.desc':
+      'Shows whether the child is appropriately long (or tall) for their age. This is an indicator of long-term growth.',
     'explain.headcz.title': 'HCZ (Head Circumference-for-Age)',
-    'explain.headcz.desc': 'Compares the child\'s head circumference to the norm for their age. It\'s important because it indirectly reflects brain development, especially in infants.',
+    'explain.headcz.desc':
+      "Compares the child's head circumference to the norm for their age. It's important because it indirectly reflects brain development, especially in infants.",
     'explain.wflz.title': 'WFL (Weight-for-Length)',
-    'explain.wflz.desc': 'Checks whether body weight is proportional to the child\'s length. In other words: is the child "slim", "chubby", or proportional to their height. This indicator is especially used for younger children who are not yet walking.',
+    'explain.wflz.desc':
+      'Checks whether body weight is proportional to the child\'s length. In other words: is the child "slim", "chubby", or proportional to their height. This indicator is especially used for younger children who are not yet walking.',
     'age.invalid': 'Invalid',
     'age.month': 'm',
     'age.day': 'd',
     'share.title': 'Share Child Data',
-    'share.description': 'Copy this link to share this child\'s growth data. The recipient can add this child to their tracker.',
+    'share.description':
+      "Copy this link to share this child's growth data. The recipient can add this child to their tracker.",
     'share.copy': 'Copy',
     'share.copied': 'Copied!',
     'share.close': 'Close',
     'share.urlLength': 'URL length',
     'share.chars': 'characters',
     'share.import.title': 'Import Shared Child',
-    'share.import.description': 'Someone shared a child\'s growth data with you. Would you like to add this child to your tracker?',
+    'share.import.description':
+      "Someone shared a child's growth data with you. Would you like to add this child to your tracker?",
     'share.import.name': 'Name',
     'share.import.measurements': 'Measurements',
     'share.import.confirm': 'Add Child',
     'share.import.cancel': 'Cancel',
     'confirm.cancel': 'Cancel',
     'confirm.delete.title': 'Delete child profile',
-    'confirm.delete.message': 'Are you sure you want to delete this child profile? All measurements will be permanently removed.',
+    'confirm.delete.message':
+      'Are you sure you want to delete this child profile? All measurements will be permanently removed.',
     'confirm.measurement.title': 'Delete measurement',
     'confirm.measurement.message': 'Are you sure you want to delete this measurement?'
   },
@@ -121,7 +131,8 @@ const translations = {
     'app.clear': 'Wyczyść',
     'app.import.success': 'Dane zaimportowane pomyślnie!',
     'app.import.error': 'Nie udało się zaimportować: nieprawidłowy format pliku',
-    'app.clear.confirm': 'Czy na pewno chcesz usunąć wszystkie dane? Tej operacji nie można cofnąć.',
+    'app.clear.confirm':
+      'Czy na pewno chcesz usunąć wszystkie dane? Tej operacji nie można cofnąć.',
     'app.footer.source': 'Na podstawie',
     'app.footer.source.link': 'WHO Child Growth Standards',
     'app.footer.storage': 'Dane są przechowywane lokalnie w przeglądarce',
@@ -142,7 +153,8 @@ const translations = {
     'profile.save': 'Zapisz dziecko',
     'profile.discard': 'Odrzuć',
     'profile.delete': 'Usuń profil dziecka',
-    'profile.temporary.hint': 'To dziecko zostało Ci udostępnione. Kliknij "Zapisz dziecko", aby dodać je do zapisanych dzieci.',
+    'profile.temporary.hint':
+      'To dziecko zostało Ci udostępnione. Kliknij "Zapisz dziecko", aby dodać je do zapisanych dzieci.',
     'children.title': 'Dzieci',
     'children.add': 'Dodaj dziecko',
     'children.empty': 'Brak dzieci. Dodaj pierwsze, aby rozpocząć.',
@@ -190,36 +202,45 @@ const translations = {
     'chart.drag': 'Przeciągnij, aby zmienić kolejność',
     'chart.columns': 'Kolumny',
     'explain.title': 'Co oznaczają te wskaźniki?',
-    'explain.summary': 'Lekarze i położne nie patrzą tylko na samą wagę czy wzrost dziecka, ale sprawdzają jak te wartości wypadają na tle innych dzieci w tym samym wieku i tej samej płci. Do tego służą tzw. Z-score\'y.',
-    'explain.meaning': 'W praktyce oznacza to odpowiedź na pytanie: czy dziecko rozwija się podobnie do większości dzieci, czy wyraźnie wolniej albo szybciej?',
+    'explain.summary':
+      "Lekarze i położne nie patrzą tylko na samą wagę czy wzrost dziecka, ale sprawdzają jak te wartości wypadają na tle innych dzieci w tym samym wieku i tej samej płci. Do tego służą tzw. Z-score'y.",
+    'explain.meaning':
+      'W praktyce oznacza to odpowiedź na pytanie: czy dziecko rozwija się podobnie do większości dzieci, czy wyraźnie wolniej albo szybciej?',
     'explain.shortcuts': 'Najważniejsze skróty:',
     'explain.waz.title': 'WAZ (masa do wieku)',
-    'explain.waz.desc': 'Sprawdza, czy dziecko waży odpowiednio do swojego wieku. Pomaga ocenić, czy masa ciała jest zbyt niska lub zbyt wysoka jak na wiek.',
+    'explain.waz.desc':
+      'Sprawdza, czy dziecko waży odpowiednio do swojego wieku. Pomaga ocenić, czy masa ciała jest zbyt niska lub zbyt wysoka jak na wiek.',
     'explain.lhaz.title': 'LAZ (długość/wzrost do wieku)',
-    'explain.lhaz.desc': 'Pokazuje, czy dziecko jest odpowiednio długie (lub wysokie) jak na swój wiek. To wskaźnik długofalowego wzrastania.',
+    'explain.lhaz.desc':
+      'Pokazuje, czy dziecko jest odpowiednio długie (lub wysokie) jak na swój wiek. To wskaźnik długofalowego wzrastania.',
     'explain.headcz.title': 'HCZ (obwód głowy do wieku)',
-    'explain.headcz.desc': 'Porównuje obwód głowy dziecka z normą dla wieku. Jest ważny, bo pośrednio mówi o rozwoju mózgu, szczególnie u niemowląt.',
+    'explain.headcz.desc':
+      'Porównuje obwód głowy dziecka z normą dla wieku. Jest ważny, bo pośrednio mówi o rozwoju mózgu, szczególnie u niemowląt.',
     'explain.wflz.title': 'WFL (masa do długości)',
-    'explain.wflz.desc': 'Sprawdza, czy masa ciała jest proporcjonalna do długości dziecka. Innymi słowy: czy dziecko jest „szczupłe", „pulchne" czy proporcjonalne do swojego wzrostu. Ten wskaźnik jest szczególnie używany u młodszych dzieci, które jeszcze nie chodzą.',
+    'explain.wflz.desc':
+      'Sprawdza, czy masa ciała jest proporcjonalna do długości dziecka. Innymi słowy: czy dziecko jest „szczupłe", „pulchne" czy proporcjonalne do swojego wzrostu. Ten wskaźnik jest szczególnie używany u młodszych dzieci, które jeszcze nie chodzą.',
     'age.invalid': 'Nieprawidłowy',
     'age.month': 'm',
     'age.day': 'd',
     'share.title': 'Udostępnij dane dziecka',
-    'share.description': 'Skopiuj ten link, aby udostępnić dane wzrostu tego dziecka. Odbiorca może dodać to dziecko do swojego trackera.',
+    'share.description':
+      'Skopiuj ten link, aby udostępnić dane wzrostu tego dziecka. Odbiorca może dodać to dziecko do swojego trackera.',
     'share.copy': 'Kopiuj',
     'share.copied': 'Skopiowano!',
     'share.close': 'Zamknij',
     'share.urlLength': 'Długość URL',
     'share.chars': 'znaków',
     'share.import.title': 'Importuj udostępnione dziecko',
-    'share.import.description': 'Ktoś udostępnił Ci dane wzrostu dziecka. Czy chcesz dodać to dziecko do swojego trackera?',
+    'share.import.description':
+      'Ktoś udostępnił Ci dane wzrostu dziecka. Czy chcesz dodać to dziecko do swojego trackera?',
     'share.import.name': 'Imię',
     'share.import.measurements': 'Pomiary',
     'share.import.confirm': 'Dodaj dziecko',
     'share.import.cancel': 'Anuluj',
     'confirm.cancel': 'Anuluj',
     'confirm.delete.title': 'Usuń profil dziecka',
-    'confirm.delete.message': 'Czy na pewno chcesz usunąć ten profil dziecka? Wszystkie pomiary zostaną trwale usunięte.',
+    'confirm.delete.message':
+      'Czy na pewno chcesz usunąć ten profil dziecka? Wszystkie pomiary zostaną trwale usunięte.',
     'confirm.measurement.title': 'Usuń pomiar',
     'confirm.measurement.message': 'Czy na pewno chcesz usunąć ten pomiar?'
   }

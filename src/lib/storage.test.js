@@ -31,9 +31,7 @@ describe('Schema Migrations', () => {
           birthDate: '2024-01-01',
           sex: 1
         },
-        measurements: [
-          { id: 'm1', date: '2024-01-01', weight: 3500, length: 50, headCirc: 35 }
-        ]
+        measurements: [{ id: 'm1', date: '2024-01-01', weight: 3500, length: 50, headCirc: 35 }]
       };
 
       const migrated = migrateData(v0Data);
@@ -123,9 +121,7 @@ describe('Schema Migrations', () => {
           {
             id: 'child-123',
             profile: { name: 'Current Child', birthDate: '2024-06-01', sex: 1 },
-            measurements: [
-              { id: 'm1', date: '2024-06-01', weight: 3400, length: 50, headCirc: 35 }
-            ]
+            measurements: [{ id: 'm1', date: '2024-06-01', weight: 3400, length: 50, headCirc: 35 }]
           }
         ],
         activeChildId: 'child-123'
@@ -323,9 +319,7 @@ describe('Schema Migrations', () => {
     it('should accept valid current schema', () => {
       const valid = {
         version: 2,
-        children: [
-          { id: 'child-1', profile: { name: 'Test' }, measurements: [] }
-        ],
+        children: [{ id: 'child-1', profile: { name: 'Test' }, measurements: [] }],
         activeChildId: 'child-1'
       };
       const validation = validateSchema(valid);
@@ -361,7 +355,16 @@ describe('Schema Migrations', () => {
         // Version 1 single-child
         { version: 1, profile: { name: 'V1', birthDate: '2024-01-01', sex: 1 }, measurements: [] },
         // Version 1 multi-child
-        { version: 1, children: [{ id: 'c1', profile: { name: 'V1 Multi', birthDate: '2024-01-01', sex: 1 }, measurements: [] }] },
+        {
+          version: 1,
+          children: [
+            {
+              id: 'c1',
+              profile: { name: 'V1 Multi', birthDate: '2024-01-01', sex: 1 },
+              measurements: []
+            }
+          ]
+        }
       ];
 
       for (const testData of testCases) {

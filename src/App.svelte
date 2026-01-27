@@ -5,7 +5,16 @@
   import MeasurementTable from './components/MeasurementTable.svelte';
   import ChartGrid from './components/ChartGrid.svelte';
   import ShareModal from './components/ShareModal.svelte';
-  import { childStore, activeChild, setStore, resetStore, createExampleState, addTemporaryChild, discardTemporaryChild, temporaryChildId } from './stores/childStore.js';
+  import {
+    childStore,
+    activeChild,
+    setStore,
+    resetStore,
+    createExampleState,
+    addTemporaryChild,
+    discardTemporaryChild,
+    temporaryChildId
+  } from './stores/childStore.js';
   import { loadFromStorage, saveToStorage, exportData, clearStorage } from './lib/storage.js';
   import { generateShareUrl, parseShareUrl, clearShareHash } from './lib/share.js';
   import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
@@ -52,10 +61,11 @@
     const dataToSave = tempId
       ? {
           ...$childStore,
-          children: $childStore.children.filter(c => c.id !== tempId),
-          activeChildId: $childStore.activeChildId === tempId
-            ? $childStore.children.find(c => c.id !== tempId)?.id || null
-            : $childStore.activeChildId
+          children: $childStore.children.filter((c) => c.id !== tempId),
+          activeChildId:
+            $childStore.activeChildId === tempId
+              ? $childStore.children.find((c) => c.id !== tempId)?.id || null
+              : $childStore.activeChildId
         }
       : $childStore;
     saveToStorage(dataToSave);
@@ -83,7 +93,7 @@
         setStore(data);
         saveToStorage($childStore);
         alert($t('app.import.success'));
-      } catch (err) {
+      } catch (_err) {
         alert($t('app.import.error'));
       }
     };
@@ -116,7 +126,7 @@
           class="px-2 py-1.5 text-sm border border-gray-200 rounded bg-white"
           aria-label={$t('app.language.label')}
         >
-          {#each availableLanguages as lang}
+          {#each availableLanguages as lang (lang)}
             <option value={lang}>
               {$t(`app.language.${lang}`)}
             </option>
@@ -188,8 +198,12 @@
 
   <footer class="text-center py-4 text-sm text-gray-500">
     <p>
-      {$t('app.footer.source')}{' '}
-      <a href="https://www.who.int/tools/child-growth-standards" class="text-blue-600 hover:underline" target="_blank">
+      {$t('app.footer.source')}
+      <a
+        href="https://www.who.int/tools/child-growth-standards"
+        class="text-blue-600 hover:underline"
+        target="_blank"
+      >
         {$t('app.footer.source.link')}
       </a>
     </p>
@@ -198,5 +212,5 @@
 </div>
 
 {#if showShareModal}
-  <ShareModal url={shareUrl} onClose={() => showShareModal = false} />
+  <ShareModal url={shareUrl} onClose={() => (showShareModal = false)} />
 {/if}

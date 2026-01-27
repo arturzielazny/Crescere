@@ -31,7 +31,7 @@ function loadChartSettings() {
         columnsPerRow: parsed.columnsPerRow || 3
       };
     }
-  } catch (e) {
+  } catch (_e) {
     // Ignore parse errors
   }
 
@@ -51,18 +51,18 @@ export const columnsPerRow = writable(initial.columnsPerRow);
 export const maximizedChart = writable(null);
 
 // Auto-save on changes
-chartOrder.subscribe(order => {
+chartOrder.subscribe((order) => {
   const current = loadChartSettings();
   saveChartSettings({ ...current, chartOrder: order });
 });
 
-columnsPerRow.subscribe(cols => {
+columnsPerRow.subscribe((cols) => {
   const current = loadChartSettings();
   saveChartSettings({ ...current, columnsPerRow: cols });
 });
 
 export function reorderCharts(fromIndex, toIndex) {
-  chartOrder.update(order => {
+  chartOrder.update((order) => {
     const newOrder = [...order];
     const [moved] = newOrder.splice(fromIndex, 1);
     newOrder.splice(toIndex, 0, moved);
@@ -75,7 +75,7 @@ export function setColumnsPerRow(cols) {
 }
 
 export function toggleMaximize(chartId) {
-  maximizedChart.update(current => current === chartId ? null : chartId);
+  maximizedChart.update((current) => (current === chartId ? null : chartId));
 }
 
 export function closeMaximize() {

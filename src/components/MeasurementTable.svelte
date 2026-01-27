@@ -75,8 +75,12 @@
           <tr class="border-b border-gray-200">
             <th class="text-left py-2 px-2 font-medium text-gray-600">{$t('measurements.date')}</th>
             <th class="text-left py-2 px-2 font-medium text-gray-600">{$t('measurements.age')}</th>
-            <th class="text-left py-2 px-2 font-medium text-gray-600">{$t('measurements.weight')}</th>
-            <th class="text-left py-2 px-2 font-medium text-gray-600">{$t('measurements.length')}</th>
+            <th class="text-left py-2 px-2 font-medium text-gray-600"
+              >{$t('measurements.weight')}</th
+            >
+            <th class="text-left py-2 px-2 font-medium text-gray-600"
+              >{$t('measurements.length')}</th
+            >
             <th class="text-left py-2 px-2 font-medium text-gray-600">{$t('measurements.head')}</th>
             <th class="text-center py-2 px-2 font-medium text-gray-600">
               {$t('measurements.waz')}
@@ -99,14 +103,14 @@
               class="border-b border-gray-100 hover:bg-gray-50"
               class:bg-green-50={isFutureDate(m.date)}
             >
-            <td class="py-2 px-2">
-              <input
-                type="date"
-                value={m.date}
-                on:change={(e) => handleUpdate(m.id, 'date', e.target.value)}
-                class="w-32 px-2 py-1 border border-gray-200 rounded text-sm"
-              />
-            </td>
+              <td class="py-2 px-2">
+                <input
+                  type="date"
+                  value={m.date}
+                  on:change={(e) => handleUpdate(m.id, 'date', e.target.value)}
+                  class="w-32 px-2 py-1 border border-gray-200 rounded text-sm"
+                />
+              </td>
               <td class="py-2 px-2 text-gray-500">
                 {m.ageInDays !== null
                   ? formatAge(m.ageInDays, {
@@ -117,33 +121,33 @@
                   : '—'}
               </td>
               <td class="py-2 px-2">
-              <input
-                type="number"
-                step="25"
-                value={m.weight || ''}
-                on:change={(e) => handleUpdate(m.id, 'weight', e.target.value)}
-                placeholder="—"
-                class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
+                <input
+                  type="number"
+                  step="25"
+                  value={m.weight || ''}
+                  on:change={(e) => handleUpdate(m.id, 'weight', e.target.value)}
+                  placeholder="—"
+                  class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
                 />
               </td>
               <td class="py-2 px-2">
-              <input
-                type="number"
-                step="0.5"
-                value={m.length || ''}
-                on:change={(e) => handleUpdate(m.id, 'length', e.target.value)}
-                placeholder="—"
-                class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
+                <input
+                  type="number"
+                  step="0.5"
+                  value={m.length || ''}
+                  on:change={(e) => handleUpdate(m.id, 'length', e.target.value)}
+                  placeholder="—"
+                  class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
                 />
               </td>
               <td class="py-2 px-2">
-              <input
-                type="number"
-                step="0.5"
-                value={m.headCirc || ''}
-                on:change={(e) => handleUpdate(m.id, 'headCirc', e.target.value)}
-                placeholder="—"
-                class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
+                <input
+                  type="number"
+                  step="0.5"
+                  value={m.headCirc || ''}
+                  on:change={(e) => handleUpdate(m.id, 'headCirc', e.target.value)}
+                  placeholder="—"
+                  class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
                 />
               </td>
               <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.waz)}">

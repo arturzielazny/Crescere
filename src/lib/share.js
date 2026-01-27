@@ -15,12 +15,7 @@ export function toCompactFormat(child) {
     n: child.profile.name || '',
     b: child.profile.birthDate,
     s: child.profile.sex,
-    m: child.measurements.map(m => [
-      m.date,
-      m.weight,
-      m.length,
-      m.headCirc
-    ])
+    m: child.measurements.map((m) => [m.date, m.weight, m.length, m.headCirc])
   };
 }
 
@@ -37,7 +32,7 @@ export function fromCompactFormat(compact) {
       birthDate: compact.b || null,
       sex: compact.s || null
     },
-    measurements: (compact.m || []).map(m => ({
+    measurements: (compact.m || []).map((m) => ({
       id: crypto.randomUUID(),
       date: m[0],
       weight: m[1],

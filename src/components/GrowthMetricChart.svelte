@@ -81,12 +81,10 @@
 
     const config = metricConfig[metric];
     const measurements = child.measurements
-      .map(m => {
+      .map((m) => {
         const ageInDays = calculateAgeInDays(child.profile.birthDate, m.date);
         const future = isFutureDate(m.date);
-        const pointColor = future
-          ? hexToRgba(config.color, 0.45)
-          : config.color;
+        const pointColor = future ? hexToRgba(config.color, 0.45) : config.color;
         return {
           x: ageInDays,
           y: m[config.dataKey],
@@ -95,10 +93,11 @@
           pointColor
         };
       })
-      .filter(m => m.y !== null && m.y !== undefined && !isNaN(m.y))
+      .filter((m) => m.y !== null && m.y !== undefined && !isNaN(m.y))
       .sort((a, b) => a.ageInDays - b.ageInDays);
 
-    const band = measurements.map(m => {
+    const band = measurements
+      .map((m) => {
         const ref = getReferenceForAge(config.dataset, child.profile.sex, m.ageInDays);
         if (!ref) return null;
         const [l, m_, s] = ref;
@@ -114,21 +113,16 @@
           sd2Low: sd2Low * scale,
           sd2High: sd2High * scale
         };
-      }).filter(Boolean);
+      })
+      .filter(Boolean);
 
     return { measurements, band };
   }
 
   function getYRange(points) {
     const values = points
-      .flatMap(point => [
-        point.y,
-        point.sd1Low,
-        point.sd1High,
-        point.sd2Low,
-        point.sd2High
-      ])
-      .filter(v => v !== undefined && v !== null && !isNaN(v));
+      .flatMap((point) => [point.y, point.sd1Low, point.sd1High, point.sd2Low, point.sd2High])
+      .filter((v) => v !== undefined && v !== null && !isNaN(v));
     if (values.length === 0) return { min: 0, max: 1 };
     const min = Math.min(...values);
     const max = Math.max(...values);
@@ -141,20 +135,20 @@
     const target = span / 6;
     if (unitLabel === 'g') {
       const candidates = [50, 100, 200, 500, 1000, 2000, 5000];
-      return candidates.find(step => step >= target) || 5000;
+      return candidates.find((step) => step >= target) || 5000;
     }
 
     const candidates = [0.5, 1, 2, 5, 10];
-    return candidates.find(step => step >= target) || 10;
+    return candidates.find((step) => step >= target) || 10;
   }
 
   function buildDatasets(data) {
     const config = metricConfig[metric];
-    const band1Lower = data.band.map(point => ({ x: point.x, y: point.sd1Low }));
-    const band1Upper = data.band.map(point => ({ x: point.x, y: point.sd1High }));
-    const band2Lower = data.band.map(point => ({ x: point.x, y: point.sd2Low }));
-    const band2Upper = data.band.map(point => ({ x: point.x, y: point.sd2High }));
-    const measurementData = data.measurements.map(point => ({
+    const band1Lower = data.band.map((point) => ({ x: point.x, y: point.sd1Low }));
+    const band1Upper = data.band.map((point) => ({ x: point.x, y: point.sd1High }));
+    const band2Lower = data.band.map((point) => ({ x: point.x, y: point.sd2Low }));
+    const band2Upper = data.band.map((point) => ({ x: point.x, y: point.sd2High }));
+    const measurementData = data.measurements.map((point) => ({
       x: point.x,
       y: point.y,
       pointStyle: point.pointStyle,
@@ -307,10 +301,7 @@
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const data = getChartData();
-    const range = getYRange([
-      ...data.measurements,
-      ...data.band
-    ]);
+    const range = getYRange([...data.measurements, ...data.band]);
 
     chart = new Chart(ctx, {
       type: 'line',
@@ -324,10 +315,7 @@
   function updateChart() {
     if (!chart) return;
     const data = getChartData();
-    const range = getYRange([
-      ...data.measurements,
-      ...data.band
-    ]);
+    const range = getYRange([...data.measurements, ...data.band]);
     chart.data.datasets = buildDatasets(data);
     chart.options = getChartOptions(range);
     chart.update();

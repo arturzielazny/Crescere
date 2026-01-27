@@ -48,7 +48,7 @@
     wflz: $t('chart.wflz')
   };
 
-  $: referenceLabels = {
+  $: _referenceLabels = {
     median: $t('chart.reference.median'),
     sd2plus: $t('chart.reference.sd2plus'),
     sd2minus: $t('chart.reference.sd2minus')
@@ -84,20 +84,16 @@
   }
 
   function getDatasets(measurements) {
-    const metrics = metric === 'all'
-      ? ['waz', 'lhaz', 'headcz', 'wflz']
-      : [metric];
+    const metrics = metric === 'all' ? ['waz', 'lhaz', 'headcz', 'wflz'] : [metric];
 
-    const datasets = metrics.map(m => ({
+    const datasets = metrics.map((m) => ({
       label: labels[m],
       data: measurements
-        .filter(d => d.zscores?.[m] !== null && d.zscores?.[m] !== undefined)
-        .map(d => {
+        .filter((d) => d.zscores?.[m] !== null && d.zscores?.[m] !== undefined)
+        .map((d) => {
           const rawValue = d.zscores[m];
           const future = isFutureDate(d.date);
-          const pointColor = future
-            ? hexToRgba(colors[m].border, 0.45)
-            : colors[m].border;
+          const pointColor = future ? hexToRgba(colors[m].border, 0.45) : colors[m].border;
           return {
             x: d.ageInDays,
             y: clampZScore(rawValue),
@@ -121,7 +117,7 @@
 
     // Add reference lines
     if (metric !== 'all' && measurements.length > 0) {
-      const maxAge = Math.max(...measurements.map(m => m.ageInDays || 0), 100);
+      const maxAge = Math.max(...measurements.map((m) => m.ageInDays || 0), 100);
       const refPoints = [0, maxAge];
       const bandColor = hexToRgba(colors[metric].border, 0.12);
       const bandColorWide = hexToRgba(colors[metric].border, 0.08);
@@ -129,13 +125,13 @@
       datasets.push(
         {
           label: '_sd2_lower',
-          data: refPoints.map(x => ({ x, y: -2 })),
+          data: refPoints.map((x) => ({ x, y: -2 })),
           borderWidth: 0,
           pointRadius: 0
         },
         {
           label: $t('chart.band.sd2'),
-          data: refPoints.map(x => ({ x, y: 2 })),
+          data: refPoints.map((x) => ({ x, y: 2 })),
           borderWidth: 0,
           pointRadius: 0,
           fill: '-1',
@@ -143,13 +139,13 @@
         },
         {
           label: '_sd1_lower',
-          data: refPoints.map(x => ({ x, y: -1 })),
+          data: refPoints.map((x) => ({ x, y: -1 })),
           borderWidth: 0,
           pointRadius: 0
         },
         {
           label: $t('chart.band.sd1'),
-          data: refPoints.map(x => ({ x, y: 1 })),
+          data: refPoints.map((x) => ({ x, y: 1 })),
           borderWidth: 0,
           pointRadius: 0,
           fill: '-1',
@@ -209,24 +205,23 @@
         },
         tooltip: {
           callbacks: {
-              label: (context) => {
-                const label = context.dataset.label || '';
-                const rawValue = context.raw?.rawValue;
-                if (rawValue === null || rawValue === undefined || isNaN(rawValue)) {
-                  return `${label}: —`;
-                }
-                const capped = Math.max(-MAX_Z, Math.min(MAX_Z, rawValue));
-                const suffix = Math.abs(rawValue) > DISPLAY_RANGE
-                  ? ` (${$t('chart.tooltip.capped')})`
-                  : '';
-                return `${label}: ${capped.toFixed(2)}${suffix}`;
+            label: (context) => {
+              const label = context.dataset.label || '';
+              const rawValue = context.raw?.rawValue;
+              if (rawValue === null || rawValue === undefined || isNaN(rawValue)) {
+                return `${label}: —`;
               }
+              const capped = Math.max(-MAX_Z, Math.min(MAX_Z, rawValue));
+              const suffix =
+                Math.abs(rawValue) > DISPLAY_RANGE ? ` (${$t('chart.tooltip.capped')})` : '';
+              return `${label}: ${capped.toFixed(2)}${suffix}`;
             }
-          },
+          }
+        },
         annotation: {
           annotations: getNowAnnotation()
         }
-        },
+      },
       scales: {
         x: {
           type: 'linear',

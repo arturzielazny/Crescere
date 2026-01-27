@@ -1,5 +1,12 @@
 <script>
-  import { activeChild, updateProfile, temporaryChildId, saveTemporaryChild, discardTemporaryChild, removeChild } from '../stores/childStore.js';
+  import {
+    activeChild,
+    updateProfile,
+    temporaryChildId,
+    saveTemporaryChild,
+    discardTemporaryChild,
+    removeChild
+  } from '../stores/childStore.js';
   import { calculateAgeInDays, formatAge } from '../lib/zscore.js';
   import { t } from '../stores/i18n.js';
   import ConfirmModal from './ConfirmModal.svelte';
@@ -8,14 +15,15 @@
 
   $: profile = $activeChild?.profile;
   $: isTemporary = $activeChild?.id === $temporaryChildId;
-  $: hasMeasurementsBeforeBirth = profile?.birthDate && $activeChild?.measurements?.some(
-    m => m.date && m.date < profile.birthDate
-  );
+  $: hasMeasurementsBeforeBirth =
+    profile?.birthDate &&
+    $activeChild?.measurements?.some((m) => m.date && m.date < profile.birthDate);
   $: currentAge = profile?.birthDate
-    ? formatAge(
-        calculateAgeInDays(profile.birthDate, new Date().toISOString().slice(0, 10)),
-        { invalid: $t('age.invalid'), month: $t('age.month'), day: $t('age.day') }
-      )
+    ? formatAge(calculateAgeInDays(profile.birthDate, new Date().toISOString().slice(0, 10)), {
+        invalid: $t('age.invalid'),
+        month: $t('age.month'),
+        day: $t('age.day')
+      })
     : null;
 
   function handleBirthDateChange(e) {
@@ -56,7 +64,11 @@
   }
 </script>
 
-<div class="bg-white rounded-lg shadow p-6 mb-6" class:ring-2={isTemporary} class:ring-yellow-400={isTemporary}>
+<div
+  class="bg-white rounded-lg shadow p-6 mb-6"
+  class:ring-2={isTemporary}
+  class:ring-yellow-400={isTemporary}
+>
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold text-gray-800">{$t('profile.title')}</h2>
     {#if $activeChild}
@@ -111,7 +123,12 @@
       </div>
 
       <div>
-        <label for="child-birthdate" class="block text-sm font-medium mb-1" class:text-gray-700={!hasMeasurementsBeforeBirth} class:text-red-600={hasMeasurementsBeforeBirth}>
+        <label
+          for="child-birthdate"
+          class="block text-sm font-medium mb-1"
+          class:text-gray-700={!hasMeasurementsBeforeBirth}
+          class:text-red-600={hasMeasurementsBeforeBirth}
+        >
           {$t('profile.birthDate.label')}
         </label>
         <input

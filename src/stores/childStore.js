@@ -20,7 +20,7 @@ export const temporaryChildId = writable(null);
 const getActiveChild = (state) => {
   const activeId = state.activeChildId || state.children[0]?.id;
   if (!activeId) return null;
-  return state.children.find(child => child.id === activeId) || null;
+  return state.children.find((child) => child.id === activeId) || null;
 };
 
 const updateActiveChild = (state, updater) => {
@@ -31,9 +31,7 @@ const updateActiveChild = (state, updater) => {
   return {
     ...state,
     activeChildId: activeChild.id,
-    children: state.children.map(child =>
-      child.id === activeChild.id ? updatedChild : child
-    )
+    children: state.children.map((child) => (child.id === activeChild.id ? updatedChild : child))
   };
 };
 
@@ -60,7 +58,7 @@ export const measurementsWithZScores = derived(childStore, ($store) => {
   if (!active) return [];
 
   if (!active.profile.birthDate || !active.profile.sex) {
-    return active.measurements.map(m => ({
+    return active.measurements.map((m) => ({
       ...m,
       zscores: null,
       ageInDays: null
@@ -68,7 +66,7 @@ export const measurementsWithZScores = derived(childStore, ($store) => {
   }
 
   return active.measurements
-    .map(m => {
+    .map((m) => {
       const ageInDays = calculateAgeInDays(active.profile.birthDate, m.date);
       const zscores = calculateZScores(m, active.profile.sex, ageInDays);
       return { ...m, ageInDays, zscores };
@@ -78,41 +76,49 @@ export const measurementsWithZScores = derived(childStore, ($store) => {
 
 // Helper actions
 export function updateProfile(profile) {
-  childStore.update(state => updateActiveChild(state, (child) => ({
-    ...child,
-    profile: { ...child.profile, ...profile }
-  })));
+  childStore.update((state) =>
+    updateActiveChild(state, (child) => ({
+      ...child,
+      profile: { ...child.profile, ...profile }
+    }))
+  );
 }
 
 export function addMeasurement(measurement) {
   const id = crypto.randomUUID();
-  childStore.update(state => updateActiveChild(state, (child) => ({
-    ...child,
-    measurements: [...child.measurements, { ...measurement, id }]
-  })));
+  childStore.update((state) =>
+    updateActiveChild(state, (child) => ({
+      ...child,
+      measurements: [...child.measurements, { ...measurement, id }]
+    }))
+  );
 }
 
 export function updateMeasurement(id, updates) {
-  childStore.update(state => updateActiveChild(state, (child) => ({
-    ...child,
-    measurements: child.measurements.map(m =>
-      m.id === id ? { ...m, ...updates } : m
-    )
-  })));
+  childStore.update((state) =>
+    updateActiveChild(state, (child) => ({
+      ...child,
+      measurements: child.measurements.map((m) => (m.id === id ? { ...m, ...updates } : m))
+    }))
+  );
 }
 
 export function deleteMeasurement(id) {
-  childStore.update(state => updateActiveChild(state, (child) => ({
-    ...child,
-    measurements: child.measurements.filter(m => m.id !== id)
-  })));
+  childStore.update((state) =>
+    updateActiveChild(state, (child) => ({
+      ...child,
+      measurements: child.measurements.filter((m) => m.id !== id)
+    }))
+  );
 }
 
 export function clearMeasurements() {
-  childStore.update(state => updateActiveChild(state, (child) => ({
-    ...child,
-    measurements: []
-  })));
+  childStore.update((state) =>
+    updateActiveChild(state, (child) => ({
+      ...child,
+      measurements: []
+    }))
+  );
 }
 
 export function setStore(data) {
@@ -140,18 +146,17 @@ export function resetStore() {
 }
 
 export function setActiveChild(childId) {
-  childStore.update(state => ({
+  childStore.update((state) => ({
     ...state,
     activeChildId: childId
   }));
 }
 
 export function removeChild(childId) {
-  childStore.update(state => {
-    const remaining = state.children.filter(child => child.id !== childId);
-    const activeChildId = state.activeChildId === childId
-      ? remaining[0]?.id || null
-      : state.activeChildId;
+  childStore.update((state) => {
+    const remaining = state.children.filter((child) => child.id !== childId);
+    const activeChildId =
+      state.activeChildId === childId ? remaining[0]?.id || null : state.activeChildId;
     return {
       ...state,
       children: remaining,
@@ -172,7 +177,7 @@ export function addChild() {
     measurements: []
   };
 
-  childStore.update(state => ({
+  childStore.update((state) => ({
     ...state,
     activeChildId: id,
     children: [...state.children, newChild]
@@ -228,7 +233,7 @@ export function createExampleState(exampleName = 'Example Child') {
 // Add a shared child as temporary (not saved to localStorage yet)
 export function addTemporaryChild(child) {
   temporaryChildId.set(child.id);
-  childStore.update(state => ({
+  childStore.update((state) => ({
     ...state,
     activeChildId: child.id,
     children: [...state.children, child]
@@ -243,7 +248,7 @@ export function saveTemporaryChild() {
 // Remove the temporary child without saving
 export function discardTemporaryChild() {
   let tempId = null;
-  temporaryChildId.subscribe(id => tempId = id)();
+  temporaryChildId.subscribe((id) => (tempId = id))();
 
   if (tempId) {
     removeChild(tempId);

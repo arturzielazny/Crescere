@@ -10,7 +10,9 @@
     try {
       await navigator.clipboard.writeText(url);
       copied = true;
-      setTimeout(() => { copied = false; }, 2000);
+      setTimeout(() => {
+        copied = false;
+      }, 2000);
     } catch (e) {
       console.error('Failed to copy:', e);
     }
@@ -55,14 +57,12 @@
     </div>
 
     <div class="text-xs text-gray-500 mb-4">
-      {$t('share.urlLength')}: {url.length} {$t('share.chars')}
+      {$t('share.urlLength')}: {url.length}
+      {$t('share.chars')}
     </div>
 
     <div class="flex justify-end">
-      <button
-        on:click={onClose}
-        class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
-      >
+      <button on:click={onClose} class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
         {$t('share.close')}
       </button>
     </div>
