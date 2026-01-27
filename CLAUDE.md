@@ -11,7 +11,13 @@ npm run build        # Create production build in dist/
 npm run preview      # Serve production build locally
 npm run test         # Run tests once
 npm run test:watch   # Run tests in watch mode
+npm run lint         # Check code with ESLint
+npm run lint:fix     # Auto-fix ESLint issues
+npm run format       # Format code with Prettier
+npm run format:check # Check formatting without changes
 ```
+
+**Pre-commit hooks:** Husky + lint-staged automatically runs ESLint, Prettier, and tests on every commit.
 
 **Deployment:** Push to `master` triggers GitHub Actions deployment to https://arturzielazny.github.io/Crescere/
 
@@ -55,10 +61,12 @@ Charts use Chart.js (tree-shaken imports) with:
 
 ## Code Style
 
-- 2-space indentation, single quotes, semicolons
+- 2-space indentation, single quotes, semicolons (enforced by Prettier)
 - PascalCase for `.svelte` components, lowercase for `.js` utilities
 - Tailwind CSS via `@import "tailwindcss"` in `app.css`
 - JavaScript with JSDoc type hints (`checkJs: true`)
+- ESLint with Svelte plugin for code quality
+- Prefix unused variables with `_` (e.g., `_err` in catch blocks)
 
 ## Svelte 5 Gotchas
 
