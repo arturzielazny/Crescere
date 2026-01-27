@@ -5,6 +5,7 @@
   import MeasurementTable from './components/MeasurementTable.svelte';
   import ChartGrid from './components/ChartGrid.svelte';
   import ShareModal from './components/ShareModal.svelte';
+  import Toast from './components/Toast.svelte';
   import {
     childStore,
     activeChild,
@@ -28,6 +29,7 @@
   let loaded = false;
   let showShareModal = false;
   let shareUrl = '';
+  let toast = null;
 
   function checkForSharedChild() {
     const sharedChild = parseShareUrl();
@@ -115,9 +117,9 @@
         }));
 
         saveToStorage($childStore);
-        alert($t('app.import.success'));
+        toast = { message: $t('app.import.success'), type: 'success' };
       } catch (_err) {
-        alert($t('app.import.error'));
+        toast = { message: $t('app.import.error'), type: 'error' };
       }
     };
     reader.readAsText(file);
@@ -236,4 +238,8 @@
 
 {#if showShareModal}
   <ShareModal url={shareUrl} onClose={() => (showShareModal = false)} />
+{/if}
+
+{#if toast}
+  <Toast message={toast.message} type={toast.type} onClose={() => (toast = null)} />
 {/if}
