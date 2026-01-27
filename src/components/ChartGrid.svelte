@@ -159,24 +159,22 @@
   >
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
-      class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-auto"
+      class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-auto relative"
       on:click|stopPropagation
       on:keydown|stopPropagation
       role="document"
     >
-      <div class="flex justify-end p-2 border-b">
-        <button
-          on:click={closeMaximize}
-          class="p-2 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800"
-          title={$t('chart.minimize')}
-          aria-label={$t('chart.minimize')}
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <div class="p-4">
+      <button
+        on:click={closeMaximize}
+        class="absolute top-2 right-2 z-10 p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800"
+        title={$t('chart.minimize')}
+        aria-label={$t('chart.minimize')}
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <div class="p-4 maximized-chart">
         {#each $chartOrder as chart (chart.id)}
           {#if chart.id === $maximizedChart}
             {#key $maximizedChart}
@@ -192,3 +190,9 @@
     </div>
   </div>
 {/if}
+
+<style>
+  :global(.maximized-chart .h-80) {
+    height: 70vh;
+  }
+</style>
