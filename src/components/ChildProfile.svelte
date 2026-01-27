@@ -4,14 +4,10 @@
     updateProfile,
     temporaryChildId,
     saveTemporaryChild,
-    discardTemporaryChild,
-    removeChild
+    discardTemporaryChild
   } from '../stores/childStore.js';
   import { calculateAgeInDays, formatAge } from '../lib/zscore.js';
   import { t } from '../stores/i18n.js';
-  import ConfirmModal from './ConfirmModal.svelte';
-
-  let showDeleteModal = false;
 
   $: profile = $activeChild?.profile;
   $: isTemporary = $activeChild?.id === $temporaryChildId;
@@ -45,23 +41,6 @@
   function handleDiscardChild() {
     discardTemporaryChild();
   }
-
-  function handleClearMeasurements() {
-    if ($activeChild) {
-      showDeleteModal = true;
-    }
-  }
-
-  function confirmDelete() {
-    if ($activeChild) {
-      removeChild($activeChild.id);
-    }
-    showDeleteModal = false;
-  }
-
-  function cancelDelete() {
-    showDeleteModal = false;
-  }
 </script>
 
 <div
@@ -85,13 +64,6 @@
             class="px-3 py-1.5 text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 rounded"
           >
             {$t('profile.discard')}
-          </button>
-        {:else}
-          <button
-            on:click={handleClearMeasurements}
-            class="px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded"
-          >
-            {$t('profile.delete')}
           </button>
         {/if}
       </div>
@@ -192,13 +164,3 @@
     {/if}
   {/if}
 </div>
-
-{#if showDeleteModal}
-  <ConfirmModal
-    title={$t('confirm.delete.title')}
-    message={$t('confirm.delete.message')}
-    confirmLabel={$t('profile.delete')}
-    onConfirm={confirmDelete}
-    onCancel={cancelDelete}
-  />
-{/if}

@@ -1,10 +1,39 @@
 <script>
-  import { childStore, setActiveChild, addChild, temporaryChildId } from '../stores/childStore.js';
+  import {
+    childStore,
+    setActiveChild,
+    addChild,
+    removeChild,
+    temporaryChildId
+  } from '../stores/childStore.js';
   import { t } from '../stores/i18n.js';
+  import ConfirmModal from './ConfirmModal.svelte';
+
+  let showDeleteModal = false;
+  let deleteTargetId = null;
 
   function getChildLabel(child, index) {
     if (child.profile?.name?.trim()) return child.profile.name.trim();
     return `${$t('children.unnamed')} ${index + 1}`;
+  }
+
+  function handleDeleteClick(event, childId) {
+    event.stopPropagation();
+    deleteTargetId = childId;
+    showDeleteModal = true;
+  }
+
+  function confirmDelete() {
+    if (deleteTargetId) {
+      removeChild(deleteTargetId);
+    }
+    showDeleteModal = false;
+    deleteTargetId = null;
+  }
+
+  function cancelDelete() {
+    showDeleteModal = false;
+    deleteTargetId = null;
   }
 
   $: activeId = $childStore.activeChildId || $childStore.children[0]?.id;
@@ -22,27 +51,45 @@
   <div class="flex flex-wrap gap-2">
     {#each $childStore.children as child, index (child.id)}
       {@const isTemporary = child.id === $temporaryChildId}
-      <button
-        on:click={() => setActiveChild(child.id)}
-        class="px-3 py-2 text-sm rounded border transition"
-        class:bg-yellow-100={isTemporary && activeId === child.id}
-        class:border-yellow-400={isTemporary && activeId === child.id}
-        class:text-yellow-800={isTemporary && activeId === child.id}
-        class:bg-yellow-50={isTemporary && activeId !== child.id}
-        class:border-yellow-300={isTemporary && activeId !== child.id}
-        class:text-yellow-700={isTemporary && activeId !== child.id}
-        class:bg-blue-50={!isTemporary && activeId === child.id}
-        class:border-blue-300={!isTemporary && activeId === child.id}
-        class:text-blue-700={!isTemporary && activeId === child.id}
-        class:border-gray-200={!isTemporary && activeId !== child.id}
-        class:text-gray-700={!isTemporary && activeId !== child.id}
-        title={isTemporary ? $t('children.temporary.hint') : ''}
-      >
-        {getChildLabel(child, index)}
-        {#if isTemporary}
-          <span class="ml-1 text-yellow-600">●</span>
+      <div class="relative group">
+        <button
+          on:click={() => setActiveChild(child.id)}
+          class="px-3 py-2 pr-7 text-sm rounded border transition"
+          class:bg-yellow-100={isTemporary && activeId === child.id}
+          class:border-yellow-400={isTemporary && activeId === child.id}
+          class:text-yellow-800={isTemporary && activeId === child.id}
+          class:bg-yellow-50={isTemporary && activeId !== child.id}
+          class:border-yellow-300={isTemporary && activeId !== child.id}
+          class:text-yellow-700={isTemporary && activeId !== child.id}
+          class:bg-blue-50={!isTemporary && activeId === child.id}
+          class:border-blue-300={!isTemporary && activeId === child.id}
+          class:text-blue-700={!isTemporary && activeId === child.id}
+          class:border-gray-200={!isTemporary && activeId !== child.id}
+          class:text-gray-700={!isTemporary && activeId !== child.id}
+          title={isTemporary ? $t('children.temporary.hint') : ''}
+        >
+          {getChildLabel(child, index)}
+          {#if isTemporary}
+            <span class="ml-1 text-yellow-600">●</span>
+          {/if}
+        </button>
+        {#if !isTemporary}
+          <button
+            on:click={(e) => handleDeleteClick(e, child.id)}
+            class="absolute top-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 hover:bg-red-50"
+            aria-label={$t('children.remove')}
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         {/if}
-      </button>
+      </div>
     {/each}
 
     <button
@@ -53,3 +100,13 @@
     </button>
   </div>
 </div>
+
+{#if showDeleteModal}
+  <ConfirmModal
+    title={$t('confirm.delete.title')}
+    message={$t('confirm.delete.message')}
+    confirmLabel={$t('children.remove')}
+    onConfirm={confirmDelete}
+    onCancel={cancelDelete}
+  />
+{/if}
