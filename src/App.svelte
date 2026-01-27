@@ -233,6 +233,7 @@
       </a>
     </p>
     <p class="mt-1">{$t('app.footer.storage')}</p>
+    <p class="mt-1">{$t('app.footer.disclaimer')}</p>
   </footer>
 </div>
 

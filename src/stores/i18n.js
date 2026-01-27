@@ -15,6 +15,8 @@ const translations = {
     'app.footer.source': 'Based on',
     'app.footer.source.link': 'WHO Child Growth Standards',
     'app.footer.storage': 'Data stored locally in your browser',
+    'app.footer.disclaimer':
+      'This tool is for informational purposes and does not replace professional medical advice.',
     'app.language.label': 'Language',
     'app.language.en': 'English',
     'app.language.pl': 'Polish',
@@ -136,6 +138,8 @@ const translations = {
     'app.footer.source': 'Na podstawie',
     'app.footer.source.link': 'WHO Child Growth Standards',
     'app.footer.storage': 'Dane są przechowywane lokalnie w przeglądarce',
+    'app.footer.disclaimer':
+      'To narzędzie ma charakter informacyjny i nie zastępuje profesjonalnej porady medycznej.',
     'app.language.label': 'Język',
     'app.language.en': 'Angielski',
     'app.language.pl': 'Polski',
