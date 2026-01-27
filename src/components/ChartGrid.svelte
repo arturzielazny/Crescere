@@ -1,5 +1,6 @@
 <script>
   import { chartOrder, columnsPerRow, maximizedChart, closeMaximize, reorderCharts, setColumnsPerRow } from '../stores/chartStore.js';
+  import { maxAgeInDays } from '../stores/childStore.js';
   import { t } from '../stores/i18n.js';
   import GrowthMetricChart from './GrowthMetricChart.svelte';
   import ZScoreChart from './ZScoreChart.svelte';
@@ -139,9 +140,9 @@
       </div>
 
       {#if chart.type === 'growth'}
-        <GrowthMetricChart metric={chart.id} title={getChartTitle(chart)} unit={getChartUnit(chart)} />
+        <GrowthMetricChart metric={chart.id} title={getChartTitle(chart)} unit={getChartUnit(chart)} maxAge={$maxAgeInDays} />
       {:else}
-        <ZScoreChart metric={chart.id} title={getChartTitle(chart)} />
+        <ZScoreChart metric={chart.id} title={getChartTitle(chart)} maxAge={$maxAgeInDays} />
       {/if}
     </div>
   {/each}
@@ -179,9 +180,9 @@
           {#if chart.id === $maximizedChart}
             {#key $maximizedChart}
               {#if chart.type === 'growth'}
-                <GrowthMetricChart metric={chart.id} title={getChartTitle(chart)} unit={getChartUnit(chart)} />
+                <GrowthMetricChart metric={chart.id} title={getChartTitle(chart)} unit={getChartUnit(chart)} maxAge={$maxAgeInDays} />
               {:else}
-                <ZScoreChart metric={chart.id} title={getChartTitle(chart)} />
+                <ZScoreChart metric={chart.id} title={getChartTitle(chart)} maxAge={$maxAgeInDays} />
               {/if}
             {/key}
           {/if}

@@ -38,6 +38,19 @@ export const activeChild = derived(childStore, ($store) => {
   return getActiveChild($store);
 });
 
+// Derived store for max age across all measurements (for consistent chart x-axis)
+export const maxAgeInDays = derived(childStore, ($store) => {
+  const active = getActiveChild($store);
+  if (!active?.profile?.birthDate || !active?.measurements?.length) return 0;
+
+  let maxAge = 0;
+  for (const m of active.measurements) {
+    const age = calculateAgeInDays(active.profile.birthDate, m.date);
+    if (age > maxAge) maxAge = age;
+  }
+  return maxAge;
+});
+
 // Derived store with computed z-scores and age
 export const measurementsWithZScores = derived(childStore, ($store) => {
   const active = getActiveChild($store);

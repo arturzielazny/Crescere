@@ -33,6 +33,7 @@
   export let metric = 'weight'; // weight | length | headCirc
   export let title = '';
   export let unit = '';
+  export let maxAge = null;
 
   let canvas;
   let chart;
@@ -280,7 +281,8 @@
             display: true,
             text: $t('chart.axis.age')
           },
-          min: 0
+          min: 0,
+          max: maxAge ? Math.ceil(maxAge * 1.1) : undefined
         },
         y: {
           title: {
