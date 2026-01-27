@@ -1,12 +1,11 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import ChildProfile from './components/ChildProfile.svelte';
   import ChildList from './components/ChildList.svelte';
   import MeasurementTable from './components/MeasurementTable.svelte';
   import ChartGrid from './components/ChartGrid.svelte';
   import ShareModal from './components/ShareModal.svelte';
-  import ImportConfirmModal from './components/ImportConfirmModal.svelte';
-  import { childStore, activeChild, setStore, resetStore, createExampleState } from './stores/childStore.js';
+  import { childStore, activeChild, setStore, resetStore, createExampleState, addTemporaryChild, discardTemporaryChild, temporaryChildId } from './stores/childStore.js';
   import { loadFromStorage, saveToStorage, exportData, clearStorage } from './lib/storage.js';
   import { generateShareUrl, parseShareUrl, clearShareHash } from './lib/share.js';
   import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
@@ -14,28 +13,52 @@
   let loaded = false;
   let showShareModal = false;
   let shareUrl = '';
-  let pendingImport = null;
 
-  onMount(() => {
-    // Check for share URL first
+  function checkForSharedChild() {
     const sharedChild = parseShareUrl();
     if (sharedChild) {
-      pendingImport = sharedChild;
+      // Discard any existing temporary child first
+      discardTemporaryChild();
+      addTemporaryChild(sharedChild);
       clearShareHash();
     }
+  }
 
+  onMount(() => {
+    // Load saved data first
     const saved = loadFromStorage();
     if (saved) {
       setStore(saved);
     } else {
       setStore(createExampleState($t('children.example')));
     }
+
+    // Check for share URL and add as temporary child
+    checkForSharedChild();
+
+    // Listen for hash changes (when user opens share link while app is loaded)
+    window.addEventListener('hashchange', checkForSharedChild);
+
     loaded = true;
   });
 
-  // Auto-save on changes
-  $: if (loaded) {
-    saveToStorage($childStore);
+  onDestroy(() => {
+    window.removeEventListener('hashchange', checkForSharedChild);
+  });
+
+  // Auto-save on changes (exclude temporary children)
+  $: if (loaded && $childStore) {
+    const tempId = $temporaryChildId;
+    const dataToSave = tempId
+      ? {
+          ...$childStore,
+          children: $childStore.children.filter(c => c.id !== tempId),
+          activeChildId: $childStore.activeChildId === tempId
+            ? $childStore.children.find(c => c.id !== tempId)?.id || null
+            : $childStore.activeChildId
+        }
+      : $childStore;
+    saveToStorage(dataToSave);
   }
 
   function handleExport() {
@@ -73,21 +96,6 @@
       shareUrl = generateShareUrl($activeChild);
       showShareModal = true;
     }
-  }
-
-  function handleImportConfirm() {
-    if (pendingImport) {
-      childStore.update(state => ({
-        ...state,
-        children: [...state.children, pendingImport],
-        activeChildId: pendingImport.id
-      }));
-      pendingImport = null;
-    }
-  }
-
-  function handleImportCancel() {
-    pendingImport = null;
   }
 </script>
 
@@ -191,12 +199,4 @@
 
 {#if showShareModal}
   <ShareModal url={shareUrl} onClose={() => showShareModal = false} />
-{/if}
-
-{#if pendingImport}
-  <ImportConfirmModal
-    child={pendingImport}
-    onConfirm={handleImportConfirm}
-    onCancel={handleImportCancel}
-  />
 {/if}

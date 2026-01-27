@@ -1,5 +1,5 @@
 <script>
-  import { childStore, setActiveChild, addChild, removeChild } from '../stores/childStore.js';
+  import { childStore, setActiveChild, addChild, temporaryChildId } from '../stores/childStore.js';
   import { t } from '../stores/i18n.js';
 
   function getChildLabel(child, index) {
@@ -8,13 +8,6 @@
   }
 
   $: activeId = $childStore.activeChildId || $childStore.children[0]?.id;
-
-  function handleRemove(event, childId) {
-    event.stopPropagation();
-    if (confirm($t('children.remove.confirm'))) {
-      removeChild(childId);
-    }
-  }
 </script>
 
 <div class="bg-white rounded-lg shadow p-6 mb-6">
@@ -28,28 +21,28 @@
 
   <div class="flex flex-wrap gap-2">
     {#each $childStore.children as child, index (child.id)}
-      <div class="relative">
-        <button
-          on:click={() => setActiveChild(child.id)}
-          class="px-3 py-2 text-sm rounded border transition"
-          class:bg-blue-50={activeId === child.id}
-          class:border-blue-300={activeId === child.id}
-          class:text-blue-700={activeId === child.id}
-          class:border-gray-200={activeId !== child.id}
-          class:text-gray-700={activeId !== child.id}
-        >
-          {getChildLabel(child, index)}
-        </button>
-        <button
-          type="button"
-          on:click={(event) => handleRemove(event, child.id)}
-          class="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-red-600 flex items-center justify-center leading-none text-base"
-          title={$t('children.remove')}
-          aria-label={$t('children.remove')}
-        >
-          ×
-        </button>
-      </div>
+      {@const isTemporary = child.id === $temporaryChildId}
+      <button
+        on:click={() => setActiveChild(child.id)}
+        class="px-3 py-2 text-sm rounded border transition"
+        class:bg-yellow-100={isTemporary && activeId === child.id}
+        class:border-yellow-400={isTemporary && activeId === child.id}
+        class:text-yellow-800={isTemporary && activeId === child.id}
+        class:bg-yellow-50={isTemporary && activeId !== child.id}
+        class:border-yellow-300={isTemporary && activeId !== child.id}
+        class:text-yellow-700={isTemporary && activeId !== child.id}
+        class:bg-blue-50={!isTemporary && activeId === child.id}
+        class:border-blue-300={!isTemporary && activeId === child.id}
+        class:text-blue-700={!isTemporary && activeId === child.id}
+        class:border-gray-200={!isTemporary && activeId !== child.id}
+        class:text-gray-700={!isTemporary && activeId !== child.id}
+        title={isTemporary ? $t('children.temporary.hint') : ''}
+      >
+        {getChildLabel(child, index)}
+        {#if isTemporary}
+          <span class="ml-1 text-yellow-600">●</span>
+        {/if}
+      </button>
     {/each}
 
     <button

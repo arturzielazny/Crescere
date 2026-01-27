@@ -1,9 +1,10 @@
 <script>
-  import { activeChild, updateProfile } from '../stores/childStore.js';
+  import { activeChild, updateProfile, temporaryChildId, saveTemporaryChild, discardTemporaryChild, clearMeasurements } from '../stores/childStore.js';
   import { calculateAgeInDays, formatAge } from '../lib/zscore.js';
   import { t } from '../stores/i18n.js';
 
   $: profile = $activeChild?.profile;
+  $: isTemporary = $activeChild?.id === $temporaryChildId;
   $: currentAge = profile?.birthDate
     ? formatAge(
         calculateAgeInDays(profile.birthDate, new Date().toISOString().slice(0, 10)),
@@ -22,10 +23,57 @@
   function handleNameChange(e) {
     updateProfile({ name: e.target.value });
   }
+
+  function handleSaveChild() {
+    saveTemporaryChild();
+  }
+
+  function handleDiscardChild() {
+    discardTemporaryChild();
+  }
+
+  function handleClearMeasurements() {
+    if ($activeChild && confirm($t('profile.delete.confirm'))) {
+      clearMeasurements();
+    }
+  }
 </script>
 
-<div class="bg-white rounded-lg shadow p-6 mb-6">
-  <h2 class="text-lg font-semibold text-gray-800 mb-4">{$t('profile.title')}</h2>
+<div class="bg-white rounded-lg shadow p-6 mb-6" class:ring-2={isTemporary} class:ring-yellow-400={isTemporary}>
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold text-gray-800">{$t('profile.title')}</h2>
+    {#if $activeChild}
+      <div class="flex gap-2">
+        {#if isTemporary}
+          <button
+            on:click={handleSaveChild}
+            class="px-3 py-1.5 text-sm font-medium bg-green-600 text-white hover:bg-green-700 rounded"
+          >
+            {$t('profile.save')}
+          </button>
+          <button
+            on:click={handleDiscardChild}
+            class="px-3 py-1.5 text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 rounded"
+          >
+            {$t('profile.discard')}
+          </button>
+        {:else}
+          <button
+            on:click={handleClearMeasurements}
+            class="px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded"
+          >
+            {$t('profile.delete')}
+          </button>
+        {/if}
+      </div>
+    {/if}
+  </div>
+
+  {#if isTemporary}
+    <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
+      {$t('profile.temporary.hint')}
+    </div>
+  {/if}
 
   {#if !$activeChild}
     <p class="text-sm text-gray-600">{$t('profile.missingChild')}</p>

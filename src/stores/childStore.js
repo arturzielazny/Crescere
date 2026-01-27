@@ -14,6 +14,9 @@ const initialState = {
 // Main writable store
 export const childStore = writable(initialState);
 
+// Track temporary (shared) child that hasn't been saved yet
+export const temporaryChildId = writable(null);
+
 const getActiveChild = (state) => {
   const activeId = state.activeChildId || state.children[0]?.id;
   if (!activeId) return null;
@@ -102,6 +105,13 @@ export function deleteMeasurement(id) {
   childStore.update(state => updateActiveChild(state, (child) => ({
     ...child,
     measurements: child.measurements.filter(m => m.id !== id)
+  })));
+}
+
+export function clearMeasurements() {
+  childStore.update(state => updateActiveChild(state, (child) => ({
+    ...child,
+    measurements: []
   })));
 }
 
@@ -213,4 +223,30 @@ export function createExampleState(exampleName = 'Example Child') {
     children: [exampleChild],
     activeChildId: id
   };
+}
+
+// Add a shared child as temporary (not saved to localStorage yet)
+export function addTemporaryChild(child) {
+  temporaryChildId.set(child.id);
+  childStore.update(state => ({
+    ...state,
+    activeChildId: child.id,
+    children: [...state.children, child]
+  }));
+}
+
+// Save the temporary child (make it permanent)
+export function saveTemporaryChild() {
+  temporaryChildId.set(null);
+}
+
+// Remove the temporary child without saving
+export function discardTemporaryChild() {
+  let tempId = null;
+  temporaryChildId.subscribe(id => tempId = id)();
+
+  if (tempId) {
+    removeChild(tempId);
+    temporaryChildId.set(null);
+  }
 }
