@@ -1,7 +1,10 @@
 <script>
-  import { activeChild, updateProfile, temporaryChildId, saveTemporaryChild, discardTemporaryChild, clearMeasurements } from '../stores/childStore.js';
+  import { activeChild, updateProfile, temporaryChildId, saveTemporaryChild, discardTemporaryChild, removeChild } from '../stores/childStore.js';
   import { calculateAgeInDays, formatAge } from '../lib/zscore.js';
   import { t } from '../stores/i18n.js';
+  import ConfirmModal from './ConfirmModal.svelte';
+
+  let showDeleteModal = false;
 
   $: profile = $activeChild?.profile;
   $: isTemporary = $activeChild?.id === $temporaryChildId;
@@ -36,9 +39,20 @@
   }
 
   function handleClearMeasurements() {
-    if ($activeChild && confirm($t('profile.delete.confirm'))) {
-      clearMeasurements();
+    if ($activeChild) {
+      showDeleteModal = true;
     }
+  }
+
+  function confirmDelete() {
+    if ($activeChild) {
+      removeChild($activeChild.id);
+    }
+    showDeleteModal = false;
+  }
+
+  function cancelDelete() {
+    showDeleteModal = false;
   }
 </script>
 
@@ -161,3 +175,13 @@
     {/if}
   {/if}
 </div>
+
+{#if showDeleteModal}
+  <ConfirmModal
+    title={$t('confirm.delete.title')}
+    message={$t('confirm.delete.message')}
+    confirmLabel={$t('profile.delete')}
+    onConfirm={confirmDelete}
+    onCancel={cancelDelete}
+  />
+{/if}

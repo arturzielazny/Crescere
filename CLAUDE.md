@@ -9,9 +9,9 @@ npm install          # Install dependencies
 npm run dev          # Start Vite dev server with HMR
 npm run build        # Create production build in dist/
 npm run preview      # Serve production build locally
+npm run test         # Run tests once
+npm run test:watch   # Run tests in watch mode
 ```
-
-No test framework or linting is currently configured.
 
 **Deployment:** Push to `master` triggers GitHub Actions deployment to https://arturzielazny.github.io/Crescere/
 
@@ -83,3 +83,12 @@ Bundle: ~553 KB (172 KB gzipped)
 1. **Tree-shaken Chart.js**: Only imports LineController, LineElement, PointElement, LinearScale, Filler, Legend, Tooltip.
 
 2. **Compact WHO data**: Arrays `[l,m,s]` instead of objects. Run `node scripts/compress-who-data.js` to recompress if data changes.
+
+## Schema Migrations
+
+localStorage data is versioned (current: v2). When adding schema changes:
+
+1. Increment `CURRENT_VERSION` in `src/lib/storage.js`
+2. Add migration function to `migrations` object (key = source version)
+3. Add tests in `src/lib/storage.test.js` to verify migration from all previous versions
+4. Run `npm test` to ensure all migrations work correctly

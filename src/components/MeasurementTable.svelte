@@ -9,12 +9,17 @@
   import { formatAge } from '../lib/zscore.js';
   import { isFutureDate, formatZScore, getZScoreColorClass } from '../lib/utils.js';
   import { t } from '../stores/i18n.js';
+  import ConfirmModal from './ConfirmModal.svelte';
 
   // New measurement form
   let newDate = new Date().toISOString().slice(0, 10);
   let newWeight = '';
   let newLength = '';
   let newHeadCirc = '';
+
+  // Delete confirmation
+  let deleteModalOpen = false;
+  let deleteTargetId = null;
 
   function handleAddMeasurement() {
     // Require date and at least one measurement value
@@ -40,9 +45,21 @@
   }
 
   function handleDelete(id) {
-    if (confirm($t('measurements.delete.confirm'))) {
-      deleteMeasurement(id);
+    deleteTargetId = id;
+    deleteModalOpen = true;
+  }
+
+  function confirmDelete() {
+    if (deleteTargetId) {
+      deleteMeasurement(deleteTargetId);
     }
+    deleteModalOpen = false;
+    deleteTargetId = null;
+  }
+
+  function cancelDelete() {
+    deleteModalOpen = false;
+    deleteTargetId = null;
   }
 </script>
 
@@ -211,3 +228,13 @@
     {/if}
   {/if}
 </div>
+
+{#if deleteModalOpen}
+  <ConfirmModal
+    title={$t('confirm.measurement.title')}
+    message={$t('confirm.measurement.message')}
+    confirmLabel={$t('measurements.delete.title')}
+    onConfirm={confirmDelete}
+    onCancel={cancelDelete}
+  />
+{/if}

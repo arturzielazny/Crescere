@@ -31,8 +31,7 @@ const translations = {
     'profile.missingChild': 'Add a child to start tracking measurements.',
     'profile.save': 'Save child',
     'profile.discard': 'Discard',
-    'profile.delete': 'Delete measurements',
-    'profile.delete.confirm': 'Delete all measurements for this child?',
+    'profile.delete': 'Delete child profile',
     'profile.temporary.hint': 'This child was shared with you. Click "Save child" to add them to your saved children.',
     'children.title': 'Children',
     'children.add': 'Add child',
@@ -107,7 +106,12 @@ const translations = {
     'share.import.name': 'Name',
     'share.import.measurements': 'Measurements',
     'share.import.confirm': 'Add Child',
-    'share.import.cancel': 'Cancel'
+    'share.import.cancel': 'Cancel',
+    'confirm.cancel': 'Cancel',
+    'confirm.delete.title': 'Delete child profile',
+    'confirm.delete.message': 'Are you sure you want to delete this child profile? All measurements will be permanently removed.',
+    'confirm.measurement.title': 'Delete measurement',
+    'confirm.measurement.message': 'Are you sure you want to delete this measurement?'
   },
   pl: {
     'app.title': 'WHO Growth Tracker',
@@ -137,8 +141,7 @@ const translations = {
     'profile.missingChild': 'Dodaj dziecko, aby rozpocząć śledzenie pomiarów.',
     'profile.save': 'Zapisz dziecko',
     'profile.discard': 'Odrzuć',
-    'profile.delete': 'Usuń pomiary',
-    'profile.delete.confirm': 'Usunąć wszystkie pomiary tego dziecka?',
+    'profile.delete': 'Usuń profil dziecka',
     'profile.temporary.hint': 'To dziecko zostało Ci udostępnione. Kliknij "Zapisz dziecko", aby dodać je do zapisanych dzieci.',
     'children.title': 'Dzieci',
     'children.add': 'Dodaj dziecko',
@@ -213,7 +216,12 @@ const translations = {
     'share.import.name': 'Imię',
     'share.import.measurements': 'Pomiary',
     'share.import.confirm': 'Dodaj dziecko',
-    'share.import.cancel': 'Anuluj'
+    'share.import.cancel': 'Anuluj',
+    'confirm.cancel': 'Anuluj',
+    'confirm.delete.title': 'Usuń profil dziecka',
+    'confirm.delete.message': 'Czy na pewno chcesz usunąć ten profil dziecka? Wszystkie pomiary zostaną trwale usunięte.',
+    'confirm.measurement.title': 'Usuń pomiar',
+    'confirm.measurement.message': 'Czy na pewno chcesz usunąć ten pomiar?'
   }
 };
 
