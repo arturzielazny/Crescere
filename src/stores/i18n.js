@@ -124,7 +124,7 @@ const translations = {
     'confirm.measurement.message': 'Are you sure you want to delete this measurement?'
   },
   pl: {
-    'app.title': 'Crescere - Tracker Wzrostu',
+    'app.title': 'Crescere - Monitorowanie wzrostu',
     'app.share': 'Udostępnij',
     'app.export': 'Eksportuj',
     'app.import': 'Importuj',
