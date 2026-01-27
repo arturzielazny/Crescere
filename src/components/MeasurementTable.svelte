@@ -21,6 +21,12 @@
   let deleteModalOpen = false;
   let deleteTargetId = null;
 
+  function toNumberOrNull(value) {
+    if (value === '' || value === null || value === undefined) return null;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  }
+
   function handleAddMeasurement() {
     // Require date and at least one measurement value
     if (!newDate) return;
@@ -28,9 +34,9 @@
 
     addMeasurement({
       date: newDate,
-      weight: newWeight ? parseFloat(newWeight) : null,
-      length: newLength ? parseFloat(newLength) : null,
-      headCirc: newHeadCirc ? parseFloat(newHeadCirc) : null
+      weight: toNumberOrNull(newWeight),
+      length: toNumberOrNull(newLength),
+      headCirc: toNumberOrNull(newHeadCirc)
     });
 
     // Reset form
@@ -40,8 +46,8 @@
   }
 
   function handleUpdate(id, field, value) {
-    const numValue = value === '' ? null : parseFloat(value);
-    updateMeasurement(id, { [field]: field === 'date' ? value : numValue });
+    const nextValue = field === 'date' ? value : toNumberOrNull(value);
+    updateMeasurement(id, { [field]: nextValue });
   }
 
   function handleDelete(id) {

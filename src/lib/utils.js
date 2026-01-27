@@ -37,6 +37,7 @@ export function hexToRgba(hex, alpha) {
  */
 export function getZScoreColorClass(z) {
   const cls = getZScoreClass(z);
+  if (cls === 'unknown') return 'text-gray-400';
   if (cls === 'severe') return 'text-red-600 font-semibold';
   if (cls === 'moderate') return 'text-red-600';
   if (cls === 'mild') return 'text-yellow-600';
