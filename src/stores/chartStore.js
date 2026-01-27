@@ -2,20 +2,24 @@ import { writable } from 'svelte/store';
 
 const STORAGE_KEY = 'crescere-charts';
 
-// All charts in a single unified list
+// All charts in a single unified list (2 columns default)
+// Row 1: weight, length
+// Row 2: waz, lhaz
+// Row 3: headCirc, wflz
+// Row 4: headcz
 const defaultChartOrder = [
   { id: 'weight', type: 'growth' },
   { id: 'length', type: 'growth' },
-  { id: 'headCirc', type: 'growth' },
   { id: 'waz', type: 'zscore' },
   { id: 'lhaz', type: 'zscore' },
-  { id: 'headcz', type: 'zscore' },
-  { id: 'wflz', type: 'zscore' }
+  { id: 'headCirc', type: 'growth' },
+  { id: 'wflz', type: 'zscore' },
+  { id: 'headcz', type: 'zscore' }
 ];
 
 function loadChartSettings() {
   if (typeof localStorage === 'undefined') {
-    return { chartOrder: defaultChartOrder, columnsPerRow: 3 };
+    return { chartOrder: defaultChartOrder, columnsPerRow: 2 };
   }
 
   try {
@@ -35,7 +39,7 @@ function loadChartSettings() {
     // Ignore parse errors
   }
 
-  return { chartOrder: defaultChartOrder, columnsPerRow: 3 };
+  return { chartOrder: defaultChartOrder, columnsPerRow: 2 };
 }
 
 function saveChartSettings(settings) {
