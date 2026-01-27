@@ -2,7 +2,7 @@
  * localStorage operations for persisting child growth data
  */
 
-const STORAGE_KEY = 'growth-tracker-data';
+const STORAGE_KEY = 'crescere-data';
 export const CURRENT_VERSION = 2;
 
 /**

@@ -1,10 +1,10 @@
 import { derived, writable } from 'svelte/store';
 
-const STORAGE_KEY = 'who-growth-tracker-lang';
+const STORAGE_KEY = 'crescere-lang';
 
 const translations = {
   en: {
-    'app.title': 'WHO Growth Tracker',
+    'app.title': 'Crescere',
     'app.share': 'Share',
     'app.export': 'Export',
     'app.import': 'Import',
@@ -124,7 +124,7 @@ const translations = {
     'confirm.measurement.message': 'Are you sure you want to delete this measurement?'
   },
   pl: {
-    'app.title': 'WHO Growth Tracker',
+    'app.title': 'Crescere',
     'app.share': 'Udostępnij',
     'app.export': 'Eksportuj',
     'app.import': 'Importuj',

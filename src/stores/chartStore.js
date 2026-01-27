@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 
-const STORAGE_KEY = 'who-growth-tracker-charts';
+const STORAGE_KEY = 'crescere-charts';
 
 // All charts in a single unified list
 const defaultChartOrder = [
