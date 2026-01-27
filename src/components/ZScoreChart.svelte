@@ -279,8 +279,9 @@
     }
   });
 
-  // Reactive update when measurements change
-  $: if (chart && $measurementsWithZScores && $t) {
+  // Reactive update when measurements or language change
+  $: if (chart && $measurementsWithZScores) {
+    $t;
     updateChart();
   }
 </script>
