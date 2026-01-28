@@ -274,8 +274,8 @@
       responsive: true,
       maintainAspectRatio: false,
       interaction: {
-        mode: 'index',
-        intersect: false
+        mode: 'nearest',
+        intersect: true
       },
       plugins: {
         legend: {
@@ -285,13 +285,22 @@
           }
         },
         tooltip: {
+          filter: (item) => {
+            // Only show measurement dataset (last one), not bands
+            const isLastDataset = item.datasetIndex === item.chart.data.datasets.length - 1;
+            if (!isLastDataset) return false;
+            const value = item.parsed?.y;
+            return value !== null && value !== undefined && !isNaN(value);
+          },
           callbacks: {
+            title: (items) => {
+              if (!items.length) return '';
+              const age = items[0].parsed.x;
+              return `${$t('chart.axis.age')}: ${Math.round(age)}`;
+            },
             label: (context) => {
               const label = context.dataset.label || '';
               const value = context.parsed.y;
-              if (value === null || value === undefined || isNaN(value)) {
-                return `${label}: —`;
-              }
               const decimals = unitLabel === 'g' ? 0 : stepSize < 1 ? 1 : 0;
               return `${label}: ${value.toFixed(decimals)} ${unitLabel}`;
             }

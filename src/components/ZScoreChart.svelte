@@ -193,8 +193,8 @@
       responsive: true,
       maintainAspectRatio: false,
       interaction: {
-        mode: 'index',
-        intersect: false
+        mode: 'nearest',
+        intersect: true
       },
       plugins: {
         legend: {
@@ -204,13 +204,20 @@
           }
         },
         tooltip: {
+          filter: (item) => {
+            if (item.dataset.label?.startsWith('_')) return false;
+            const rawValue = item.raw?.rawValue;
+            return rawValue !== null && rawValue !== undefined && !isNaN(rawValue);
+          },
           callbacks: {
+            title: (items) => {
+              if (!items.length) return '';
+              const age = items[0].parsed.x;
+              return `${$t('chart.axis.age')}: ${Math.round(age)}`;
+            },
             label: (context) => {
               const label = context.dataset.label || '';
               const rawValue = context.raw?.rawValue;
-              if (rawValue === null || rawValue === undefined || isNaN(rawValue)) {
-                return `${label}: —`;
-              }
               const capped = Math.max(-MAX_Z, Math.min(MAX_Z, rawValue));
               const suffix =
                 Math.abs(rawValue) > DISPLAY_RANGE ? ` (${$t('chart.tooltip.capped')})` : '';
