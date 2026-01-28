@@ -124,11 +124,31 @@
     return { measurements, band };
   }
 
-  function getYRange(points) {
-    const values = points
-      .flatMap((point) => [point.y, point.sd1Low, point.sd1High, point.sd2Low, point.sd2High])
+  function getYRange(measurements, band) {
+    // Base Y range on the age span where measurements exist
+    const measurementAges = measurements.map((m) => m.x);
+    const minAge = Math.min(...measurementAges, 0);
+    const maxAge = Math.max(...measurementAges, 0);
+
+    // Filter band to measurement age range (with small buffer)
+    const ageBuffer = Math.max(30, (maxAge - minAge) * 0.1);
+    const bandForRange = band.filter(
+      (point) => point.x >= Math.max(0, minAge - ageBuffer) && point.x <= maxAge + ageBuffer
+    );
+
+    // Use ±2 SD band values for base range
+    const bandValues = bandForRange
+      .flatMap((point) => [point.sd2Low, point.sd2High])
       .filter((v) => v !== undefined && v !== null && !isNaN(v));
+
+    // Include measurement values to extend range if data is outside ±2 SD
+    const measurementValues = measurements
+      .map((point) => point.y)
+      .filter((v) => v !== undefined && v !== null && !isNaN(v));
+
+    const values = [...bandValues, ...measurementValues];
     if (values.length === 0) return { min: 0, max: 1 };
+
     const min = Math.min(...values);
     const max = Math.max(...values);
     const padding = (max - min) * 0.1 || 1;
@@ -138,13 +158,20 @@
   function getStepSize(unitLabel, range) {
     const span = range.max - range.min;
     const target = span / 6;
-    if (unitLabel === 'g') {
-      const candidates = [50, 100, 200, 500, 1000, 2000, 5000];
-      return candidates.find((step) => step >= target) || 5000;
+    const candidates =
+      unitLabel === 'g' ? [50, 100, 200, 500, 1000, 2000, 5000] : [0.5, 1, 2, 5, 10];
+
+    let stepSize = candidates.find((step) => step >= target) || candidates.at(-1);
+
+    // Cap step size to prevent min from rounding to 0 when data is far from 0
+    if (range.min > 0 && stepSize > range.min) {
+      const smaller = candidates.filter((s) => s <= range.min);
+      if (smaller.length > 0) {
+        stepSize = smaller.at(-1);
+      }
     }
 
-    const candidates = [0.5, 1, 2, 5, 10];
-    return candidates.find((step) => step >= target) || 10;
+    return stepSize;
   }
 
   function buildDatasets(data) {
@@ -240,7 +267,8 @@
   function getChartOptions(range) {
     const unitLabel = unit || metricConfig[metric].unit;
     const stepSize = getStepSize(unitLabel, range);
-    const min = Math.floor(range.min / stepSize) * stepSize;
+    // Round to nearest step; since range.min already has 10% padding, allow rounding up
+    const min = Math.round(range.min / stepSize) * stepSize;
     const max = Math.ceil(range.max / stepSize) * stepSize;
     return {
       responsive: true,
@@ -306,7 +334,7 @@
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const data = getChartData();
-    const range = getYRange([...data.measurements, ...data.band]);
+    const range = getYRange(data.measurements, data.band);
 
     chart = new Chart(ctx, {
       type: 'line',
@@ -320,7 +348,7 @@
   function updateChart() {
     if (!chart) return;
     const data = getChartData();
-    const range = getYRange([...data.measurements, ...data.band]);
+    const range = getYRange(data.measurements, data.band);
     chart.data.datasets = buildDatasets(data);
     chart.options = getChartOptions(range);
     chart.update();
