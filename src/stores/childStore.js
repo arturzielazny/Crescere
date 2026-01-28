@@ -2,7 +2,7 @@
  * Svelte store for child growth data
  */
 
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { calculateZScores, calculateAgeInDays } from '../lib/zscore.js';
 
 // Initial state
@@ -247,8 +247,7 @@ export function saveTemporaryChild() {
 
 // Remove the temporary child without saving
 export function discardTemporaryChild() {
-  let tempId = null;
-  temporaryChildId.subscribe((id) => (tempId = id))();
+  const tempId = get(temporaryChildId);
 
   if (tempId) {
     removeChild(tempId);

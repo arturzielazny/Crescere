@@ -187,23 +187,3 @@ export function exportData() {
 
   URL.revokeObjectURL(url);
 }
-
-/**
- * Import data from JSON file
- */
-export function importData(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target.result);
-        saveToStorage(data);
-        resolve(data);
-      } catch (_err) {
-        reject(new Error('Invalid JSON file'));
-      }
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsText(file);
-  });
-}
