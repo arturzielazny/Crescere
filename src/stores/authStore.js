@@ -125,10 +125,13 @@ export async function linkWithEmail(email) {
   authState.update((s) => ({ ...s, loading: true, error: null }));
 
   try {
-    const { data, error } = await supabase.auth.updateUser(
-      { email },
-      { emailRedirectTo: window.location.origin + window.location.pathname }
-    );
+    // Use signInWithOtp to send magic link - Supabase will link to current anonymous session
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname
+      }
+    });
 
     if (error) throw error;
     authState.update((s) => ({ ...s, loading: false }));
