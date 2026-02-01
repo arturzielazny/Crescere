@@ -94,21 +94,22 @@ export async function signInAnonymously() {
 }
 
 /**
- * Sign in with Google OAuth
- * For anonymous users, this links their account; for new users, creates an account
+ * Sign in with email (magic link)
+ * Sends a passwordless login link to the user's email
  */
-export async function signInWithGoogle() {
+export async function signInWithEmail(email) {
   authState.update((s) => ({ ...s, loading: true, error: null }));
 
   try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
       options: {
-        redirectTo: window.location.origin + window.location.pathname
+        emailRedirectTo: window.location.origin + window.location.pathname
       }
     });
 
     if (error) throw error;
+    authState.update((s) => ({ ...s, loading: false }));
     return data;
   } catch (err) {
     authState.update((s) => ({ ...s, loading: false, error: err.message }));
@@ -117,21 +118,19 @@ export async function signInWithGoogle() {
 }
 
 /**
- * Link anonymous account to Google
- * Preserves all data when claiming an anonymous account
+ * Link anonymous account to email
+ * Sends a magic link to claim the anonymous account
  */
-export async function linkWithGoogle() {
+export async function linkWithEmail(email) {
   authState.update((s) => ({ ...s, loading: true, error: null }));
 
   try {
-    const { data, error } = await supabase.auth.linkIdentity({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin + window.location.pathname
-      }
+    const { data, error } = await supabase.auth.updateUser({
+      email
     });
 
     if (error) throw error;
+    authState.update((s) => ({ ...s, loading: false }));
     return data;
   } catch (err) {
     authState.update((s) => ({ ...s, loading: false, error: err.message }));

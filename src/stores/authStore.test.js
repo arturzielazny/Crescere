@@ -38,14 +38,14 @@ vi.mock('../lib/supabaseClient.js', () => ({
           error: null
         });
       },
-      signInWithOAuth: ({ provider }) =>
+      signInWithOtp: ({ email }) =>
         Promise.resolve({
-          data: { provider, url: 'http://localhost/oauth' },
+          data: { email },
           error: null
         }),
-      linkIdentity: ({ provider }) =>
+      updateUser: ({ email }) =>
         Promise.resolve({
-          data: { provider, url: 'http://localhost/link' },
+          data: { user: { ...mockUser, email } },
           error: null
         }),
       signOut: () => {
@@ -167,7 +167,7 @@ describe('Auth Store', () => {
         id: 'user-123',
         email: 'test@example.com',
         is_anonymous: false,
-        app_metadata: { provider: 'google' }
+        app_metadata: { provider: 'email' }
       };
       mockSession = { user: mockUser, access_token: 'test-token' };
 

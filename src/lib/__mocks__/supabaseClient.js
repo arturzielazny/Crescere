@@ -237,17 +237,21 @@ export const supabase = {
       });
     },
 
-    signInWithOAuth({ provider }) {
-      // OAuth redirects, so we just simulate success
+    signInWithOtp({ email }) {
+      // Magic link sends email, returns success
       return Promise.resolve({
-        data: { provider, url: 'http://localhost/oauth' },
+        data: { email },
         error: null
       });
     },
 
-    linkIdentity({ provider }) {
+    updateUser({ email }) {
+      // Update user's email (for linking anonymous accounts)
+      if (mockUser) {
+        mockUser = { ...mockUser, email };
+      }
       return Promise.resolve({
-        data: { provider, url: 'http://localhost/link' },
+        data: { user: mockUser },
         error: null
       });
     },

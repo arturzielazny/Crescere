@@ -81,7 +81,7 @@ supabase db push
 ### 3. Enable Auth Providers
 In Supabase Dashboard → Authentication → Providers:
 - Enable **Anonymous Sign-ins**
-- Enable **Google** (requires Google Cloud OAuth credentials)
+- Enable **Email** (magic link / passwordless enabled by default)
 
 ### 4. Set Environment Variables
 For GitHub Pages deployment, update `.github/workflows/deploy.yml`:
@@ -98,19 +98,6 @@ Add these secrets in GitHub: Settings → Secrets → Actions
 In Supabase Dashboard → Authentication → URL Configuration:
 - Site URL: `https://yourusername.github.io/Crescere`
 - Redirect URLs: Add the same URL
-
-## Google OAuth Setup (Optional)
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create OAuth 2.0 credentials
-3. Add authorized redirect URIs:
-   - Local: `http://127.0.0.1:54321/auth/v1/callback`
-   - Production: `https://your-project.supabase.co/auth/v1/callback`
-4. Set environment variables:
-   ```
-   SUPABASE_AUTH_GOOGLE_CLIENT_ID=your-client-id
-   SUPABASE_AUTH_GOOGLE_SECRET=your-secret
-   ```
 
 ## Architecture
 
