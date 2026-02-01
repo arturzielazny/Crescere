@@ -123,7 +123,20 @@ const translations = {
     'confirm.delete.message':
       'Are you sure you want to delete this child profile? All measurements will be permanently removed.',
     'confirm.measurement.title': 'Delete measurement',
-    'confirm.measurement.message': 'Are you sure you want to delete this measurement?'
+    'confirm.measurement.message': 'Are you sure you want to delete this measurement?',
+    'auth.signIn': 'Sign in',
+    'auth.signOut': 'Sign out',
+    'auth.signInWithGoogle': 'Sign in with Google',
+    'auth.claimAccount': 'Save account',
+    'auth.anonymous': 'Guest',
+    'auth.loading': 'Loading...',
+    'auth.error': 'Authentication error',
+    'auth.migrating': 'Migrating your data...',
+    'auth.migrated': 'Your data has been migrated to the cloud!',
+    'auth.migrated.count': '{count} children migrated',
+    'auth.signedInAs': 'Signed in as',
+    'auth.guestMode': 'You are using guest mode. Sign in to sync your data across devices.',
+    'app.footer.storage.cloud': 'Data synced to the cloud'
   },
   pl: {
     'app.title': 'Crescere - Monitorowanie wzrostu',
@@ -246,7 +259,21 @@ const translations = {
     'confirm.delete.message':
       'Czy na pewno chcesz usunąć ten profil dziecka? Wszystkie pomiary zostaną trwale usunięte.',
     'confirm.measurement.title': 'Usuń pomiar',
-    'confirm.measurement.message': 'Czy na pewno chcesz usunąć ten pomiar?'
+    'confirm.measurement.message': 'Czy na pewno chcesz usunąć ten pomiar?',
+    'auth.signIn': 'Zaloguj',
+    'auth.signOut': 'Wyloguj',
+    'auth.signInWithGoogle': 'Zaloguj przez Google',
+    'auth.claimAccount': 'Zapisz konto',
+    'auth.anonymous': 'Gość',
+    'auth.loading': 'Ładowanie...',
+    'auth.error': 'Błąd autoryzacji',
+    'auth.migrating': 'Migrowanie danych...',
+    'auth.migrated': 'Twoje dane zostały przeniesione do chmury!',
+    'auth.migrated.count': 'Zmigrowano {count} dzieci',
+    'auth.signedInAs': 'Zalogowano jako',
+    'auth.guestMode':
+      'Używasz trybu gościa. Zaloguj się, aby synchronizować dane między urządzeniami.',
+    'app.footer.storage.cloud': 'Dane zsynchronizowane z chmurą'
   }
 };
 

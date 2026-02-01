@@ -1,9 +1,11 @@
 /**
  * Svelte store for child growth data
+ * Supports both local-only mode and Supabase-synced mode
  */
 
 import { writable, derived, get } from 'svelte/store';
 import { calculateZScores, calculateAgeInDays } from '../lib/zscore.js';
+import * as api from '../lib/api.js';
 
 // Initial state
 const initialState = {
@@ -14,8 +16,17 @@ const initialState = {
 // Main writable store
 export const childStore = writable(initialState);
 
+// Loading state for async operations
+export const dataLoading = writable(true);
+
+// Error state for async operations
+export const dataError = writable(null);
+
 // Track temporary (shared) child that hasn't been saved yet
 export const temporaryChildId = writable(null);
+
+// Track if we're in sync mode (Supabase connected)
+let syncEnabled = false;
 
 const getActiveChild = (state) => {
   const activeId = state.activeChildId || state.children[0]?.id;
@@ -74,51 +85,174 @@ export const measurementsWithZScores = derived(childStore, ($store) => {
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 });
 
-// Helper actions
+// ============================================================================
+// Initialization
+// ============================================================================
+
+/**
+ * Enable sync mode and load data from Supabase
+ */
+export async function enableSync() {
+  syncEnabled = true;
+  dataLoading.set(true);
+  dataError.set(null);
+
+  try {
+    const [children, activeChildId] = await Promise.all([
+      api.fetchChildren(),
+      api.getActiveChildId()
+    ]);
+
+    childStore.set({
+      children,
+      activeChildId: activeChildId || children[0]?.id || null
+    });
+  } catch (err) {
+    console.error('Failed to load data:', err);
+    dataError.set(err.message);
+  } finally {
+    dataLoading.set(false);
+  }
+}
+
+/**
+ * Disable sync mode (for local-only usage)
+ */
+export function disableSync() {
+  syncEnabled = false;
+}
+
+// ============================================================================
+// Helper actions - these work synchronously for UI, then sync to backend
+// ============================================================================
+
 export function updateProfile(profile) {
-  childStore.update((state) =>
-    updateActiveChild(state, (child) => ({
+  const state = get(childStore);
+  const activeChild = getActiveChild(state);
+
+  // Optimistic update
+  childStore.update((s) =>
+    updateActiveChild(s, (child) => ({
       ...child,
       profile: { ...child.profile, ...profile }
     }))
   );
+
+  // Sync to backend
+  if (syncEnabled && activeChild && get(temporaryChildId) !== activeChild.id) {
+    api.updateChild(activeChild.id, profile).catch((err) => {
+      console.error('Failed to update profile:', err);
+      // Rollback on error
+      childStore.set(state);
+      dataError.set(err.message);
+    });
+  }
 }
 
 export function addMeasurement(measurement) {
-  const id = crypto.randomUUID();
-  childStore.update((state) =>
-    updateActiveChild(state, (child) => ({
+  const state = get(childStore);
+  const activeChild = getActiveChild(state);
+  if (!activeChild) return;
+
+  const tempId = crypto.randomUUID();
+
+  // Optimistic update
+  childStore.update((s) =>
+    updateActiveChild(s, (child) => ({
       ...child,
-      measurements: [...child.measurements, { ...measurement, id }]
+      measurements: [...child.measurements, { ...measurement, id: tempId }]
     }))
   );
+
+  // Sync to backend
+  if (syncEnabled && get(temporaryChildId) !== activeChild.id) {
+    api
+      .createMeasurement(activeChild.id, measurement)
+      .then((realId) => {
+        // Replace temp ID with real ID
+        childStore.update((s) =>
+          updateActiveChild(s, (child) => ({
+            ...child,
+            measurements: child.measurements.map((m) =>
+              m.id === tempId ? { ...m, id: realId } : m
+            )
+          }))
+        );
+      })
+      .catch((err) => {
+        console.error('Failed to add measurement:', err);
+        // Rollback
+        childStore.set(state);
+        dataError.set(err.message);
+      });
+  }
 }
 
 export function updateMeasurement(id, updates) {
-  childStore.update((state) =>
-    updateActiveChild(state, (child) => ({
+  const state = get(childStore);
+
+  // Optimistic update
+  childStore.update((s) =>
+    updateActiveChild(s, (child) => ({
       ...child,
       measurements: child.measurements.map((m) => (m.id === id ? { ...m, ...updates } : m))
     }))
   );
+
+  // Sync to backend
+  if (syncEnabled) {
+    api.updateMeasurement(id, updates).catch((err) => {
+      console.error('Failed to update measurement:', err);
+      childStore.set(state);
+      dataError.set(err.message);
+    });
+  }
 }
 
 export function deleteMeasurement(id) {
-  childStore.update((state) =>
-    updateActiveChild(state, (child) => ({
+  const state = get(childStore);
+
+  // Optimistic update
+  childStore.update((s) =>
+    updateActiveChild(s, (child) => ({
       ...child,
       measurements: child.measurements.filter((m) => m.id !== id)
     }))
   );
+
+  // Sync to backend
+  if (syncEnabled) {
+    api.deleteMeasurement(id).catch((err) => {
+      console.error('Failed to delete measurement:', err);
+      childStore.set(state);
+      dataError.set(err.message);
+    });
+  }
 }
 
 export function clearMeasurements() {
-  childStore.update((state) =>
-    updateActiveChild(state, (child) => ({
+  const state = get(childStore);
+  const activeChild = getActiveChild(state);
+  if (!activeChild) return;
+
+  const measurementIds = activeChild.measurements.map((m) => m.id);
+
+  // Optimistic update
+  childStore.update((s) =>
+    updateActiveChild(s, (child) => ({
       ...child,
       measurements: []
     }))
   );
+
+  // Sync to backend - delete each measurement
+  if (syncEnabled) {
+    Promise.all(measurementIds.map((id) => api.deleteMeasurement(id))).catch((err) => {
+      console.error('Failed to clear measurements:', err);
+      childStore.set(state);
+      dataError.set(err.message);
+    });
+  }
 }
 
 export function setStore(data) {
@@ -146,29 +280,51 @@ export function resetStore() {
 }
 
 export function setActiveChild(childId) {
-  childStore.update((state) => ({
-    ...state,
+  const state = get(childStore);
+
+  // Optimistic update
+  childStore.update((s) => ({
+    ...s,
     activeChildId: childId
   }));
+
+  // Sync to backend
+  if (syncEnabled) {
+    api.setActiveChildId(childId).catch((err) => {
+      console.error('Failed to set active child:', err);
+      childStore.set(state);
+    });
+  }
 }
 
 export function removeChild(childId) {
-  childStore.update((state) => {
-    const remaining = state.children.filter((child) => child.id !== childId);
-    const activeChildId =
-      state.activeChildId === childId ? remaining[0]?.id || null : state.activeChildId;
+  const state = get(childStore);
+
+  // Optimistic update
+  childStore.update((s) => {
+    const remaining = s.children.filter((child) => child.id !== childId);
+    const activeChildId = s.activeChildId === childId ? remaining[0]?.id || null : s.activeChildId;
     return {
-      ...state,
+      ...s,
       children: remaining,
       activeChildId
     };
   });
+
+  // Sync to backend
+  if (syncEnabled) {
+    api.deleteChild(childId).catch((err) => {
+      console.error('Failed to delete child:', err);
+      childStore.set(state);
+      dataError.set(err.message);
+    });
+  }
 }
 
 export function addChild() {
-  const id = crypto.randomUUID();
+  const tempId = crypto.randomUUID();
   const newChild = {
-    id,
+    id: tempId,
     profile: {
       name: '',
       birthDate: null,
@@ -177,11 +333,67 @@ export function addChild() {
     measurements: []
   };
 
+  // We can't create a child in DB without required fields (birthDate, sex)
+  // So we add locally first, then sync when profile is complete
   childStore.update((state) => ({
     ...state,
-    activeChildId: id,
+    activeChildId: tempId,
     children: [...state.children, newChild]
   }));
+
+  // Mark as pending creation - will be created on first profile update with required fields
+  if (syncEnabled) {
+    // Store a flag that this child needs to be created
+    newChild._pendingCreate = true;
+  }
+}
+
+/**
+ * Sync a locally-created child to the backend
+ * Called when a child has all required fields filled in
+ */
+export async function syncChildToBackend(childId) {
+  if (!syncEnabled) return;
+
+  const state = get(childStore);
+  const child = state.children.find((c) => c.id === childId);
+
+  if (!child || !child.profile?.birthDate || !child.profile?.sex) {
+    return; // Can't create without required fields
+  }
+
+  try {
+    const realId = await api.createChild(child.profile);
+
+    // Update local ID to match backend
+    childStore.update((s) => ({
+      ...s,
+      activeChildId: s.activeChildId === childId ? realId : s.activeChildId,
+      children: s.children.map((c) => (c.id === childId ? { ...c, id: realId } : c))
+    }));
+
+    // Sync measurements if any
+    if (child.measurements.length > 0) {
+      for (const m of child.measurements) {
+        await api.createMeasurement(realId, m);
+      }
+      // Reload to get real IDs
+      const children = await api.fetchChildren();
+      const updated = children.find((c) => c.id === realId);
+      if (updated) {
+        childStore.update((s) => ({
+          ...s,
+          children: s.children.map((c) => (c.id === realId ? updated : c))
+        }));
+      }
+    }
+
+    return realId;
+  } catch (err) {
+    console.error('Failed to sync child:', err);
+    dataError.set(err.message);
+    throw err;
+  }
 }
 
 export function createExampleState(exampleName = 'Example Child') {
@@ -241,7 +453,31 @@ export function addTemporaryChild(child) {
 }
 
 // Save the temporary child (make it permanent)
-export function saveTemporaryChild() {
+export async function saveTemporaryChild() {
+  const tempId = get(temporaryChildId);
+  if (!tempId) return;
+
+  if (syncEnabled) {
+    try {
+      const state = get(childStore);
+      const child = state.children.find((c) => c.id === tempId);
+
+      if (child?.profile?.birthDate && child?.profile?.sex) {
+        const realId = await api.importChild(child);
+
+        // Update local store with new ID
+        childStore.update((s) => ({
+          ...s,
+          activeChildId: s.activeChildId === tempId ? realId : s.activeChildId,
+          children: s.children.map((c) => (c.id === tempId ? { ...c, id: realId } : c))
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to save temporary child:', err);
+      dataError.set(err.message);
+    }
+  }
+
   temporaryChildId.set(null);
 }
 

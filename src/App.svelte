@@ -6,6 +6,7 @@
   import ChartGrid from './components/ChartGrid.svelte';
   import ShareModal from './components/ShareModal.svelte';
   import Toast from './components/Toast.svelte';
+  import Header from './components/Header.svelte';
   import {
     childStore,
     activeChild,
@@ -14,8 +15,18 @@
     createExampleState,
     addTemporaryChild,
     discardTemporaryChild,
-    temporaryChildId
+    temporaryChildId,
+    dataLoading,
+    dataError,
+    enableSync
   } from './stores/childStore.js';
+  import {
+    initAuth,
+    isAuthenticated,
+    isAnonymous,
+    loading as authLoading,
+    signInAnonymously
+  } from './stores/authStore.js';
   import {
     loadFromStorage,
     saveToStorage,
@@ -23,6 +34,7 @@
     clearStorage,
     migrateData
   } from './lib/storage.js';
+  import { migrateToSupabase, hasLocalData } from './lib/migrate.js';
   import { generateShareUrl, parseShareUrl, clearShareHash } from './lib/share.js';
   import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
 
@@ -30,6 +42,11 @@
   let showShareModal = false;
   let shareUrl = '';
   let toast = null;
+  let migrating = false;
+
+  // Check if Supabase is configured
+  const supabaseConfigured =
+    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   function checkForSharedChild() {
     const sharedChild = parseShareUrl();
@@ -41,30 +58,74 @@
     }
   }
 
-  onMount(() => {
-    // Load saved data first
-    const saved = loadFromStorage();
-    if (saved) {
-      setStore(saved);
+  async function initializeApp() {
+    if (supabaseConfigured) {
+      // Initialize auth
+      await initAuth();
+
+      // If no session, sign in anonymously
+      if (!$isAuthenticated && !$authLoading) {
+        try {
+          await signInAnonymously();
+        } catch (err) {
+          console.error('Anonymous sign-in failed:', err);
+        }
+      }
+
+      // Now that we have a user, check for migration
+      if ($isAuthenticated) {
+        if (hasLocalData()) {
+          migrating = true;
+          const result = await migrateToSupabase();
+          migrating = false;
+
+          if (result.migrated) {
+            toast = {
+              message: $t('auth.migrated'),
+              type: 'success'
+            };
+          }
+        }
+
+        // Load data from Supabase
+        await enableSync();
+
+        // If no data exists, create example state
+        if ($childStore.children.length === 0) {
+          // Create example in Supabase would require valid profile
+          // For now, just set local example that user can fill in
+          setStore(createExampleState($t('children.example')));
+        }
+      }
     } else {
-      setStore(createExampleState($t('children.example')));
+      // Fallback: localStorage-only mode (no Supabase configured)
+      const saved = loadFromStorage();
+      if (saved) {
+        setStore(saved);
+      } else {
+        setStore(createExampleState($t('children.example')));
+      }
     }
 
     // Check for share URL and add as temporary child
     checkForSharedChild();
 
+    loaded = true;
+  }
+
+  onMount(() => {
+    initializeApp();
+
     // Listen for hash changes (when user opens share link while app is loaded)
     window.addEventListener('hashchange', checkForSharedChild);
-
-    loaded = true;
   });
 
   onDestroy(() => {
     window.removeEventListener('hashchange', checkForSharedChild);
   });
 
-  // Auto-save on changes (exclude temporary children)
-  $: if (loaded && $childStore) {
+  // Auto-save on changes (only in localStorage-only mode)
+  $: if (loaded && $childStore && !supabaseConfigured) {
     const tempId = $temporaryChildId;
     const dataToSave = tempId
       ? {
@@ -116,7 +177,9 @@
           activeChildId: state.activeChildId || newChildren[0]?.id || null
         }));
 
-        saveToStorage($childStore);
+        if (!supabaseConfigured) {
+          saveToStorage($childStore);
+        }
         toast = { message: $t('app.import.success'), type: 'success' };
       } catch (_err) {
         toast = { message: $t('app.import.error'), type: 'error' };
@@ -132,6 +195,12 @@
       showShareModal = true;
     }
   }
+
+  $: isLoading = $authLoading || $dataLoading || migrating;
+  $: footerStorageText =
+    supabaseConfigured && $isAuthenticated && !$isAnonymous
+      ? $t('app.footer.storage.cloud')
+      : $t('app.footer.storage');
 </script>
 
 <div class="min-h-screen bg-gray-100">
@@ -180,45 +249,75 @@
         >
           {$t('app.clear')}
         </button>
+        {#if supabaseConfigured}
+          <div class="border-l border-gray-200 pl-2 ml-1">
+            <Header />
+          </div>
+        {/if}
       </div>
     </div>
   </header>
 
   <main class="px-4 py-6">
-    <ChildList />
-    <ChildProfile />
-    <MeasurementTable />
+    {#if isLoading}
+      <div class="flex items-center justify-center py-12">
+        <div class="text-center">
+          <div
+            class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-r-transparent"
+          ></div>
+          <p class="mt-3 text-gray-600">
+            {migrating ? $t('auth.migrating') : $t('auth.loading')}
+          </p>
+        </div>
+      </div>
+    {:else}
+      {#if $dataError}
+        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {$t('auth.error')}: {$dataError}
+        </div>
+      {/if}
 
-    <ChartGrid />
+      {#if supabaseConfigured && $isAnonymous}
+        <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+          {$t('auth.guestMode')}
+        </div>
+      {/if}
 
-    <section class="bg-white rounded-lg shadow p-6 mt-6">
-      <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
-      <p class="text-sm text-gray-600 mb-3">
-        {$t('explain.summary')}
-      </p>
-      <p class="text-sm text-gray-600 mb-4">
-        {$t('explain.meaning')}
-      </p>
-      <h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('explain.shortcuts')}</h3>
-      <dl class="text-sm text-gray-600 space-y-3">
-        <div>
-          <dt class="font-medium text-gray-700">{$t('explain.waz.title')}</dt>
-          <dd class="ml-0 mt-0.5">{$t('explain.waz.desc')}</dd>
-        </div>
-        <div>
-          <dt class="font-medium text-gray-700">{$t('explain.lhaz.title')}</dt>
-          <dd class="ml-0 mt-0.5">{$t('explain.lhaz.desc')}</dd>
-        </div>
-        <div>
-          <dt class="font-medium text-gray-700">{$t('explain.headcz.title')}</dt>
-          <dd class="ml-0 mt-0.5">{$t('explain.headcz.desc')}</dd>
-        </div>
-        <div>
-          <dt class="font-medium text-gray-700">{$t('explain.wflz.title')}</dt>
-          <dd class="ml-0 mt-0.5">{$t('explain.wflz.desc')}</dd>
-        </div>
-      </dl>
-    </section>
+      <ChildList />
+      <ChildProfile />
+      <MeasurementTable />
+
+      <ChartGrid />
+
+      <section class="bg-white rounded-lg shadow p-6 mt-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
+        <p class="text-sm text-gray-600 mb-3">
+          {$t('explain.summary')}
+        </p>
+        <p class="text-sm text-gray-600 mb-4">
+          {$t('explain.meaning')}
+        </p>
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('explain.shortcuts')}</h3>
+        <dl class="text-sm text-gray-600 space-y-3">
+          <div>
+            <dt class="font-medium text-gray-700">{$t('explain.waz.title')}</dt>
+            <dd class="ml-0 mt-0.5">{$t('explain.waz.desc')}</dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-700">{$t('explain.lhaz.title')}</dt>
+            <dd class="ml-0 mt-0.5">{$t('explain.lhaz.desc')}</dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-700">{$t('explain.headcz.title')}</dt>
+            <dd class="ml-0 mt-0.5">{$t('explain.headcz.desc')}</dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-700">{$t('explain.wflz.title')}</dt>
+            <dd class="ml-0 mt-0.5">{$t('explain.wflz.desc')}</dd>
+          </div>
+        </dl>
+      </section>
+    {/if}
   </main>
 
   <footer class="text-center py-4 text-sm text-gray-500">
@@ -232,7 +331,7 @@
         {$t('app.footer.source.link')}
       </a>
     </p>
-    <p class="mt-1">{$t('app.footer.storage')}</p>
+    <p class="mt-1">{footerStorageText}</p>
     <p class="mt-1">{$t('app.footer.disclaimer')}</p>
   </footer>
 </div>
