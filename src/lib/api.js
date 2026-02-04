@@ -239,6 +239,163 @@ export async function importChild(child) {
 }
 
 // ============================================================================
+// Sharing
+// ============================================================================
+
+/**
+ * Generate a URL-safe random token (22 chars, 128-bit)
+ * @returns {string}
+ */
+export function generateToken() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  // Convert to hex string (32 chars, URL-safe)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Create a named share link for a child
+ * @param {string} childId - Child ID
+ * @param {string} label - Human-readable label (e.g., "Doctor")
+ * @returns {Promise<{id: string, token: string, label: string, created_at: string}>}
+ */
+export async function createShare(childId, label) {
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const token = generateToken();
+
+  const { data, error } = await supabase
+    .from('child_shares')
+    .insert({
+      child_id: childId,
+      owner_id: user.id,
+      token,
+      label: label || ''
+    })
+    .select('id, token, label, created_at')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * List all shares for a child (owner only via RLS)
+ * @param {string} childId - Child ID
+ * @returns {Promise<Array>}
+ */
+export async function fetchShares(childId) {
+  const { data, error } = await supabase
+    .from('child_shares')
+    .select('id, token, label, created_at')
+    .eq('child_id', childId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Revoke a share (cascade deletes access rows)
+ * @param {string} shareId - Share ID
+ */
+export async function revokeShare(shareId) {
+  const { error } = await supabase.from('child_shares').delete().eq('id', shareId);
+
+  if (error) throw error;
+}
+
+/**
+ * Accept a share via token (calls SECURITY DEFINER RPC)
+ * @param {string} token - Share token
+ * @returns {Promise<{child_id: string, already_accepted: boolean}>}
+ */
+export async function acceptShare(token) {
+  const { data, error } = await supabase.rpc('accept_share', { share_token: token });
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Fetch all children shared with the current user
+ * Returns children in app format with _shared and _shareLabel markers
+ * @returns {Promise<Array>}
+ */
+export async function fetchSharedChildren() {
+  // Get access rows for current user
+  const { data: accessRows, error: accessError } = await supabase
+    .from('shared_child_access')
+    .select('child_id, share_id');
+
+  if (accessError) throw accessError;
+  if (!accessRows || accessRows.length === 0) return [];
+
+  const childIds = accessRows.map((a) => a.child_id);
+
+  // Fetch the actual children with measurements
+  const { data: children, error: childError } = await supabase
+    .from('children')
+    .select(
+      `
+      id,
+      name,
+      birth_date,
+      sex,
+      measurements (
+        id,
+        date,
+        weight,
+        length,
+        head_circ
+      )
+    `
+    )
+    .in('id', childIds);
+
+  if (childError) throw childError;
+
+  // Fetch share labels
+  const shareIds = accessRows.map((a) => a.share_id);
+  const { data: shares } = await supabase
+    .from('child_shares')
+    .select('id, label')
+    .in('id', shareIds);
+
+  const shareLabelMap = {};
+  if (shares) {
+    for (const s of shares) {
+      shareLabelMap[s.id] = s.label;
+    }
+  }
+
+  // Build access-to-label map
+  const childLabelMap = {};
+  for (const a of accessRows) {
+    childLabelMap[a.child_id] = shareLabelMap[a.share_id] || '';
+  }
+
+  return (children || []).map((child) => ({
+    ...transformChildFromDb(child),
+    _shared: true,
+    _shareLabel: childLabelMap[child.id] || ''
+  }));
+}
+
+/**
+ * Remove the current user's access to a shared child
+ * @param {string} childId - Child ID
+ */
+export async function removeSharedChild(childId) {
+  const { error } = await supabase.from('shared_child_access').delete().eq('child_id', childId);
+
+  if (error) throw error;
+}
+
+// ============================================================================
 // Transform Functions
 // ============================================================================
 

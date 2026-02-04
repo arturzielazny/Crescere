@@ -6,7 +6,9 @@
 let mockData = {
   children: [],
   measurements: [],
-  user_preferences: []
+  user_preferences: [],
+  child_shares: [],
+  shared_child_access: []
 };
 
 let mockUser = null;
@@ -20,7 +22,9 @@ export function resetMockData() {
   mockData = {
     children: [],
     measurements: [],
-    user_preferences: []
+    user_preferences: [],
+    child_shares: [],
+    shared_child_access: []
   };
   mockUser = null;
   mockSession = null;
@@ -98,6 +102,11 @@ function createQueryBuilder(table) {
 
     eq(field, value) {
       query.filters.push({ type: 'eq', field, value });
+      return builder;
+    },
+
+    in(field, values) {
+      query.filters.push({ type: 'in', field, values });
       return builder;
     },
 
@@ -198,14 +207,66 @@ function matchesFilters(record, filters) {
     if (filter.type === 'eq') {
       return record[filter.field] === filter.value;
     }
+    if (filter.type === 'in') {
+      return filter.values.includes(record[filter.field]);
+    }
     return true;
   });
 }
+
+// Mock RPC handlers
+const rpcHandlers = {
+  async accept_share({ share_token }) {
+    // Find share by token
+    const share = mockData.child_shares.find((s) => s.token === share_token);
+    if (!share) {
+      return { data: null, error: { message: 'Invalid share token' } };
+    }
+
+    if (!mockUser) {
+      return { data: null, error: { message: 'Not authenticated' } };
+    }
+
+    // Don't allow owner to accept own share
+    if (share.owner_id === mockUser.id) {
+      return { data: null, error: { message: 'Cannot accept your own share' } };
+    }
+
+    // Check if already accepted
+    const existing = mockData.shared_child_access.find(
+      (a) => a.user_id === mockUser.id && a.child_id === share.child_id
+    );
+
+    if (existing) {
+      return { data: { child_id: share.child_id, already_accepted: true }, error: null };
+    }
+
+    // Create access row
+    const access = {
+      id: crypto.randomUUID(),
+      user_id: mockUser.id,
+      child_id: share.child_id,
+      share_id: share.id,
+      accepted_at: new Date().toISOString()
+    };
+    mockData.shared_child_access.push(access);
+
+    return { data: { child_id: share.child_id, already_accepted: false }, error: null };
+  }
+};
 
 // Mock Supabase client
 export const supabase = {
   from(table) {
     return createQueryBuilder(table);
+  },
+
+  async rpc(fnName, params) {
+    const handler = rpcHandlers[fnName];
+    if (!handler) {
+      return { data: null, error: { message: `Unknown RPC: ${fnName}` } };
+    }
+    return handler(params);
   },
 
   auth: {

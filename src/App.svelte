@@ -17,11 +17,13 @@
     addTemporaryChild,
     discardTemporaryChild,
     temporaryChildId,
+    sharedChildIds,
     dataLoading,
     dataError,
     enableSync,
     disableSync,
-    syncChildToBackend
+    syncChildToBackend,
+    acceptLiveShare
   } from './stores/childStore.js';
   import {
     initAuth,
@@ -39,7 +41,12 @@
     migrateData
   } from './lib/storage.js';
   import { migrateToSupabase, hasLocalData } from './lib/migrate.js';
-  import { generateShareUrl, parseShareUrl, clearShareHash } from './lib/share.js';
+  import {
+    generateShareUrl,
+    parseShareUrl,
+    parseLiveShareUrl,
+    clearShareHash
+  } from './lib/share.js';
   import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
 
   let loaded = false;
@@ -54,12 +61,40 @@
     import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   function checkForSharedChild() {
+    // Check for snapshot share first
     const sharedChild = parseShareUrl();
     if (sharedChild) {
-      // Discard any existing temporary child first
       discardTemporaryChild();
       addTemporaryChild(sharedChild);
       clearShareHash();
+      return;
+    }
+
+    // Check for live share
+    checkForLiveShare();
+  }
+
+  async function checkForLiveShare() {
+    const token = parseLiveShareUrl();
+    if (!token) return;
+
+    clearShareHash();
+
+    if (!supabaseConfigured || !$isAuthenticated) {
+      toast = { message: $t('share.live.requiresAuth'), type: 'error' };
+      return;
+    }
+
+    try {
+      const result = await acceptLiveShare(token);
+      if (result.alreadyAccepted) {
+        toast = { message: $t('share.live.alreadyAdded'), type: 'info' };
+      } else {
+        toast = { message: $t('share.live.accepted'), type: 'success' };
+      }
+    } catch (_err) {
+      console.error('Failed to accept live share:', _err);
+      toast = { message: $t('share.live.error'), type: 'error' };
     }
   }
 
@@ -238,9 +273,19 @@
     event.target.value = '';
   }
 
+  // Whether to use live sharing mode
+  $: useLiveShare =
+    supabaseConfigured &&
+    $isAuthenticated &&
+    !$isAnonymous &&
+    $activeChild &&
+    !$sharedChildIds.has($activeChild?.id);
+
   function handleShare() {
     if ($activeChild) {
-      shareUrl = generateShareUrl($activeChild);
+      if (!useLiveShare) {
+        shareUrl = generateShareUrl($activeChild);
+      }
       showShareModal = true;
     }
   }
@@ -390,7 +435,13 @@
 {/if}
 
 {#if showShareModal}
-  <ShareModal url={shareUrl} onClose={() => (showShareModal = false)} />
+  <ShareModal
+    url={shareUrl}
+    liveMode={useLiveShare}
+    childId={$activeChild?.id || ''}
+    childName={$activeChild?.profile?.name || ''}
+    onClose={() => (showShareModal = false)}
+  />
 {/if}
 
 {#if toast}

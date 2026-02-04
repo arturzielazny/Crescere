@@ -4,7 +4,8 @@
     setActiveChild,
     addChild,
     removeChild,
-    temporaryChildId
+    temporaryChildId,
+    sharedChildIds
   } from '../stores/childStore.js';
   import { t } from '../stores/i18n.js';
   import ConfirmModal from './ConfirmModal.svelte';
@@ -51,6 +52,7 @@
   <div class="flex flex-wrap gap-2">
     {#each $childStore.children as child, index (child.id)}
       {@const isTemporary = child.id === $temporaryChildId}
+      {@const isShared = $sharedChildIds.has(child.id)}
       <div class="relative group">
         <button
           on:click={() => setActiveChild(child.id)}
@@ -61,23 +63,34 @@
           class:bg-yellow-50={isTemporary && activeId !== child.id}
           class:border-yellow-300={isTemporary && activeId !== child.id}
           class:text-yellow-700={isTemporary && activeId !== child.id}
-          class:bg-blue-50={!isTemporary && activeId === child.id}
-          class:border-blue-300={!isTemporary && activeId === child.id}
-          class:text-blue-700={!isTemporary && activeId === child.id}
-          class:border-gray-200={!isTemporary && activeId !== child.id}
-          class:text-gray-700={!isTemporary && activeId !== child.id}
+          class:bg-purple-100={isShared && activeId === child.id}
+          class:border-purple-300={isShared && activeId === child.id}
+          class:text-purple-700={isShared && activeId === child.id}
+          class:bg-purple-50={isShared && activeId !== child.id}
+          class:border-purple-200={isShared && activeId !== child.id}
+          class:text-purple-600={isShared && activeId !== child.id}
+          class:bg-blue-50={!isTemporary && !isShared && activeId === child.id}
+          class:border-blue-300={!isTemporary && !isShared && activeId === child.id}
+          class:text-blue-700={!isTemporary && !isShared && activeId === child.id}
+          class:border-gray-200={!isTemporary && !isShared && activeId !== child.id}
+          class:text-gray-700={!isTemporary && !isShared && activeId !== child.id}
           title={isTemporary ? $t('children.temporary.hint') : ''}
         >
           {getChildLabel(child, index)}
           {#if isTemporary}
             <span class="ml-1 text-yellow-600">●</span>
           {/if}
+          {#if isShared}
+            <span class="ml-1 text-purple-500 text-xs"
+              >({child._shareLabel || $t('share.live.sharedBadge')})</span
+            >
+          {/if}
         </button>
         {#if !isTemporary}
           <button
             on:click={(e) => handleDeleteClick(e, child.id)}
             class="absolute top-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 hover:bg-red-50"
-            aria-label={$t('children.remove')}
+            aria-label={isShared ? $t('share.live.remove') : $t('children.remove')}
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -102,10 +115,11 @@
 </div>
 
 {#if showDeleteModal}
+  {@const isSharedTarget = deleteTargetId && $sharedChildIds.has(deleteTargetId)}
   <ConfirmModal
-    title={$t('confirm.delete.title')}
-    message={$t('confirm.delete.message')}
-    confirmLabel={$t('children.remove')}
+    title={isSharedTarget ? $t('share.live.remove') : $t('confirm.delete.title')}
+    message={isSharedTarget ? $t('share.live.remove.confirm') : $t('confirm.delete.message')}
+    confirmLabel={isSharedTarget ? $t('share.live.remove') : $t('children.remove')}
     onConfirm={confirmDelete}
     onCancel={cancelDelete}
   />

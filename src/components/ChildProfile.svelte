@@ -3,6 +3,7 @@
     activeChild,
     updateProfile,
     temporaryChildId,
+    isActiveChildReadOnly,
     saveTemporaryChild,
     discardTemporaryChild
   } from '../stores/childStore.js';
@@ -11,6 +12,7 @@
 
   $: profile = $activeChild?.profile;
   $: isTemporary = $activeChild?.id === $temporaryChildId;
+  $: isReadOnly = $isActiveChildReadOnly;
   $: hasMeasurementsBeforeBirth =
     profile?.birthDate &&
     $activeChild?.measurements?.some((m) => m.date && m.date < profile.birthDate);
@@ -45,8 +47,9 @@
 
 <div
   class="bg-white rounded-lg shadow p-6 mb-6"
-  class:ring-2={isTemporary}
+  class:ring-2={isTemporary || isReadOnly}
   class:ring-yellow-400={isTemporary}
+  class:ring-purple-400={isReadOnly}
 >
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold text-gray-800">{$t('profile.title')}</h2>
@@ -76,6 +79,12 @@
     </div>
   {/if}
 
+  {#if isReadOnly}
+    <div class="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-md text-sm text-purple-800">
+      {$t('share.live.readOnlyBanner')}
+    </div>
+  {/if}
+
   {#if !$activeChild}
     <p class="text-sm text-gray-600">{$t('profile.missingChild')}</p>
   {:else}
@@ -89,8 +98,9 @@
           type="text"
           value={profile?.name ?? ''}
           on:input={handleNameChange}
+          disabled={isReadOnly}
           placeholder={$t('profile.name.placeholder')}
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
       </div>
 
@@ -108,7 +118,8 @@
           type="date"
           value={profile?.birthDate ?? ''}
           on:change={handleBirthDateChange}
-          class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2"
+          disabled={isReadOnly}
+          class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
           class:border-gray-300={!hasMeasurementsBeforeBirth}
           class:focus:ring-blue-500={!hasMeasurementsBeforeBirth}
           class:border-red-500={hasMeasurementsBeforeBirth}
@@ -132,7 +143,8 @@
               value="1"
               checked={profile?.sex === 1}
               on:change={handleSexChange}
-              class="form-radio text-blue-600"
+              disabled={isReadOnly}
+              class="form-radio text-blue-600 disabled:cursor-not-allowed"
             />
             <span class="ml-2">{$t('profile.sex.male')}</span>
           </label>
@@ -143,7 +155,8 @@
               value="2"
               checked={profile?.sex === 2}
               on:change={handleSexChange}
-              class="form-radio text-pink-600"
+              disabled={isReadOnly}
+              class="form-radio text-pink-600 disabled:cursor-not-allowed"
             />
             <span class="ml-2">{$t('profile.sex.female')}</span>
           </label>

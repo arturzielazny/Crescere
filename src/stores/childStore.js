@@ -25,6 +25,9 @@ export const dataError = writable(null);
 // Track temporary (shared) child that hasn't been saved yet
 export const temporaryChildId = writable(null);
 
+// Track children shared with this user (read-only)
+export const sharedChildIds = writable(new Set());
+
 // Track if we're in sync mode (Supabase connected)
 let syncEnabled = false;
 
@@ -52,6 +55,16 @@ const updateActiveChild = (state, updater) => {
 export const activeChild = derived(childStore, ($store) => {
   return getActiveChild($store);
 });
+
+// Whether the active child is shared (read-only)
+export const isActiveChildReadOnly = derived(
+  [childStore, sharedChildIds],
+  ([$store, $sharedIds]) => {
+    const active = getActiveChild($store);
+    if (!active) return false;
+    return $sharedIds.has(active.id);
+  }
+);
 
 // Derived store for max age across all measurements (for consistent chart x-axis)
 export const maxAgeInDays = derived(childStore, ($store) => {
@@ -101,14 +114,24 @@ export async function enableSync() {
   dataError.set(null);
 
   try {
-    const [children, activeChildId] = await Promise.all([
+    const [ownChildren, activeChildId, shared] = await Promise.all([
       api.fetchChildren(),
-      api.getActiveChildId()
+      api.getActiveChildId(),
+      api.fetchSharedChildren().catch(() => [])
     ]);
 
+    // Track shared child IDs
+    const sharedIds = new Set(shared.map((c) => c.id));
+    sharedChildIds.set(sharedIds);
+
+    // Merge owned + shared children (avoid duplicates)
+    const ownIds = new Set(ownChildren.map((c) => c.id));
+    const uniqueShared = shared.filter((c) => !ownIds.has(c.id));
+    const allChildren = [...ownChildren, ...uniqueShared];
+
     childStore.set({
-      children,
-      activeChildId: activeChildId || children[0]?.id || null
+      children: allChildren,
+      activeChildId: activeChildId || allChildren[0]?.id || null
     });
   } catch (err) {
     console.error('Failed to load data:', err);
@@ -132,6 +155,7 @@ export function disableSync() {
 export function updateProfile(profile) {
   const state = get(childStore);
   const activeChild = getActiveChild(state);
+  if (activeChild && get(sharedChildIds).has(activeChild.id)) return;
 
   // Optimistic update
   childStore.update((s) =>
@@ -156,6 +180,7 @@ export function addMeasurement(measurement) {
   const state = get(childStore);
   const activeChild = getActiveChild(state);
   if (!activeChild) return;
+  if (get(sharedChildIds).has(activeChild.id)) return;
 
   const tempId = crypto.randomUUID();
 
@@ -193,6 +218,8 @@ export function addMeasurement(measurement) {
 
 export function updateMeasurement(id, updates) {
   const state = get(childStore);
+  const active = getActiveChild(state);
+  if (active && get(sharedChildIds).has(active.id)) return;
 
   // Optimistic update
   childStore.update((s) =>
@@ -214,6 +241,8 @@ export function updateMeasurement(id, updates) {
 
 export function deleteMeasurement(id) {
   const state = get(childStore);
+  const active = getActiveChild(state);
+  if (active && get(sharedChildIds).has(active.id)) return;
 
   // Optimistic update
   childStore.update((s) =>
@@ -237,6 +266,7 @@ export function clearMeasurements() {
   const state = get(childStore);
   const activeChild = getActiveChild(state);
   if (!activeChild) return;
+  if (get(sharedChildIds).has(activeChild.id)) return;
 
   const measurementIds = activeChild.measurements.map((m) => m.id);
 
@@ -283,6 +313,7 @@ export function resetStore() {
   dataLoading.set(true);
   dataError.set(null);
   temporaryChildId.set(null);
+  sharedChildIds.set(new Set());
 }
 
 export function setActiveChild(childId) {
@@ -305,6 +336,7 @@ export function setActiveChild(childId) {
 
 export function removeChild(childId) {
   const state = get(childStore);
+  const isShared = get(sharedChildIds).has(childId);
 
   // Optimistic update
   childStore.update((s) => {
@@ -317,9 +349,19 @@ export function removeChild(childId) {
     };
   });
 
+  // Remove from shared set if applicable
+  if (isShared) {
+    sharedChildIds.update((ids) => {
+      const next = new Set(ids);
+      next.delete(childId);
+      return next;
+    });
+  }
+
   // Sync to backend
   if (syncEnabled) {
-    api.deleteChild(childId).catch((err) => {
+    const deleteOp = isShared ? api.removeSharedChild(childId) : api.deleteChild(childId);
+    deleteOp.catch((err) => {
       console.error('Failed to delete child:', err);
       childStore.set(state);
       dataError.set(err.message);
@@ -499,4 +541,32 @@ export function discardTemporaryChild() {
     removeChild(tempId);
     temporaryChildId.set(null);
   }
+}
+
+/**
+ * Accept a live share by token, reload shared children, switch to shared child
+ * @param {string} token - Share token from URL
+ * @returns {Promise<{childId: string, alreadyAccepted: boolean}>}
+ */
+export async function acceptLiveShare(token) {
+  if (!syncEnabled) throw new Error('Sync not enabled');
+
+  const result = await api.acceptShare(token);
+
+  // Reload shared children
+  const shared = await api.fetchSharedChildren();
+  const sharedIds = new Set(shared.map((c) => c.id));
+  sharedChildIds.set(sharedIds);
+
+  // Merge into store (avoid duplicates)
+  childStore.update((state) => {
+    const ownChildren = state.children.filter((c) => !sharedIds.has(c.id));
+    return {
+      ...state,
+      children: [...ownChildren, ...shared],
+      activeChildId: result.child_id
+    };
+  });
+
+  return { childId: result.child_id, alreadyAccepted: result.already_accepted };
 }

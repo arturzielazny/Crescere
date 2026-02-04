@@ -4,7 +4,8 @@
     measurementsWithZScores,
     addMeasurement,
     updateMeasurement,
-    deleteMeasurement
+    deleteMeasurement,
+    isActiveChildReadOnly
   } from '../stores/childStore.js';
   import { formatAge } from '../lib/zscore.js';
   import { isFutureDate, formatZScore, getZScoreColorClass } from '../lib/utils.js';
@@ -110,12 +111,16 @@
               class:bg-green-50={isFutureDate(m.date)}
             >
               <td class="py-2 px-2">
-                <input
-                  type="date"
-                  value={m.date}
-                  on:change={(e) => handleUpdate(m.id, 'date', e.target.value)}
-                  class="w-32 px-2 py-1 border border-gray-200 rounded text-sm"
-                />
+                {#if $isActiveChildReadOnly}
+                  <span class="text-sm">{m.date}</span>
+                {:else}
+                  <input
+                    type="date"
+                    value={m.date}
+                    on:change={(e) => handleUpdate(m.id, 'date', e.target.value)}
+                    class="w-32 px-2 py-1 border border-gray-200 rounded text-sm"
+                  />
+                {/if}
               </td>
               <td class="py-2 px-2 text-gray-500">
                 {m.ageInDays !== null
@@ -127,34 +132,46 @@
                   : '—'}
               </td>
               <td class="py-2 px-2">
-                <input
-                  type="number"
-                  step="25"
-                  value={m.weight || ''}
-                  on:change={(e) => handleUpdate(m.id, 'weight', e.target.value)}
-                  placeholder="—"
-                  class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
-                />
+                {#if $isActiveChildReadOnly}
+                  <span class="text-sm">{m.weight || '—'}</span>
+                {:else}
+                  <input
+                    type="number"
+                    step="25"
+                    value={m.weight || ''}
+                    on:change={(e) => handleUpdate(m.id, 'weight', e.target.value)}
+                    placeholder="—"
+                    class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
+                  />
+                {/if}
               </td>
               <td class="py-2 px-2">
-                <input
-                  type="number"
-                  step="0.5"
-                  value={m.length || ''}
-                  on:change={(e) => handleUpdate(m.id, 'length', e.target.value)}
-                  placeholder="—"
-                  class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
-                />
+                {#if $isActiveChildReadOnly}
+                  <span class="text-sm">{m.length || '—'}</span>
+                {:else}
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={m.length || ''}
+                    on:change={(e) => handleUpdate(m.id, 'length', e.target.value)}
+                    placeholder="—"
+                    class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
+                  />
+                {/if}
               </td>
               <td class="py-2 px-2">
-                <input
-                  type="number"
-                  step="0.5"
-                  value={m.headCirc || ''}
-                  on:change={(e) => handleUpdate(m.id, 'headCirc', e.target.value)}
-                  placeholder="—"
-                  class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
-                />
+                {#if $isActiveChildReadOnly}
+                  <span class="text-sm">{m.headCirc || '—'}</span>
+                {:else}
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={m.headCirc || ''}
+                    on:change={(e) => handleUpdate(m.id, 'headCirc', e.target.value)}
+                    placeholder="—"
+                    class="w-20 px-2 py-1 border border-gray-200 rounded text-sm"
+                  />
+                {/if}
               </td>
               <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.waz)}">
                 {formatZScore(m.zscores?.waz)}
@@ -169,68 +186,72 @@
                 {formatZScore(m.zscores?.wflz)}
               </td>
               <td class="py-2 px-2">
-                <button
-                  on:click={() => handleDelete(m.id)}
-                  class="text-red-500 hover:text-red-700 text-sm"
-                  aria-label={$t('measurements.delete.title')}
-                >
-                  ✕
-                </button>
+                {#if !$isActiveChildReadOnly}
+                  <button
+                    on:click={() => handleDelete(m.id)}
+                    class="text-red-500 hover:text-red-700 text-sm"
+                    aria-label={$t('measurements.delete.title')}
+                  >
+                    ✕
+                  </button>
+                {/if}
               </td>
             </tr>
           {/each}
 
-          <!-- Add new row -->
-          <tr class="bg-blue-50">
-            <td class="py-2 px-2">
-              <input
-                type="date"
-                bind:value={newDate}
-                on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
-                class="w-32 px-2 py-1 border border-blue-200 rounded text-sm"
-              />
-            </td>
-            <td class="py-2 px-2 text-gray-400">—</td>
-            <td class="py-2 px-2">
-              <input
-                type="number"
-                step="25"
-                bind:value={newWeight}
-                on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
-                placeholder="g"
-                class="w-20 px-2 py-1 border border-blue-200 rounded text-sm"
-              />
-            </td>
-            <td class="py-2 px-2">
-              <input
-                type="number"
-                step="0.5"
-                bind:value={newLength}
-                on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
-                placeholder="cm"
-                class="w-20 px-2 py-1 border border-blue-200 rounded text-sm"
-              />
-            </td>
-            <td class="py-2 px-2">
-              <input
-                type="number"
-                step="0.5"
-                bind:value={newHeadCirc}
-                on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
-                placeholder="cm"
-                class="w-20 px-2 py-1 border border-blue-200 rounded text-sm"
-              />
-            </td>
-            <td colspan="4" class="py-2 px-2"></td>
-            <td class="py-2 px-2">
-              <button
-                on:click={handleAddMeasurement}
-                class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
-              >
-                {$t('measurements.add')}
-              </button>
-            </td>
-          </tr>
+          <!-- Add new row (hidden for read-only) -->
+          {#if !$isActiveChildReadOnly}
+            <tr class="bg-blue-50">
+              <td class="py-2 px-2">
+                <input
+                  type="date"
+                  bind:value={newDate}
+                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
+                  class="w-32 px-2 py-1 border border-blue-200 rounded text-sm"
+                />
+              </td>
+              <td class="py-2 px-2 text-gray-400">—</td>
+              <td class="py-2 px-2">
+                <input
+                  type="number"
+                  step="25"
+                  bind:value={newWeight}
+                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
+                  placeholder="g"
+                  class="w-20 px-2 py-1 border border-blue-200 rounded text-sm"
+                />
+              </td>
+              <td class="py-2 px-2">
+                <input
+                  type="number"
+                  step="0.5"
+                  bind:value={newLength}
+                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
+                  placeholder="cm"
+                  class="w-20 px-2 py-1 border border-blue-200 rounded text-sm"
+                />
+              </td>
+              <td class="py-2 px-2">
+                <input
+                  type="number"
+                  step="0.5"
+                  bind:value={newHeadCirc}
+                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
+                  placeholder="cm"
+                  class="w-20 px-2 py-1 border border-blue-200 rounded text-sm"
+                />
+              </td>
+              <td colspan="4" class="py-2 px-2"></td>
+              <td class="py-2 px-2">
+                <button
+                  on:click={handleAddMeasurement}
+                  class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+                >
+                  {$t('measurements.add')}
+                </button>
+              </td>
+            </tr>
+          {/if}
         </tbody>
       </table>
     </div>

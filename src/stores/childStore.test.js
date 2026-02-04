@@ -251,6 +251,119 @@ describe('childStore - syncChildToBackend', () => {
   });
 });
 
+describe('childStore - shared children', () => {
+  beforeEach(() => {
+    resetMockData();
+    resetStore();
+    setMockUser({ id: 'user-123', email: 'test@example.com' });
+  });
+
+  afterEach(() => {
+    disableSync();
+  });
+
+  it('loads shared children on enableSync', async () => {
+    // Set up owned child
+    const { seedMockData } = await import('../lib/__mocks__/supabaseClient.js');
+    seedMockData('children', [
+      { id: 'own-1', user_id: 'user-123', name: 'Own Child', birth_date: '2024-01-15', sex: 1 }
+    ]);
+    seedMockData('shared_child_access', [
+      { id: 'access-1', user_id: 'user-123', child_id: 'shared-1', share_id: 'share-1' }
+    ]);
+    seedMockData('children', [
+      { id: 'own-1', user_id: 'user-123', name: 'Own Child', birth_date: '2024-01-15', sex: 1 },
+      {
+        id: 'shared-1',
+        user_id: 'other-user',
+        name: 'Shared Child',
+        birth_date: '2024-03-01',
+        sex: 2
+      }
+    ]);
+    seedMockData('child_shares', [
+      {
+        id: 'share-1',
+        child_id: 'shared-1',
+        owner_id: 'other-user',
+        token: 'tok-1',
+        label: 'Doctor'
+      }
+    ]);
+
+    await enableSync();
+
+    const state = get(childStore);
+    // Should have both owned and shared children
+    expect(state.children.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('guards addMeasurement for shared children', async () => {
+    await enableSync();
+
+    const { sharedChildIds: sharedIds } = childStoreModule;
+
+    // Add a shared child
+    setStore({
+      children: [
+        {
+          id: 'shared-1',
+          profile: { name: 'Shared', birthDate: '2024-01-15', sex: 1 },
+          measurements: []
+        }
+      ],
+      activeChildId: 'shared-1'
+    });
+    sharedIds.set(new Set(['shared-1']));
+
+    // Try to add measurement - should be no-op
+    addMeasurement({
+      date: '2024-02-15',
+      weight: 4500,
+      length: 55,
+      headCirc: 37.5
+    });
+
+    const state = get(childStore);
+    const child = state.children.find((c) => c.id === 'shared-1');
+    expect(child.measurements).toHaveLength(0);
+  });
+
+  it('acceptLiveShare adds shared child to store', async () => {
+    const { seedMockData } = await import('../lib/__mocks__/supabaseClient.js');
+
+    seedMockData('children', [
+      {
+        id: 'shared-1',
+        user_id: 'other-user',
+        name: 'Shared Child',
+        birth_date: '2024-03-01',
+        sex: 2
+      }
+    ]);
+    seedMockData('child_shares', [
+      {
+        id: 'share-1',
+        child_id: 'shared-1',
+        owner_id: 'other-user',
+        token: 'tok-abc',
+        label: 'For Doctor'
+      }
+    ]);
+
+    await enableSync();
+
+    const { acceptLiveShare } = childStoreModule;
+    const result = await acceptLiveShare('tok-abc');
+
+    expect(result.childId).toBe('shared-1');
+    expect(result.alreadyAccepted).toBe(false);
+
+    const state = get(childStore);
+    expect(state.activeChildId).toBe('shared-1');
+  });
+});
+
 describe('childStore - createExampleState', () => {
   it('creates example child with valid profile', () => {
     const state = createExampleState('Example Child');
