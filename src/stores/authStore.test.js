@@ -5,6 +5,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 
+// Mock window.location for tests that use emailRedirectTo
+globalThis.window = {
+  location: { origin: 'http://localhost', pathname: '/' }
+};
+
 // Create mock state
 let mockUser = null;
 let mockSession = null;
@@ -41,6 +46,31 @@ vi.mock('../lib/supabaseClient.js', () => ({
       signInWithOtp: ({ email }) =>
         Promise.resolve({
           data: { email },
+          error: null
+        }),
+      signInWithPassword: ({ email, password }) => {
+        if (password === 'wrong') {
+          return Promise.resolve({
+            data: { user: null, session: null },
+            error: { message: 'Invalid login credentials' }
+          });
+        }
+        mockUser = {
+          id: 'user-pw-123',
+          email,
+          is_anonymous: false,
+          app_metadata: { provider: 'email' }
+        };
+        mockSession = { user: mockUser, access_token: 'pw-token' };
+        if (authStateCallback) authStateCallback('SIGNED_IN', mockSession);
+        return Promise.resolve({
+          data: { user: mockUser, session: mockSession },
+          error: null
+        });
+      },
+      signUp: ({ email }) =>
+        Promise.resolve({
+          data: { user: { id: 'new-user-123', email }, session: null },
           error: null
         }),
       updateUser: ({ email }) =>
@@ -80,6 +110,8 @@ import {
   isAnonymous,
   initAuth,
   signInAnonymously,
+  signInWithPassword,
+  signUpWithPassword,
   signOut,
   clearError
 } from './authStore.js';
@@ -174,6 +206,35 @@ describe('Auth Store', () => {
       await initAuth();
 
       expect(get(isAnonymous)).toBe(false);
+    });
+  });
+
+  describe('signInWithPassword', () => {
+    it('signs in with email and password', async () => {
+      await initAuth();
+      await signInWithPassword('test@example.com', 'password123');
+
+      expect(get(isAuthenticated)).toBe(true);
+      expect(get(isAnonymous)).toBe(false);
+      expect(get(user).email).toBe('test@example.com');
+    });
+
+    it('sets error on invalid credentials', async () => {
+      await initAuth();
+
+      await expect(signInWithPassword('test@example.com', 'wrong')).rejects.toThrow();
+      expect(get(error)).toBe('Invalid login credentials');
+      expect(get(loading)).toBe(false);
+    });
+  });
+
+  describe('signUpWithPassword', () => {
+    it('creates a new account', async () => {
+      await initAuth();
+      const data = await signUpWithPassword('new@example.com', 'password123');
+
+      expect(data.user.email).toBe('new@example.com');
+      expect(get(loading)).toBe(false);
     });
   });
 
