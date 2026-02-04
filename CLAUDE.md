@@ -86,6 +86,14 @@ Charts use Chart.js (tree-shaken imports) with:
 {/if}
 ```
 
+## Ideas & Backlog
+
+`ideas.md` tracks improvement ideas, bugs, and feature requests. When working on items from this file:
+
+1. Mark completed items by changing `☐` to `☑` and adding a short summary of what was done
+2. When implementing a new feature or fix that corresponds to an ideas.md item, update it in the same commit
+3. New ideas discovered during development can be added to the appropriate section
+
 ## Build Optimizations
 
 Bundle: ~553 KB (172 KB gzipped)
