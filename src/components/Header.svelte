@@ -5,10 +5,11 @@
     isAnonymous,
     loading,
     signInWithEmail,
-    linkWithEmail,
-    signOut
+    linkWithEmail
   } from '../stores/authStore.js';
   import { t } from '../stores/i18n.js';
+
+  export let onSignOut = () => {};
 
   let showEmailInput = false;
   let email = '';
@@ -44,12 +45,8 @@
     }
   }
 
-  async function handleSignOut() {
-    try {
-      await signOut();
-    } catch (err) {
-      console.error('Sign out failed:', err);
-    }
+  function handleSignOut() {
+    onSignOut();
   }
 
   $: userEmail = $user?.email;
@@ -63,7 +60,9 @@
   {:else if showEmailInput}
     <div class="flex items-center gap-2">
       {#if emailSent}
-        <span class="text-sm text-green-600">{$t('auth.emailSent')}</span>
+        <span class="text-sm text-green-600"
+          >{isLinking ? $t('auth.emailSent.claim') : $t('auth.emailSent.signIn')}</span
+        >
         <button
           on:click={closeEmailInput}
           class="px-2 py-1 text-sm text-gray-500 hover:text-gray-700"
@@ -95,7 +94,7 @@
     </div>
   {:else if $isAuthenticated}
     {#if $isAnonymous}
-      <!-- Anonymous user - show claim account button -->
+      <!-- Anonymous user - show claim, sign in, and sign out -->
       <span class="text-sm text-gray-600 hidden sm:block">{$t('auth.anonymous')}</span>
       <button
         on:click={() => openEmailInput(true)}
@@ -110,6 +109,18 @@
           />
         </svg>
         {$t('auth.claimAccount')}
+      </button>
+      <button
+        on:click={() => openEmailInput(false)}
+        class="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded"
+      >
+        {$t('auth.signIn')}
+      </button>
+      <button
+        on:click={handleSignOut}
+        class="px-3 py-1.5 text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 rounded"
+      >
+        {$t('auth.signOut')}
       </button>
     {:else}
       <!-- Authenticated user -->

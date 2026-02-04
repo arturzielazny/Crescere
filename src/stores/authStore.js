@@ -119,19 +119,13 @@ export async function signInWithEmail(email) {
 
 /**
  * Link anonymous account to email
- * Sends a magic link to claim the anonymous account
+ * Uses updateUser to preserve the anonymous user's ID and data
  */
 export async function linkWithEmail(email) {
   authState.update((s) => ({ ...s, loading: true, error: null }));
 
   try {
-    // Use signInWithOtp to send magic link - Supabase will link to current anonymous session
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin + window.location.pathname
-      }
-    });
+    const { data, error } = await supabase.auth.updateUser({ email });
 
     if (error) throw error;
     authState.update((s) => ({ ...s, loading: false }));

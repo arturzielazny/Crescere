@@ -133,11 +133,20 @@ const translations = {
     'auth.emailPlaceholder': 'your@email.com',
     'auth.sendLink': 'Send link',
     'auth.emailSent': 'Check your email!',
+    'auth.emailSent.claim': 'Check your email to confirm your account!',
+    'auth.emailSent.signIn': 'Check your email for a sign-in link!',
     'auth.migrating': 'Migrating your data...',
     'auth.migrated': 'Your data has been migrated to the cloud!',
     'auth.migrated.count': '{count} children migrated',
     'auth.signedInAs': 'Signed in as',
     'auth.guestMode': 'You are using guest mode. Sign in to sync your data across devices.',
+    'auth.welcome.title': 'Welcome to Crescere',
+    'auth.welcome.description':
+      "Track your child's growth using WHO standards. Monitor weight, length, and head circumference with z-score analysis.",
+    'auth.welcome.continueAsGuest': 'Continue as Guest',
+    'auth.welcome.signInWithEmail': 'Sign In with Email',
+    'auth.welcome.guestNote':
+      'Guest data is stored on this device only. Sign in to sync across devices.',
     'app.footer.storage.cloud': 'Data synced to the cloud'
   },
   pl: {
@@ -271,12 +280,21 @@ const translations = {
     'auth.emailPlaceholder': 'twoj@email.pl',
     'auth.sendLink': 'Wyślij link',
     'auth.emailSent': 'Sprawdź email!',
+    'auth.emailSent.claim': 'Sprawdź email, aby potwierdzić konto!',
+    'auth.emailSent.signIn': 'Sprawdź email — znajdziesz tam link do logowania!',
     'auth.migrating': 'Migrowanie danych...',
     'auth.migrated': 'Twoje dane zostały przeniesione do chmury!',
     'auth.migrated.count': 'Zmigrowano {count} dzieci',
     'auth.signedInAs': 'Zalogowano jako',
     'auth.guestMode':
       'Używasz trybu gościa. Zaloguj się, aby synchronizować dane między urządzeniami.',
+    'auth.welcome.title': 'Witaj w Crescere',
+    'auth.welcome.description':
+      'Śledź wzrost swojego dziecka na podstawie standardów WHO. Monitoruj masę, długość i obwód głowy z analizą z-score.',
+    'auth.welcome.continueAsGuest': 'Kontynuuj jako gość',
+    'auth.welcome.signInWithEmail': 'Zaloguj się przez email',
+    'auth.welcome.guestNote':
+      'Dane gościa są przechowywane tylko na tym urządzeniu. Zaloguj się, aby synchronizować między urządzeniami.',
     'app.footer.storage.cloud': 'Dane zsynchronizowane z chmurą'
   }
 };

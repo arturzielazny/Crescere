@@ -28,6 +28,9 @@ export const temporaryChildId = writable(null);
 // Track if we're in sync mode (Supabase connected)
 let syncEnabled = false;
 
+// Track children currently being synced to prevent double-sync
+const syncingChildIds = new Set();
+
 const getActiveChild = (state) => {
   const activeId = state.activeChildId || state.children[0]?.id;
   if (!activeId) return null;
@@ -277,6 +280,9 @@ export function setStore(data) {
 
 export function resetStore() {
   childStore.set(initialState);
+  dataLoading.set(true);
+  dataError.set(null);
+  temporaryChildId.set(null);
 }
 
 export function setActiveChild(childId) {
@@ -354,6 +360,7 @@ export function addChild() {
  */
 export async function syncChildToBackend(childId) {
   if (!syncEnabled) return;
+  if (syncingChildIds.has(childId)) return; // Prevent double-sync
 
   const state = get(childStore);
   const child = state.children.find((c) => c.id === childId);
@@ -362,6 +369,7 @@ export async function syncChildToBackend(childId) {
     return; // Can't create without required fields
   }
 
+  syncingChildIds.add(childId);
   try {
     const realId = await api.createChild(child.profile);
 
@@ -393,6 +401,8 @@ export async function syncChildToBackend(childId) {
     console.error('Failed to sync child:', err);
     dataError.set(err.message);
     throw err;
+  } finally {
+    syncingChildIds.delete(childId);
   }
 }
 
