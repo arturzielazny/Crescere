@@ -87,9 +87,11 @@
 
       // Sync example child to backend so measurements can be added
       if (exampleState.activeChildId) {
-        syncChildToBackend(exampleState.activeChildId).catch((err) => {
+        try {
+          await syncChildToBackend(exampleState.activeChildId);
+        } catch (err) {
           console.error('Failed to sync example child:', err);
-        });
+        }
       }
     }
   }
@@ -176,7 +178,19 @@
   }
 
   function handleExport() {
-    exportData();
+    if (supabaseConfigured) {
+      // In Supabase mode, export from the store (not localStorage)
+      const data = { ...$childStore, version: 2 };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `growth-data-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      exportData();
+    }
   }
 
   function handleClear() {

@@ -146,7 +146,7 @@ const translations = {
     'auth.welcome.continueAsGuest': 'Continue as Guest',
     'auth.welcome.signInWithEmail': 'Sign In with Email',
     'auth.welcome.guestNote':
-      'Guest data is stored on this device only. Sign in to sync across devices.',
+      'Guest data is tied to this browser session. Sign in to access your data from any device.',
     'app.footer.storage.cloud': 'Data synced to the cloud'
   },
   pl: {
@@ -294,7 +294,7 @@ const translations = {
     'auth.welcome.continueAsGuest': 'Kontynuuj jako gość',
     'auth.welcome.signInWithEmail': 'Zaloguj się przez email',
     'auth.welcome.guestNote':
-      'Dane gościa są przechowywane tylko na tym urządzeniu. Zaloguj się, aby synchronizować między urządzeniami.',
+      'Dane gościa są powiązane z tą sesją przeglądarki. Zaloguj się, aby mieć dostęp z dowolnego urządzenia.',
     'app.footer.storage.cloud': 'Dane zsynchronizowane z chmurą'
   }
 };

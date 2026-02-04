@@ -94,7 +94,7 @@
     </div>
   {:else if $isAuthenticated}
     {#if $isAnonymous}
-      <!-- Anonymous user - show claim, sign in, and sign out -->
+      <!-- Anonymous user - show claim and sign in -->
       <span class="text-sm text-gray-600 hidden sm:block">{$t('auth.anonymous')}</span>
       <button
         on:click={() => openEmailInput(true)}
@@ -115,12 +115,6 @@
         class="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded"
       >
         {$t('auth.signIn')}
-      </button>
-      <button
-        on:click={handleSignOut}
-        class="px-3 py-1.5 text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 rounded"
-      >
-        {$t('auth.signOut')}
       </button>
     {:else}
       <!-- Authenticated user -->
