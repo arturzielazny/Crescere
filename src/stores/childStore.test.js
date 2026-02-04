@@ -19,7 +19,13 @@ const {
   syncChildToBackend,
   enableSync,
   disableSync,
+  addChild,
   addMeasurement,
+  updateProfile,
+  updateMeasurement,
+  deleteMeasurement,
+  clearMeasurements,
+  removeChild,
   dataError: _dataError
 } = childStoreModule;
 
@@ -361,6 +367,252 @@ describe('childStore - shared children', () => {
 
     const state = get(childStore);
     expect(state.activeChildId).toBe('shared-1');
+  });
+});
+
+describe('childStore - pending child (RLS fix)', () => {
+  beforeEach(() => {
+    resetMockData();
+    resetStore();
+    setMockUser({ id: 'guest-user-123', is_anonymous: true });
+  });
+
+  afterEach(() => {
+    disableSync();
+  });
+
+  it('addChild tracks child as pending when sync is enabled', async () => {
+    await enableSync();
+
+    addChild();
+
+    const state = get(childStore);
+    const newChild = state.children[0];
+    expect(newChild).toBeDefined();
+    expect(newChild.profile.birthDate).toBeNull();
+    expect(newChild.profile.sex).toBeNull();
+
+    // Child should NOT be created in Supabase yet
+    expect(getMockData('children')).toHaveLength(0);
+  });
+
+  it('addMeasurement skips backend sync for pending child', async () => {
+    await enableSync();
+
+    addChild();
+    const state = get(childStore);
+    const childId = state.children[0].id;
+
+    // Add measurement to pending child - should NOT call Supabase
+    addMeasurement({
+      date: '2024-02-15',
+      weight: 4500,
+      length: 55,
+      headCirc: 37.5
+    });
+
+    // Wait for any async operations
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Measurement should exist locally
+    const updatedState = get(childStore);
+    const child = updatedState.children.find((c) => c.id === childId);
+    expect(child.measurements).toHaveLength(1);
+    expect(child.measurements[0].weight).toBe(4500);
+
+    // But NOT in Supabase (no RLS error)
+    expect(getMockData('measurements')).toHaveLength(0);
+    expect(getMockData('children')).toHaveLength(0);
+  });
+
+  it('updateProfile triggers sync when all required fields are set', async () => {
+    await enableSync();
+
+    addChild();
+
+    // Set birthDate first (still incomplete)
+    updateProfile({ birthDate: '2024-01-15' });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(getMockData('children')).toHaveLength(0);
+
+    // Set sex - now profile is complete, should trigger sync
+    updateProfile({ sex: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Child should now exist in Supabase
+    const dbChildren = getMockData('children');
+    expect(dbChildren).toHaveLength(1);
+    expect(dbChildren[0].birth_date).toBe('2024-01-15');
+    expect(dbChildren[0].sex).toBe(1);
+    expect(dbChildren[0].user_id).toBe('guest-user-123');
+  });
+
+  it('full guest flow: add child -> fill profile -> add measurement (no RLS error)', async () => {
+    await enableSync();
+
+    // Step 1: Guest creates new child
+    addChild();
+    const tempState = get(childStore);
+    const tempId = tempState.children[0].id;
+
+    // Step 2: Guest fills in profile
+    updateProfile({ name: 'My Baby', birthDate: '2024-06-01' });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Still pending (no sex yet)
+    expect(getMockData('children')).toHaveLength(0);
+
+    updateProfile({ sex: 2 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Child should now be synced with a real ID
+    const dbChildren = getMockData('children');
+    expect(dbChildren).toHaveLength(1);
+
+    const stateAfterSync = get(childStore);
+    const realId = stateAfterSync.children[0].id;
+    expect(realId).not.toBe(tempId); // ID should have been replaced
+
+    // Step 3: Guest adds measurement - should succeed without RLS error
+    addMeasurement({
+      date: '2024-06-01',
+      weight: 3200,
+      length: 49,
+      headCirc: 34
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Measurement should exist in Supabase
+    const dbMeasurements = getMockData('measurements');
+    expect(dbMeasurements).toHaveLength(1);
+    expect(dbMeasurements[0].child_id).toBe(realId);
+    expect(dbMeasurements[0].weight).toBe(3200);
+  });
+
+  it('measurements added before profile completion are synced with the child', async () => {
+    await enableSync();
+
+    // Add child and measurements before completing profile
+    addChild();
+    addMeasurement({ date: '2024-06-01', weight: 3200, length: 49, headCirc: 34 });
+    addMeasurement({ date: '2024-07-01', weight: 4100, length: 53, headCirc: 36 });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Nothing in Supabase yet
+    expect(getMockData('children')).toHaveLength(0);
+    expect(getMockData('measurements')).toHaveLength(0);
+
+    // Now complete the profile
+    updateProfile({ name: 'My Baby', birthDate: '2024-06-01', sex: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Both child and measurements should be synced
+    expect(getMockData('children')).toHaveLength(1);
+    expect(getMockData('measurements')).toHaveLength(2);
+  });
+
+  it('updateMeasurement skips backend for pending child', async () => {
+    await enableSync();
+
+    addChild();
+    addMeasurement({ date: '2024-06-01', weight: 3200, length: 49, headCirc: 34 });
+
+    const state = get(childStore);
+    const measId = state.children[0].measurements[0].id;
+
+    // Update measurement on pending child - should not error
+    updateMeasurement(measId, { weight: 3300 });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Verify local update worked
+    const updatedState = get(childStore);
+    expect(updatedState.children[0].measurements[0].weight).toBe(3300);
+
+    // No backend calls
+    expect(getMockData('measurements')).toHaveLength(0);
+  });
+
+  it('deleteMeasurement skips backend for pending child', async () => {
+    await enableSync();
+
+    addChild();
+    addMeasurement({ date: '2024-06-01', weight: 3200, length: 49, headCirc: 34 });
+
+    const state = get(childStore);
+    const measId = state.children[0].measurements[0].id;
+
+    // Delete measurement on pending child - should not error
+    deleteMeasurement(measId);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Verify local delete worked
+    const updatedState = get(childStore);
+    expect(updatedState.children[0].measurements).toHaveLength(0);
+  });
+
+  it('clearMeasurements skips backend for pending child', async () => {
+    await enableSync();
+
+    addChild();
+    addMeasurement({ date: '2024-06-01', weight: 3200, length: 49, headCirc: 34 });
+    addMeasurement({ date: '2024-07-01', weight: 4100, length: 53, headCirc: 36 });
+
+    clearMeasurements();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const state = get(childStore);
+    expect(state.children[0].measurements).toHaveLength(0);
+  });
+
+  it('removeChild skips backend delete for pending child', async () => {
+    await enableSync();
+
+    addChild();
+    const state = get(childStore);
+    const childId = state.children[0].id;
+
+    // Remove pending child - should not try to delete from Supabase
+    removeChild(childId);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const updatedState = get(childStore);
+    expect(updatedState.children).toHaveLength(0);
+  });
+
+  it('resetStore clears pending tracking', async () => {
+    await enableSync();
+
+    addChild();
+
+    // Reset should clear pending state
+    resetStore();
+
+    // After reset, a new enableSync + addChild cycle should work correctly
+    await enableSync();
+    addChild();
+    updateProfile({ name: 'New Baby', birthDate: '2024-01-01', sex: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(getMockData('children')).toHaveLength(1);
+  });
+
+  it('updateProfile does not call updateChild API for pending child', async () => {
+    await enableSync();
+
+    addChild();
+
+    // Set name only (profile still incomplete for sync)
+    updateProfile({ name: 'Baby Name' });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // No API calls should have happened
+    expect(getMockData('children')).toHaveLength(0);
+
+    // Verify name was updated locally
+    const state = get(childStore);
+    expect(state.children[0].profile.name).toBe('Baby Name');
   });
 });
 

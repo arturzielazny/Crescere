@@ -34,6 +34,9 @@ let syncEnabled = false;
 // Track children currently being synced to prevent double-sync
 const syncingChildIds = new Set();
 
+// Track children that exist only locally (not yet created in Supabase)
+const pendingChildIds = new Set();
+
 const getActiveChild = (state) => {
   const activeId = state.activeChildId || state.children[0]?.id;
   if (!activeId) return null;
@@ -166,13 +169,23 @@ export function updateProfile(profile) {
   );
 
   // Sync to backend
-  if (syncEnabled && activeChild && get(temporaryChildId) !== activeChild.id) {
-    api.updateChild(activeChild.id, profile).catch((err) => {
-      console.error('Failed to update profile:', err);
-      // Rollback on error
-      childStore.set(state);
-      dataError.set(err.message);
-    });
+  if (syncEnabled && activeChild) {
+    if (pendingChildIds.has(activeChild.id)) {
+      // Child not yet in Supabase - create it once all required fields are available
+      const updatedState = get(childStore);
+      const updatedChild = getActiveChild(updatedState);
+      if (updatedChild?.profile?.birthDate && updatedChild?.profile?.sex) {
+        syncChildToBackend(activeChild.id).catch((err) => {
+          console.error('Failed to sync new child:', err);
+        });
+      }
+    } else if (get(temporaryChildId) !== activeChild.id) {
+      api.updateChild(activeChild.id, profile).catch((err) => {
+        console.error('Failed to update profile:', err);
+        childStore.set(state);
+        dataError.set(err.message);
+      });
+    }
   }
 }
 
@@ -192,8 +205,13 @@ export function addMeasurement(measurement) {
     }))
   );
 
-  // Sync to backend
-  if (syncEnabled && get(temporaryChildId) !== activeChild.id) {
+  // Sync to backend (skip if child hasn't been created in Supabase yet -
+  // measurements will be synced when the child is created via syncChildToBackend)
+  if (
+    syncEnabled &&
+    get(temporaryChildId) !== activeChild.id &&
+    !pendingChildIds.has(activeChild.id)
+  ) {
     api
       .createMeasurement(activeChild.id, measurement)
       .then((realId) => {
@@ -229,8 +247,8 @@ export function updateMeasurement(id, updates) {
     }))
   );
 
-  // Sync to backend
-  if (syncEnabled) {
+  // Sync to backend (skip if child is pending - will sync with child creation)
+  if (syncEnabled && !pendingChildIds.has(active?.id)) {
     api.updateMeasurement(id, updates).catch((err) => {
       console.error('Failed to update measurement:', err);
       childStore.set(state);
@@ -252,8 +270,8 @@ export function deleteMeasurement(id) {
     }))
   );
 
-  // Sync to backend
-  if (syncEnabled) {
+  // Sync to backend (skip if child is pending - will sync with child creation)
+  if (syncEnabled && !pendingChildIds.has(active?.id)) {
     api.deleteMeasurement(id).catch((err) => {
       console.error('Failed to delete measurement:', err);
       childStore.set(state);
@@ -278,8 +296,8 @@ export function clearMeasurements() {
     }))
   );
 
-  // Sync to backend - delete each measurement
-  if (syncEnabled) {
+  // Sync to backend - delete each measurement (skip if child is pending)
+  if (syncEnabled && !pendingChildIds.has(activeChild.id)) {
     Promise.all(measurementIds.map((id) => api.deleteMeasurement(id))).catch((err) => {
       console.error('Failed to clear measurements:', err);
       childStore.set(state);
@@ -314,6 +332,7 @@ export function resetStore() {
   dataError.set(null);
   temporaryChildId.set(null);
   sharedChildIds.set(new Set());
+  pendingChildIds.clear();
 }
 
 export function setActiveChild(childId) {
@@ -358,8 +377,8 @@ export function removeChild(childId) {
     });
   }
 
-  // Sync to backend
-  if (syncEnabled) {
+  // Sync to backend (skip if child was never created in Supabase)
+  if (syncEnabled && !pendingChildIds.has(childId)) {
     const deleteOp = isShared ? api.removeSharedChild(childId) : api.deleteChild(childId);
     deleteOp.catch((err) => {
       console.error('Failed to delete child:', err);
@@ -367,6 +386,7 @@ export function removeChild(childId) {
       dataError.set(err.message);
     });
   }
+  pendingChildIds.delete(childId);
 }
 
 export function addChild() {
@@ -389,10 +409,10 @@ export function addChild() {
     children: [...state.children, newChild]
   }));
 
-  // Mark as pending creation - will be created on first profile update with required fields
+  // Track as pending creation - will be synced via syncChildToBackend()
+  // when updateProfile() detects all required fields are available
   if (syncEnabled) {
-    // Store a flag that this child needs to be created
-    newChild._pendingCreate = true;
+    pendingChildIds.add(tempId);
   }
 }
 
@@ -438,6 +458,7 @@ export async function syncChildToBackend(childId) {
       }
     }
 
+    pendingChildIds.delete(childId);
     return realId;
   } catch (err) {
     console.error('Failed to sync child:', err);
