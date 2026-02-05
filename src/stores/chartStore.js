@@ -113,6 +113,11 @@ function saveChartSettings(settings) {
 const initial = loadChartSettings();
 
 export const chartOrder = writable(initial.chartOrder);
+export const maximizedChart = writable(null);
+
+export function closeMaximize() {
+  maximizedChart.set(null);
+}
 
 // Auto-save on changes
 chartOrder.subscribe((order) => {
