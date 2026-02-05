@@ -118,6 +118,58 @@ export async function signInWithEmail(email) {
 }
 
 /**
+ * Sign in with email and password
+ */
+export async function signInWithPassword(email, password) {
+  authState.update((s) => ({ ...s, loading: true, error: null }));
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) throw error;
+
+    authState.set({
+      user: data.user,
+      session: data.session,
+      loading: false,
+      error: null
+    });
+
+    return data;
+  } catch (err) {
+    authState.update((s) => ({ ...s, loading: false, error: err.message }));
+    throw err;
+  }
+}
+
+/**
+ * Sign up with email and password
+ */
+export async function signUpWithPassword(email, password) {
+  authState.update((s) => ({ ...s, loading: true, error: null }));
+
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname
+      }
+    });
+
+    if (error) throw error;
+    authState.update((s) => ({ ...s, loading: false }));
+    return data;
+  } catch (err) {
+    authState.update((s) => ({ ...s, loading: false, error: err.message }));
+    throw err;
+  }
+}
+
+/**
  * Link anonymous account to email
  * Uses updateUser to preserve the anonymous user's ID and data
  */
@@ -126,6 +178,25 @@ export async function linkWithEmail(email) {
 
   try {
     const { data, error } = await supabase.auth.updateUser({ email });
+
+    if (error) throw error;
+    authState.update((s) => ({ ...s, loading: false }));
+    return data;
+  } catch (err) {
+    authState.update((s) => ({ ...s, loading: false, error: err.message }));
+    throw err;
+  }
+}
+
+/**
+ * Link anonymous account with email and password
+ * Uses updateUser to preserve the anonymous user's ID and data
+ */
+export async function linkWithPassword(email, password) {
+  authState.update((s) => ({ ...s, loading: true, error: null }));
+
+  try {
+    const { data, error } = await supabase.auth.updateUser({ email, password });
 
     if (error) throw error;
     authState.update((s) => ({ ...s, loading: false }));

@@ -1,22 +1,60 @@
 <script>
   import { t } from '../stores/i18n.js';
-  import { signInWithEmail } from '../stores/authStore.js';
+  import {
+    signInWithEmail,
+    signInWithPassword,
+    signUpWithPassword,
+    error as authError,
+    clearError
+  } from '../stores/authStore.js';
 
   export let onContinueAsGuest;
 
   let showEmailInput = false;
   let email = '';
+  let password = '';
   let emailSent = false;
   let sending = false;
+  let usePassword = false;
+  let isSignUp = false;
+
+  function resetForm() {
+    showEmailInput = false;
+    email = '';
+    password = '';
+    emailSent = false;
+    usePassword = false;
+    isSignUp = false;
+    clearError();
+  }
 
   async function handleSendLink() {
     if (!email) return;
     sending = true;
+    clearError();
     try {
       await signInWithEmail(email);
       emailSent = true;
-    } catch (err) {
-      console.error('Sign-in email failed:', err);
+    } catch (_err) {
+      // error is set in auth store
+    } finally {
+      sending = false;
+    }
+  }
+
+  async function handlePasswordSubmit() {
+    if (!email || !password) return;
+    sending = true;
+    clearError();
+    try {
+      if (isSignUp) {
+        await signUpWithPassword(email, password);
+        emailSent = true;
+      } else {
+        await signInWithPassword(email, password);
+      }
+    } catch (_err) {
+      // error is set in auth store
     } finally {
       sending = false;
     }
@@ -42,7 +80,7 @@
 
       {#if emailSent}
         <div class="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-          {$t('auth.emailSent.signIn')}
+          {isSignUp ? $t('auth.signUpSent') : $t('auth.emailSent.signIn')}
         </div>
       {:else if showEmailInput}
         <div class="space-y-2">
@@ -51,26 +89,73 @@
             bind:value={email}
             placeholder={$t('auth.emailPlaceholder')}
             class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-            on:keydown={(e) => e.key === 'Enter' && handleSendLink()}
+            on:keydown={(e) =>
+              e.key === 'Enter' && (usePassword ? handlePasswordSubmit() : handleSendLink())}
           />
+
+          {#if usePassword}
+            <input
+              type="password"
+              bind:value={password}
+              placeholder={$t('auth.passwordPlaceholder')}
+              class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              on:keydown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+            />
+          {/if}
+
+          {#if $authError}
+            <p class="text-sm text-red-600">{$authError}</p>
+          {/if}
+
           <div class="flex gap-2">
+            {#if usePassword}
+              <button
+                on:click={handlePasswordSubmit}
+                disabled={!email || !password || sending}
+                class="flex-1 px-4 py-2 text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSignUp ? $t('auth.signUpWithPassword') : $t('auth.signInWithPassword')}
+              </button>
+            {:else}
+              <button
+                on:click={handleSendLink}
+                disabled={!email || sending}
+                class="flex-1 px-4 py-2 text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {$t('auth.sendLink')}
+              </button>
+            {/if}
             <button
-              on:click={handleSendLink}
-              disabled={!email || sending}
-              class="flex-1 px-4 py-2 text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {$t('auth.sendLink')}
-            </button>
-            <button
-              on:click={() => {
-                showEmailInput = false;
-                email = '';
-              }}
+              on:click={resetForm}
               class="px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
             >
               ✕
             </button>
           </div>
+
+          <button
+            on:click={() => {
+              usePassword = !usePassword;
+              password = '';
+              isSignUp = false;
+              clearError();
+            }}
+            class="w-full text-xs text-blue-500 hover:text-blue-700"
+          >
+            {usePassword ? $t('auth.switchToMagicLink') : $t('auth.switchToPassword')}
+          </button>
+
+          {#if usePassword}
+            <button
+              on:click={() => {
+                isSignUp = !isSignUp;
+                clearError();
+              }}
+              class="w-full text-xs text-gray-500 hover:text-gray-700"
+            >
+              {isSignUp ? $t('auth.switchToSignIn') : $t('auth.switchToSignUp')}
+            </button>
+          {/if}
         </div>
       {:else}
         <button

@@ -5,7 +5,12 @@
     isAnonymous,
     loading,
     signInWithEmail,
-    linkWithEmail
+    signInWithPassword,
+    signUpWithPassword,
+    linkWithEmail,
+    linkWithPassword,
+    error as authError,
+    clearError
   } from '../stores/authStore.js';
   import { t } from '../stores/i18n.js';
 
@@ -13,35 +18,59 @@
 
   let showEmailInput = false;
   let email = '';
+  let password = '';
   let emailSent = false;
   let isLinking = false;
+  let usePassword = false;
+  let isSignUp = false;
 
   function openEmailInput(linking = false) {
     isLinking = linking;
     showEmailInput = true;
     email = '';
+    password = '';
     emailSent = false;
+    usePassword = false;
+    isSignUp = false;
+    clearError();
   }
 
   function closeEmailInput() {
     showEmailInput = false;
     email = '';
+    password = '';
     emailSent = false;
     isLinking = false;
+    usePassword = false;
+    isSignUp = false;
+    clearError();
   }
 
   async function handleEmailSubmit() {
     if (!email) return;
+    clearError();
 
     try {
-      if (isLinking) {
-        await linkWithEmail(email);
+      if (usePassword) {
+        if (isLinking) {
+          await linkWithPassword(email, password);
+          emailSent = true;
+        } else if (isSignUp) {
+          await signUpWithPassword(email, password);
+          emailSent = true;
+        } else {
+          await signInWithPassword(email, password);
+        }
       } else {
-        await signInWithEmail(email);
+        if (isLinking) {
+          await linkWithEmail(email);
+        } else {
+          await signInWithEmail(email);
+        }
+        emailSent = true;
       }
-      emailSent = true;
-    } catch (err) {
-      console.error('Email auth failed:', err);
+    } catch (_err) {
+      // error is set in auth store
     }
   }
 
@@ -58,11 +87,15 @@
   {#if $loading}
     <span class="text-sm text-gray-500">{$t('auth.loading')}</span>
   {:else if showEmailInput}
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 flex-wrap">
       {#if emailSent}
-        <span class="text-sm text-green-600"
-          >{isLinking ? $t('auth.emailSent.claim') : $t('auth.emailSent.signIn')}</span
-        >
+        <span class="text-sm text-green-600">
+          {isLinking
+            ? $t('auth.emailSent.claim')
+            : isSignUp
+              ? $t('auth.signUpSent')
+              : $t('auth.emailSent.signIn')}
+        </span>
         <button
           on:click={closeEmailInput}
           class="px-2 py-1 text-sm text-gray-500 hover:text-gray-700"
@@ -75,21 +108,60 @@
           bind:value={email}
           placeholder={$t('auth.emailPlaceholder')}
           class="px-2 py-1 text-sm border border-gray-200 rounded w-48 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          on:keydown={(e) => e.key === 'Enter' && handleEmailSubmit()}
+          on:keydown={(e) => e.key === 'Enter' && !usePassword && handleEmailSubmit()}
         />
+        {#if usePassword}
+          <input
+            type="password"
+            bind:value={password}
+            placeholder={$t('auth.passwordPlaceholder')}
+            class="px-2 py-1 text-sm border border-gray-200 rounded w-36 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            on:keydown={(e) => e.key === 'Enter' && handleEmailSubmit()}
+          />
+        {/if}
         <button
           on:click={handleEmailSubmit}
-          disabled={!email}
+          disabled={!email || (usePassword && !password)}
           class="px-3 py-1 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {$t('auth.sendLink')}
+          {#if usePassword}
+            {isSignUp ? $t('auth.signUp') : $t('auth.signInWithPassword')}
+          {:else}
+            {$t('auth.sendLink')}
+          {/if}
         </button>
+        <button
+          on:click={() => {
+            usePassword = !usePassword;
+            password = '';
+            isSignUp = false;
+            clearError();
+          }}
+          class="px-2 py-1 text-xs text-blue-500 hover:text-blue-700"
+          title={usePassword ? $t('auth.switchToMagicLink') : $t('auth.switchToPassword')}
+        >
+          {usePassword ? $t('auth.switchToMagicLink') : $t('auth.switchToPassword')}
+        </button>
+        {#if usePassword && !isLinking}
+          <button
+            on:click={() => {
+              isSignUp = !isSignUp;
+              clearError();
+            }}
+            class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+          >
+            {isSignUp ? $t('auth.switchToSignIn') : $t('auth.switchToSignUp')}
+          </button>
+        {/if}
         <button
           on:click={closeEmailInput}
           class="px-2 py-1 text-sm text-gray-500 hover:text-gray-700"
         >
           ✕
         </button>
+        {#if $authError}
+          <span class="text-xs text-red-600 w-full">{$authError}</span>
+        {/if}
       {/if}
     </div>
   {:else if $isAuthenticated}
