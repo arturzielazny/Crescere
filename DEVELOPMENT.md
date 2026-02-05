@@ -329,6 +329,54 @@ npm run test:all          # All tests
 - Test z-score calculations against known WHO values
 - Test store mutations and their rollback behavior
 
+## Code Analysis & Reports
+
+A full suite of static analysis tools generates HTML reports in `reports/` (git-ignored).
+
+### Quick start
+
+```bash
+npm run analyze          # Run ALL tools, print summary
+npm run analyze:open     # Same + open HTML reports in browser
+```
+
+### Individual tools
+
+```bash
+npm run analyze:coverage       # Test coverage (HTML + lcov + JSON)
+npm run analyze:bundle         # Bundle treemap visualization
+npm run analyze:duplication    # Copy/paste detection
+npm run analyze:deps           # Circular deps (madge) + dead code (knip)
+npm run analyze:lighthouse     # Lighthouse performance audit (needs Chrome)
+npm run analyze:lighthouse:open  # Same + open report
+```
+
+### What each tool does
+
+| Tool | Runs via | Report | What it finds |
+|------|----------|--------|---------------|
+| **eslint-plugin-sonarjs** | `npm run lint` | Console | Code smells: cognitive complexity, duplicate strings, nested conditionals, ignored exceptions |
+| **@vitest/coverage-v8** | `analyze:coverage` | `reports/coverage/index.html` | Line/branch/function/statement coverage with thresholds |
+| **jscpd** | `analyze:duplication` | `reports/duplication/html/index.html` | Duplicated code blocks across files |
+| **rollup-plugin-visualizer** | `analyze:bundle` | `reports/bundle.html` | Interactive treemap of bundle composition (gzip + brotli sizes) |
+| **madge** | `analyze:deps` | Console (+ SVG if graphviz installed) | Circular dependencies between JS modules |
+| **knip** | `analyze:deps` | Console | Unused exports, files, and dependencies |
+| **Lighthouse** | `analyze:lighthouse` | `reports/lighthouse.html` | Performance, accessibility, best practices, SEO audit |
+
+### Configuration files
+
+- **`.jscpd.json`** — duplication detection thresholds and ignored paths
+- **`knip.config.js`** — entry points and ignored dependencies for dead code detection
+- **`vite.config.js`** `test.coverage` — coverage thresholds and included/excluded paths
+- **`eslint.config.js`** — sonarjs rule tuning (thresholds, disabled rules, per-directory overrides)
+
+### Notes
+
+- The bundle visualizer only activates when `ANALYZE=true` is set (used by `analyze:bundle`). Normal `npm run build` is unaffected.
+- Coverage thresholds are intentionally low (30%) since Svelte components aren't unit-tested. The `src/lib/` layer has ~84% coverage.
+- The dependency graph SVG requires graphviz: `brew install graphviz`. Without it, madge still detects circular deps but skips the graph.
+- Lighthouse builds the app, starts a preview server, runs the audit, and cleans up automatically. Requires Chrome/Chromium.
+
 ## Code Style & Linting
 
 Enforced automatically via pre-commit hooks (Husky + lint-staged):
@@ -337,6 +385,7 @@ Enforced automatically via pre-commit hooks (Husky + lint-staged):
 |-----------------------|-----------|-----------------------|
 | Formatting            | Prettier  | `.prettierrc`         |
 | Code quality          | ESLint    | `eslint.config.js`    |
+| Code smells           | SonarJS   | `eslint.config.js`    |
 | 2-space indentation   | Prettier  | -                     |
 | Single quotes         | Prettier  | -                     |
 | Semicolons            | Prettier  | -                     |

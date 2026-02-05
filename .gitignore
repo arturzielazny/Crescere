@@ -26,5 +26,8 @@ dist-ssr
 # Environment variables
 .env
 
+# Analysis reports
+reports/
+
 # Claude Code
 .claude

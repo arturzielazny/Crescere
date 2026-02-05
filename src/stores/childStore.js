@@ -163,6 +163,23 @@ export function disableSync() {
 }
 
 // ============================================================================
+// Sync helpers — shared by all optimistic-update functions below
+// ============================================================================
+
+/** Whether a child should be synced to the backend (not example, not pending) */
+function shouldSync(childId) {
+  return syncEnabled && get(exampleChildId) !== childId && !pendingChildIds.has(childId);
+}
+
+/** Run an API call; on failure, rollback the store to the snapshot and set dataError */
+function syncWithRollback(snapshot, apiCall) {
+  apiCall().catch((err) => {
+    childStore.set(snapshot);
+    dataError.set(err.message);
+  });
+}
+
+// ============================================================================
 // Helper actions - these work synchronously for UI, then sync to backend
 // ============================================================================
 
@@ -182,7 +199,6 @@ export function updateProfile(profile) {
   // Sync to backend (skip example child — it's client-side only)
   if (syncEnabled && activeChild && get(exampleChildId) !== activeChild.id) {
     if (pendingChildIds.has(activeChild.id)) {
-      // Child not yet in Supabase - create it once all required fields are available
       const updatedState = get(childStore);
       const updatedChild = getActiveChild(updatedState);
       if (updatedChild?.profile?.birthDate && updatedChild?.profile?.sex) {
@@ -191,11 +207,7 @@ export function updateProfile(profile) {
         });
       }
     } else {
-      api.updateChild(activeChild.id, profile).catch((err) => {
-        console.error('Failed to update profile:', err);
-        childStore.set(state);
-        dataError.set(err.message);
-      });
+      syncWithRollback(state, () => api.updateChild(activeChild.id, profile));
     }
   }
 }
@@ -216,16 +228,10 @@ export function addMeasurement(measurement) {
     }))
   );
 
-  // Sync to backend (skip example/pending children)
-  if (
-    syncEnabled &&
-    get(exampleChildId) !== activeChild.id &&
-    !pendingChildIds.has(activeChild.id)
-  ) {
+  if (shouldSync(activeChild.id)) {
     api
       .createMeasurement(activeChild.id, measurement)
       .then((realId) => {
-        // Replace temp ID with real ID
         childStore.update((s) =>
           updateActiveChild(s, (child) => ({
             ...child,
@@ -236,8 +242,6 @@ export function addMeasurement(measurement) {
         );
       })
       .catch((err) => {
-        console.error('Failed to add measurement:', err);
-        // Rollback
         childStore.set(state);
         dataError.set(err.message);
       });
@@ -257,13 +261,8 @@ export function updateMeasurement(id, updates) {
     }))
   );
 
-  // Sync to backend (skip example/pending children)
-  if (syncEnabled && get(exampleChildId) !== active?.id && !pendingChildIds.has(active?.id)) {
-    api.updateMeasurement(id, updates).catch((err) => {
-      console.error('Failed to update measurement:', err);
-      childStore.set(state);
-      dataError.set(err.message);
-    });
+  if (shouldSync(active?.id)) {
+    syncWithRollback(state, () => api.updateMeasurement(id, updates));
   }
 }
 
@@ -280,13 +279,8 @@ export function deleteMeasurement(id) {
     }))
   );
 
-  // Sync to backend (skip example/pending children)
-  if (syncEnabled && get(exampleChildId) !== active?.id && !pendingChildIds.has(active?.id)) {
-    api.deleteMeasurement(id).catch((err) => {
-      console.error('Failed to delete measurement:', err);
-      childStore.set(state);
-      dataError.set(err.message);
-    });
+  if (shouldSync(active?.id)) {
+    syncWithRollback(state, () => api.deleteMeasurement(id));
   }
 }
 
@@ -306,17 +300,10 @@ export function clearMeasurements() {
     }))
   );
 
-  // Sync to backend - delete each measurement (skip example/pending children)
-  if (
-    syncEnabled &&
-    get(exampleChildId) !== activeChild.id &&
-    !pendingChildIds.has(activeChild.id)
-  ) {
-    Promise.all(measurementIds.map((id) => api.deleteMeasurement(id))).catch((err) => {
-      console.error('Failed to clear measurements:', err);
-      childStore.set(state);
-      dataError.set(err.message);
-    });
+  if (shouldSync(activeChild.id)) {
+    syncWithRollback(state, () =>
+      Promise.all(measurementIds.map((mid) => api.deleteMeasurement(mid)))
+    );
   }
 }
 
@@ -391,14 +378,10 @@ export function removeChild(childId) {
     });
   }
 
-  // Sync to backend (skip example/pending children — never created in Supabase)
-  if (syncEnabled && get(exampleChildId) !== childId && !pendingChildIds.has(childId)) {
-    const deleteOp = isShared ? api.removeSharedChild(childId) : api.deleteChild(childId);
-    deleteOp.catch((err) => {
-      console.error('Failed to delete child:', err);
-      childStore.set(state);
-      dataError.set(err.message);
-    });
+  if (shouldSync(childId)) {
+    syncWithRollback(state, () =>
+      isShared ? api.removeSharedChild(childId) : api.deleteChild(childId)
+    );
   }
   pendingChildIds.delete(childId);
 }

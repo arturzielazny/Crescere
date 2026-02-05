@@ -68,24 +68,22 @@ export async function initAuth() {
 }
 
 /**
- * Sign in anonymously
- * Creates a new anonymous user that can later be linked to a real account
+ * Wraps an auth operation with loading/error state management.
+ * Sets loading=true before, loading=false after, captures errors.
+ * @param {() => Promise<{data?: any, error?: any}>} fn - Supabase auth call
+ * @param {(data: any) => void} [onSuccess] - Optional callback to set auth state on success
  */
-export async function signInAnonymously() {
+async function withAuthLoading(fn, onSuccess) {
   authState.update((s) => ({ ...s, loading: true, error: null }));
-
   try {
-    const { data, error } = await supabase.auth.signInAnonymously();
-
+    const result = await fn();
+    const { data, error } = result;
     if (error) throw error;
-
-    authState.set({
-      user: data.user,
-      session: data.session,
-      loading: false,
-      error: null
-    });
-
+    if (onSuccess) {
+      onSuccess(data);
+    } else {
+      authState.update((s) => ({ ...s, loading: false }));
+    }
     return data;
   } catch (err) {
     authState.update((s) => ({ ...s, loading: false, error: err.message }));
@@ -93,141 +91,66 @@ export async function signInAnonymously() {
   }
 }
 
-/**
- * Sign in with email (magic link)
- * Sends a passwordless login link to the user's email
- */
-export async function signInWithEmail(email) {
-  authState.update((s) => ({ ...s, loading: true, error: null }));
+/** Set full auth state from a supabase response with user+session */
+function setAuthSession(data) {
+  authState.set({
+    user: data.user,
+    session: data.session,
+    loading: false,
+    error: null
+  });
+}
 
-  try {
-    const { data, error } = await supabase.auth.signInWithOtp({
+/** Sign in anonymously — creates a new anonymous user */
+export function signInAnonymously() {
+  return withAuthLoading(() => supabase.auth.signInAnonymously(), setAuthSession);
+}
+
+/** Sign in with email (magic link) */
+export function signInWithEmail(email) {
+  return withAuthLoading(() =>
+    supabase.auth.signInWithOtp({
       email,
-      options: {
-        emailRedirectTo: window.location.origin + window.location.pathname
-      }
-    });
-
-    if (error) throw error;
-    authState.update((s) => ({ ...s, loading: false }));
-    return data;
-  } catch (err) {
-    authState.update((s) => ({ ...s, loading: false, error: err.message }));
-    throw err;
-  }
+      options: { emailRedirectTo: window.location.origin + window.location.pathname }
+    })
+  );
 }
 
-/**
- * Sign in with email and password
- */
-export async function signInWithPassword(email, password) {
-  authState.update((s) => ({ ...s, loading: true, error: null }));
-
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) throw error;
-
-    authState.set({
-      user: data.user,
-      session: data.session,
-      loading: false,
-      error: null
-    });
-
-    return data;
-  } catch (err) {
-    authState.update((s) => ({ ...s, loading: false, error: err.message }));
-    throw err;
-  }
+/** Sign in with email and password */
+export function signInWithPassword(email, password) {
+  return withAuthLoading(
+    () => supabase.auth.signInWithPassword({ email, password }),
+    setAuthSession
+  );
 }
 
-/**
- * Sign up with email and password
- */
-export async function signUpWithPassword(email, password) {
-  authState.update((s) => ({ ...s, loading: true, error: null }));
-
-  try {
-    const { data, error } = await supabase.auth.signUp({
+/** Sign up with email and password */
+export function signUpWithPassword(email, password) {
+  return withAuthLoading(() =>
+    supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: window.location.origin + window.location.pathname
-      }
-    });
-
-    if (error) throw error;
-    authState.update((s) => ({ ...s, loading: false }));
-    return data;
-  } catch (err) {
-    authState.update((s) => ({ ...s, loading: false, error: err.message }));
-    throw err;
-  }
+      options: { emailRedirectTo: window.location.origin + window.location.pathname }
+    })
+  );
 }
 
-/**
- * Link anonymous account to email
- * Uses updateUser to preserve the anonymous user's ID and data
- */
-export async function linkWithEmail(email) {
-  authState.update((s) => ({ ...s, loading: true, error: null }));
-
-  try {
-    const { data, error } = await supabase.auth.updateUser({ email });
-
-    if (error) throw error;
-    authState.update((s) => ({ ...s, loading: false }));
-    return data;
-  } catch (err) {
-    authState.update((s) => ({ ...s, loading: false, error: err.message }));
-    throw err;
-  }
+/** Link anonymous account to email */
+export function linkWithEmail(email) {
+  return withAuthLoading(() => supabase.auth.updateUser({ email }));
 }
 
-/**
- * Link anonymous account with email and password
- * Uses updateUser to preserve the anonymous user's ID and data
- */
-export async function linkWithPassword(email, password) {
-  authState.update((s) => ({ ...s, loading: true, error: null }));
-
-  try {
-    const { data, error } = await supabase.auth.updateUser({ email, password });
-
-    if (error) throw error;
-    authState.update((s) => ({ ...s, loading: false }));
-    return data;
-  } catch (err) {
-    authState.update((s) => ({ ...s, loading: false, error: err.message }));
-    throw err;
-  }
+/** Link anonymous account with email and password */
+export function linkWithPassword(email, password) {
+  return withAuthLoading(() => supabase.auth.updateUser({ email, password }));
 }
 
-/**
- * Sign out the current user
- */
-export async function signOut() {
-  authState.update((s) => ({ ...s, loading: true, error: null }));
-
-  try {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) throw error;
-
-    authState.set({
-      user: null,
-      session: null,
-      loading: false,
-      error: null
-    });
-  } catch (err) {
-    authState.update((s) => ({ ...s, loading: false, error: err.message }));
-    throw err;
-  }
+/** Sign out the current user */
+export function signOut() {
+  return withAuthLoading(
+    () => supabase.auth.signOut(),
+    () => authState.set({ user: null, session: null, loading: false, error: null })
+  );
 }
 
 /**

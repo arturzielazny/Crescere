@@ -1,0 +1,11 @@
+{
+  "threshold": 5,
+  "reporters": ["html", "console"],
+  "output": "reports/duplication",
+  "ignore": ["node_modules", "dist", "reports", "src/data/**"],
+  "absolute": false,
+  "gitignore": true,
+  "format": ["javascript", "svelte"],
+  "minLines": 5,
+  "minTokens": 50
+}

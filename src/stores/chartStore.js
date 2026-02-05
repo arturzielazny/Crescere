@@ -143,10 +143,6 @@ export function setColumnsPerRow(cols) {
   columnsPerRow.set(cols);
 }
 
-export function toggleMaximize(chartId) {
-  maximizedChart.update((current) => (current === chartId ? null : chartId));
-}
-
 export function closeMaximize() {
   maximizedChart.set(null);
 }
