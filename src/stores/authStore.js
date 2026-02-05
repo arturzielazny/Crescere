@@ -145,6 +145,11 @@ export function linkWithPassword(email, password) {
   return withAuthLoading(() => supabase.auth.updateUser({ email, password }));
 }
 
+/** Set or update password for current user */
+export function setPassword(password) {
+  return withAuthLoading(() => supabase.auth.updateUser({ password }));
+}
+
 /** Sign out the current user */
 export function signOut() {
   return withAuthLoading(
