@@ -2,7 +2,7 @@
  * Shared utility functions
  */
 
-import { getZScoreClass, zToPercentile } from './zscore.js';
+import { getZScoreClass, zToPercentile, calculateAgeInDays } from './zscore.js';
 
 /**
  * Check if a date string is in the future
@@ -83,4 +83,42 @@ export function formatPercentile(z, locale = 'en') {
   else if (mod10 === 3 && mod100 !== 13) suffix = 'rd';
 
   return `${rounded}${suffix}`;
+}
+
+/**
+ * Compute growth velocity (daily rate of change) between consecutive measurements
+ * @param {Array} measurements - Sorted array of measurement objects with date field
+ * @param {string} key - Data key ('weight' or 'length')
+ * @param {string} birthDate - ISO date string (YYYY-MM-DD) for age calculation
+ * @returns {Array<{x: number, y: number, fromAge: number, toAge: number, fromValue: number, toValue: number}>}
+ */
+export function computeVelocity(measurements, key, birthDate) {
+  if (!measurements || measurements.length < 2 || !birthDate) return [];
+
+  const valid = measurements
+    .filter((m) => m[key] !== null && m[key] !== undefined && !isNaN(m[key]))
+    .map((m) => ({
+      age: calculateAgeInDays(birthDate, m.date),
+      value: m[key]
+    }))
+    .sort((a, b) => a.age - b.age);
+
+  const result = [];
+  for (let i = 1; i < valid.length; i++) {
+    const prev = valid[i - 1];
+    const curr = valid[i];
+    const daysDiff = curr.age - prev.age;
+    if (daysDiff <= 0) continue;
+
+    const dailyRate = (curr.value - prev.value) / daysDiff;
+    result.push({
+      x: (prev.age + curr.age) / 2,
+      y: dailyRate,
+      fromAge: prev.age,
+      toAge: curr.age,
+      fromValue: prev.value,
+      toValue: curr.value
+    });
+  }
+  return result;
 }

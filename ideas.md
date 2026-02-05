@@ -15,8 +15,8 @@
 ## Data & Feature Gaps
 
 - ☐ **Limited to 0-5 years.** WHO data only covers 0-1826 days. No way to track older children. Should at least show a message explaining this limit, and ideally support WHO 5-19 year references.
-- ☐ **No percentile display.** Parents and doctors think in percentiles ("90th percentile"), not z-scores. Adding percentile conversion would make it much more accessible.
-- ☐ **No growth velocity / rate of change.** Clinicians care about the trend, not just the current point. "Is the child gaining weight faster or slower than expected?" is unanswered.
+- ☑ **No percentile display.** Fixed — added zToPercentile() using Abramowitz & Stegun CDF approximation. Percentiles show below z-scores in the measurement table and in chart tooltips. Locale-aware: English ordinals ("50th") and Polish dot notation ("50.").
+- ☑ **No growth velocity / rate of change.** Fixed — added velocity charts showing average daily gain (g/day for weight, cm/day for length) between consecutive measurements, plotted at midpoint ages. Tooltips show age range, rate, and absolute change.
 - ☐ **No BMI calculation.** Weight-for-length is shown, but BMI (common for 2+ years) is missing.
 - ☐ **No notes on measurements.** Parents might want to note "sick this week" or "started solids" next to a measurement.
 - ☐ **Date input allows invalid values.** Future birth dates, measurements dated before birth, or dates far in the future are all accepted without warning.

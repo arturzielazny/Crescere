@@ -11,6 +11,7 @@
   import { t } from '../stores/i18n.js';
   import GrowthMetricChart from './GrowthMetricChart.svelte';
   import ZScoreChart from './ZScoreChart.svelte';
+  import VelocityChart from './VelocityChart.svelte';
 
   let draggedIndex = null;
   let dragOverIndex = null;
@@ -30,7 +31,9 @@
     waz: $t('chart.waz'),
     lhaz: $t('chart.lhaz'),
     headcz: $t('chart.headcz'),
-    wflz: $t('chart.wflz')
+    wflz: $t('chart.wflz'),
+    weightVelocity: $t('chart.weightVelocity.title'),
+    lengthVelocity: $t('chart.lengthVelocity.title')
   };
 
   function handleDragStart(event, index) {
@@ -78,7 +81,14 @@
     if (chart.type === 'growth') {
       return chart.id === 'weight' ? 'g' : 'cm';
     }
+    if (chart.type === 'velocity') {
+      return chart.id === 'weightVelocity' ? 'g/day' : 'cm/day';
+    }
     return '';
+  }
+
+  function getVelocityMetric(chartId) {
+    return chartId === 'weightVelocity' ? 'weight' : 'length';
   }
 </script>
 
@@ -158,6 +168,12 @@
           unit={getChartUnit(chart)}
           maxAge={$maxAgeInDays}
         />
+      {:else if chart.type === 'velocity'}
+        <VelocityChart
+          metric={getVelocityMetric(chart.id)}
+          title={chartTitles[chart.id]}
+          maxAge={$maxAgeInDays}
+        />
       {:else}
         <ZScoreChart metric={chart.id} title={chartTitles[chart.id]} maxAge={$maxAgeInDays} />
       {/if}
@@ -206,6 +222,12 @@
                   metric={chart.id}
                   title={chartTitles[chart.id]}
                   unit={getChartUnit(chart)}
+                  maxAge={$maxAgeInDays}
+                />
+              {:else if chart.type === 'velocity'}
+                <VelocityChart
+                  metric={getVelocityMetric(chart.id)}
+                  title={chartTitles[chart.id]}
                   maxAge={$maxAgeInDays}
                 />
               {:else}

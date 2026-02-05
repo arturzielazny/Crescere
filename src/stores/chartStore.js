@@ -14,7 +14,9 @@ const defaultChartOrder = [
   { id: 'lhaz', type: 'zscore' },
   { id: 'headCirc', type: 'growth' },
   { id: 'wflz', type: 'zscore' },
-  { id: 'headcz', type: 'zscore' }
+  { id: 'headcz', type: 'zscore' },
+  { id: 'weightVelocity', type: 'velocity' },
+  { id: 'lengthVelocity', type: 'velocity' }
 ];
 
 function loadChartSettings() {
@@ -30,8 +32,18 @@ function loadChartSettings() {
       if (parsed.growthOrder || parsed.zscoreOrder) {
         return { chartOrder: defaultChartOrder, columnsPerRow: parsed.columnsPerRow || 3 };
       }
+      let chartOrder = parsed.chartOrder || defaultChartOrder;
+      // Migrate: add velocity charts if missing
+      const hasVelocity = chartOrder.some((c) => c.type === 'velocity');
+      if (!hasVelocity) {
+        chartOrder = [
+          ...chartOrder,
+          { id: 'weightVelocity', type: 'velocity' },
+          { id: 'lengthVelocity', type: 'velocity' }
+        ];
+      }
       return {
-        chartOrder: parsed.chartOrder || defaultChartOrder,
+        chartOrder,
         columnsPerRow: parsed.columnsPerRow || 3
       };
     }
