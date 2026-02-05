@@ -358,20 +358,19 @@
         <ChildList />
         <ChildProfile />
 
-        <div class="lg:flex lg:gap-4 lg:items-start">
-          <!-- Left sidebar: compact measurement entry -->
+        <div class="lg:flex lg:gap-6 lg:items-start">
+          <!-- Left panel: measurement entry (1/3) -->
           <aside
-            class="lg:w-72 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto mb-4 lg:mb-0 bg-white rounded-lg shadow p-3"
+            class="lg:w-1/3 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto mb-4 lg:mb-0"
           >
-            <h2 class="text-sm font-semibold text-gray-800 mb-2">{$t('measurements.title')}</h2>
             <MeasurementTable compact />
-          </aside>
-
-          <!-- Right main: charts, z-scores, explanation -->
-          <div class="flex-1 min-w-0">
-            <ChartGrid />
 
             <ZScoreTable />
+          </aside>
+
+          <!-- Right panel: charts (2/3) -->
+          <div class="flex-1 min-w-0">
+            <ChartGrid />
 
             <section class="bg-white rounded-lg shadow p-6 mt-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
