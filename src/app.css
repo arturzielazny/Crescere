@@ -18,6 +18,10 @@ body {
 
 /* Print styles */
 @media print {
+  @page {
+    margin: 15mm;
+  }
+
   body {
     background: white !important;
     -webkit-print-color-adjust: exact;
@@ -38,17 +42,17 @@ body {
     border: none !important;
     break-inside: avoid;
     page-break-inside: avoid;
+    margin-bottom: 8mm;
   }
 
-  /* Make charts fill available width */
+  /* Smaller chart height to fit on A4 with margins */
   .print-chart-group .h-80 {
-    height: 280px !important;
+    height: 220px !important;
   }
 
-  /* Z-score table page break */
-  .print-table-break {
-    break-before: page;
-    page-break-before: always;
+  /* Chart group header - smaller in print */
+  .print-chart-group .text-sm {
+    font-size: 11px !important;
   }
 
   /* Ensure full width layout (override lg:flex sidebar layout) */
@@ -62,5 +66,15 @@ body {
     max-width: 100% !important;
     flex: none !important;
     position: static !important;
+  }
+
+  /* Z-score table styling for print */
+  .print-table {
+    font-size: 10px !important;
+  }
+
+  .print-table th,
+  .print-table td {
+    padding: 4px 6px !important;
   }
 }

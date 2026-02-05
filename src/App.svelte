@@ -196,6 +196,14 @@
   $: canShare =
     $isAuthenticated && !$isAnonymous && $activeChild && !$sharedChildIds.has($activeChild?.id);
 
+  $: shareDisabledReason = (() => {
+    if (!$isAuthenticated) return $t('app.share.disabled.notSignedIn');
+    if ($isAnonymous) return $t('app.share.disabled.guest');
+    if (!$activeChild) return $t('app.share.disabled.noChild');
+    if ($sharedChildIds.has($activeChild?.id)) return $t('app.share.disabled.alreadyShared');
+    return '';
+  })();
+
   function handleShare() {
     if (canShare) {
       showShareModal = true;
@@ -244,6 +252,7 @@
           <button
             on:click={handleShare}
             disabled={!canShare}
+            title={shareDisabledReason || null}
             class="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {$t('app.share')}
@@ -334,9 +343,14 @@
 
           <!-- Right panel: charts + z-scores (2/3) -->
           <div class="flex-1 min-w-0">
+            <!-- Print order: table first, then charts -->
+            <div class="print-only hidden mb-4 print-table">
+              <ZScoreTable />
+            </div>
+
             <ChartGrid />
 
-            <div class="print-table-break">
+            <div class="print-hidden">
               <ZScoreTable />
             </div>
 
