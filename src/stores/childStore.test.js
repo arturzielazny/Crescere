@@ -26,6 +26,7 @@ const {
   deleteMeasurement,
   clearMeasurements,
   removeChild,
+  exampleChildId,
   dataError: _dataError
 } = childStoreModule;
 
@@ -638,5 +639,144 @@ describe('childStore - createExampleState', () => {
     expect(child.profile.birthDate).toBeTruthy();
     expect(child.profile.sex).toBeTruthy();
     expect(typeof child.profile.sex).toBe('number');
+  });
+});
+
+describe('childStore - example child', () => {
+  beforeEach(() => {
+    resetMockData();
+    resetStore();
+    setMockUser({ id: 'guest-user-123', is_anonymous: true });
+  });
+
+  afterEach(() => {
+    disableSync();
+  });
+
+  it('enableSync with no backend data injects example locally, NOT in DB', async () => {
+    await enableSync('Example Child');
+
+    // Example child should exist in local store
+    const state = get(childStore);
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].profile.name).toBe('Example Child');
+    expect(state.children[0].measurements.length).toBeGreaterThan(0);
+
+    // exampleChildId should be set
+    const exId = get(exampleChildId);
+    expect(exId).toBe(state.children[0].id);
+
+    // Nothing in the database
+    expect(getMockData('children')).toHaveLength(0);
+    expect(getMockData('measurements')).toHaveLength(0);
+  });
+
+  it('enableSync with real backend data does NOT inject example', async () => {
+    const { seedMockData } = await import('../lib/__mocks__/supabaseClient.js');
+    seedMockData('children', [
+      {
+        id: 'real-child-1',
+        user_id: 'guest-user-123',
+        name: 'Real Child',
+        birth_date: '2024-01-15',
+        sex: 1
+      }
+    ]);
+
+    await enableSync('Example Child');
+
+    const state = get(childStore);
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].profile.name).toBe('Real Child');
+
+    // exampleChildId should be null
+    expect(get(exampleChildId)).toBeNull();
+  });
+
+  it('addMeasurement skips backend for example child', async () => {
+    await enableSync('Example Child');
+
+    // Add measurement to example child - should work locally but NOT hit DB
+    addMeasurement({
+      date: '2024-02-15',
+      weight: 4500,
+      length: 55,
+      headCirc: 37.5
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Measurement should exist locally
+    const state = get(childStore);
+    const exId = get(exampleChildId);
+    const child = state.children.find((c) => c.id === exId);
+    expect(child.measurements.length).toBeGreaterThan(0);
+
+    // Nothing new in DB
+    expect(getMockData('measurements')).toHaveLength(0);
+  });
+
+  it('addChild auto-removes example child', async () => {
+    await enableSync('Example Child');
+
+    const exId = get(exampleChildId);
+    expect(exId).toBeTruthy();
+
+    // Add a new real child
+    addChild();
+
+    // Example child should be removed
+    const state = get(childStore);
+    expect(state.children.find((c) => c.id === exId)).toBeUndefined();
+    expect(get(exampleChildId)).toBeNull();
+
+    // New child should be the only one
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].profile.name).toBe('');
+  });
+
+  it('after example removal, new child syncs normally (full flow)', async () => {
+    await enableSync('Example Child');
+
+    // Verify example is present
+    expect(get(exampleChildId)).toBeTruthy();
+    expect(getMockData('children')).toHaveLength(0);
+
+    // Add real child (auto-removes example)
+    addChild();
+    expect(get(exampleChildId)).toBeNull();
+
+    // Fill profile
+    updateProfile({ name: 'My Baby', birthDate: '2024-06-01', sex: 2 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Child should be synced to DB
+    const dbChildren = getMockData('children');
+    expect(dbChildren).toHaveLength(1);
+    expect(dbChildren[0].name).toBe('My Baby');
+
+    const state = get(childStore);
+    const realId = state.children[0].id;
+
+    // Add measurement - should sync to DB
+    addMeasurement({
+      date: '2024-06-01',
+      weight: 3200,
+      length: 49,
+      headCirc: 34
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const dbMeasurements = getMockData('measurements');
+    expect(dbMeasurements).toHaveLength(1);
+    expect(dbMeasurements[0].child_id).toBe(realId);
+  });
+
+  it('resetStore clears exampleChildId', async () => {
+    await enableSync('Example Child');
+    expect(get(exampleChildId)).toBeTruthy();
+
+    resetStore();
+    expect(get(exampleChildId)).toBeNull();
   });
 });

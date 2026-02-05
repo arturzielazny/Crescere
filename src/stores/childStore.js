@@ -1,6 +1,6 @@
 /**
  * Svelte store for child growth data
- * Supports both local-only mode and Supabase-synced mode
+ * Synced with Supabase backend
  */
 
 import { writable, derived, get } from 'svelte/store';
@@ -24,6 +24,9 @@ export const dataError = writable(null);
 
 // Track temporary (shared) child that hasn't been saved yet
 export const temporaryChildId = writable(null);
+
+// Track the example (demo) child — client-side only, never synced to backend
+export const exampleChildId = writable(null);
 
 // Track children shared with this user (read-only)
 export const sharedChildIds = writable(new Set());
@@ -109,15 +112,17 @@ export const measurementsWithZScores = derived(childStore, ($store) => {
 // ============================================================================
 
 /**
- * Enable sync mode and load data from Supabase
+ * Enable sync mode and load data from Supabase.
+ * If no children exist on the backend, injects a local-only example child.
+ * @param {string} [exampleName] - Translated name for the example child
  */
-export async function enableSync() {
+export async function enableSync(exampleName) {
   syncEnabled = true;
   dataLoading.set(true);
   dataError.set(null);
 
   try {
-    const [ownChildren, activeChildId, shared] = await Promise.all([
+    const [ownChildren, activeChildPref, shared] = await Promise.all([
       api.fetchChildren(),
       api.getActiveChildId(),
       api.fetchSharedChildren().catch(() => [])
@@ -132,10 +137,19 @@ export async function enableSync() {
     const uniqueShared = shared.filter((c) => !ownIds.has(c.id));
     const allChildren = [...ownChildren, ...uniqueShared];
 
-    childStore.set({
-      children: allChildren,
-      activeChildId: activeChildId || allChildren[0]?.id || null
-    });
+    if (allChildren.length > 0) {
+      // Real data exists — no example child needed
+      exampleChildId.set(null);
+      childStore.set({
+        children: allChildren,
+        activeChildId: activeChildPref || allChildren[0]?.id || null
+      });
+    } else {
+      // No data — inject local-only example child
+      const exampleState = createExampleState(exampleName || 'Example Child');
+      exampleChildId.set(exampleState.activeChildId);
+      childStore.set(exampleState);
+    }
   } catch (err) {
     console.error('Failed to load data:', err);
     dataError.set(err.message);
@@ -145,7 +159,7 @@ export async function enableSync() {
 }
 
 /**
- * Disable sync mode (for local-only usage)
+ * Disable sync mode (used during sign-out and tests)
  */
 export function disableSync() {
   syncEnabled = false;
@@ -168,8 +182,8 @@ export function updateProfile(profile) {
     }))
   );
 
-  // Sync to backend
-  if (syncEnabled && activeChild) {
+  // Sync to backend (skip example child — it's client-side only)
+  if (syncEnabled && activeChild && get(exampleChildId) !== activeChild.id) {
     if (pendingChildIds.has(activeChild.id)) {
       // Child not yet in Supabase - create it once all required fields are available
       const updatedState = get(childStore);
@@ -205,10 +219,10 @@ export function addMeasurement(measurement) {
     }))
   );
 
-  // Sync to backend (skip if child hasn't been created in Supabase yet -
-  // measurements will be synced when the child is created via syncChildToBackend)
+  // Sync to backend (skip example/pending/temporary children)
   if (
     syncEnabled &&
+    get(exampleChildId) !== activeChild.id &&
     get(temporaryChildId) !== activeChild.id &&
     !pendingChildIds.has(activeChild.id)
   ) {
@@ -247,8 +261,8 @@ export function updateMeasurement(id, updates) {
     }))
   );
 
-  // Sync to backend (skip if child is pending - will sync with child creation)
-  if (syncEnabled && !pendingChildIds.has(active?.id)) {
+  // Sync to backend (skip example/pending children)
+  if (syncEnabled && get(exampleChildId) !== active?.id && !pendingChildIds.has(active?.id)) {
     api.updateMeasurement(id, updates).catch((err) => {
       console.error('Failed to update measurement:', err);
       childStore.set(state);
@@ -270,8 +284,8 @@ export function deleteMeasurement(id) {
     }))
   );
 
-  // Sync to backend (skip if child is pending - will sync with child creation)
-  if (syncEnabled && !pendingChildIds.has(active?.id)) {
+  // Sync to backend (skip example/pending children)
+  if (syncEnabled && get(exampleChildId) !== active?.id && !pendingChildIds.has(active?.id)) {
     api.deleteMeasurement(id).catch((err) => {
       console.error('Failed to delete measurement:', err);
       childStore.set(state);
@@ -296,8 +310,12 @@ export function clearMeasurements() {
     }))
   );
 
-  // Sync to backend - delete each measurement (skip if child is pending)
-  if (syncEnabled && !pendingChildIds.has(activeChild.id)) {
+  // Sync to backend - delete each measurement (skip example/pending children)
+  if (
+    syncEnabled &&
+    get(exampleChildId) !== activeChild.id &&
+    !pendingChildIds.has(activeChild.id)
+  ) {
     Promise.all(measurementIds.map((id) => api.deleteMeasurement(id))).catch((err) => {
       console.error('Failed to clear measurements:', err);
       childStore.set(state);
@@ -331,6 +349,7 @@ export function resetStore() {
   dataLoading.set(true);
   dataError.set(null);
   temporaryChildId.set(null);
+  exampleChildId.set(null);
   sharedChildIds.set(new Set());
   pendingChildIds.clear();
 }
@@ -344,8 +363,8 @@ export function setActiveChild(childId) {
     activeChildId: childId
   }));
 
-  // Sync to backend
-  if (syncEnabled) {
+  // Sync to backend (skip example child)
+  if (syncEnabled && get(exampleChildId) !== childId) {
     api.setActiveChildId(childId).catch((err) => {
       console.error('Failed to set active child:', err);
       childStore.set(state);
@@ -377,8 +396,8 @@ export function removeChild(childId) {
     });
   }
 
-  // Sync to backend (skip if child was never created in Supabase)
-  if (syncEnabled && !pendingChildIds.has(childId)) {
+  // Sync to backend (skip example/pending children — never created in Supabase)
+  if (syncEnabled && get(exampleChildId) !== childId && !pendingChildIds.has(childId)) {
     const deleteOp = isShared ? api.removeSharedChild(childId) : api.deleteChild(childId);
     deleteOp.catch((err) => {
       console.error('Failed to delete child:', err);
@@ -390,6 +409,16 @@ export function removeChild(childId) {
 }
 
 export function addChild() {
+  // Auto-remove example child when user adds their first real child
+  const currentExampleId = get(exampleChildId);
+  if (currentExampleId) {
+    childStore.update((state) => ({
+      ...state,
+      children: state.children.filter((c) => c.id !== currentExampleId)
+    }));
+    exampleChildId.set(null);
+  }
+
   const tempId = crypto.randomUUID();
   const newChild = {
     id: tempId,

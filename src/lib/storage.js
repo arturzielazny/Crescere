@@ -132,58 +132,8 @@ export function loadFromStorage() {
 }
 
 /**
- * Save data to localStorage
- * @param {Object} data - Data to save
- * @returns {boolean} True if save succeeded
- */
-export function saveToStorage(data) {
-  try {
-    if (!data.children || data.children.length === 0) {
-      localStorage.removeItem(STORAGE_KEY);
-      return true;
-    }
-
-    const toSave = {
-      ...data,
-      version: CURRENT_VERSION,
-      lastModified: new Date().toISOString()
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-    return true;
-  } catch (e) {
-    // Handle quota exceeded specifically
-    if (e.name === 'QuotaExceededError' || e.code === 22) {
-      console.error('Storage quota exceeded. Data may not be saved.');
-    } else {
-      console.error('Failed to save to storage:', e);
-    }
-    return false;
-  }
-}
-
-/**
  * Clear all data from localStorage
  */
 export function clearStorage() {
   localStorage.removeItem(STORAGE_KEY);
-}
-
-/**
- * Export data as JSON download
- */
-export function exportData() {
-  const data = loadFromStorage();
-  if (!data) return;
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: 'application/json'
-  });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `growth-data-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-
-  URL.revokeObjectURL(url);
 }

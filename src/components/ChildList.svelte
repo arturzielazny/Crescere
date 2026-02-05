@@ -5,6 +5,7 @@
     addChild,
     removeChild,
     temporaryChildId,
+    exampleChildId,
     sharedChildIds
   } from '../stores/childStore.js';
   import { t } from '../stores/i18n.js';
@@ -52,6 +53,7 @@
   <div class="flex flex-wrap gap-2">
     {#each $childStore.children as child, index (child.id)}
       {@const isTemporary = child.id === $temporaryChildId}
+      {@const isExample = child.id === $exampleChildId}
       {@const isShared = $sharedChildIds.has(child.id)}
       <div class="relative group">
         <button
@@ -63,22 +65,35 @@
           class:bg-yellow-50={isTemporary && activeId !== child.id}
           class:border-yellow-300={isTemporary && activeId !== child.id}
           class:text-yellow-700={isTemporary && activeId !== child.id}
+          class:bg-green-100={isExample && activeId === child.id}
+          class:border-green-400={isExample && activeId === child.id}
+          class:text-green-800={isExample && activeId === child.id}
+          class:bg-green-50={isExample && activeId !== child.id}
+          class:border-green-300={isExample && activeId !== child.id}
+          class:text-green-700={isExample && activeId !== child.id}
           class:bg-purple-100={isShared && activeId === child.id}
           class:border-purple-300={isShared && activeId === child.id}
           class:text-purple-700={isShared && activeId === child.id}
           class:bg-purple-50={isShared && activeId !== child.id}
           class:border-purple-200={isShared && activeId !== child.id}
           class:text-purple-600={isShared && activeId !== child.id}
-          class:bg-blue-50={!isTemporary && !isShared && activeId === child.id}
-          class:border-blue-300={!isTemporary && !isShared && activeId === child.id}
-          class:text-blue-700={!isTemporary && !isShared && activeId === child.id}
-          class:border-gray-200={!isTemporary && !isShared && activeId !== child.id}
-          class:text-gray-700={!isTemporary && !isShared && activeId !== child.id}
-          title={isTemporary ? $t('children.temporary.hint') : ''}
+          class:bg-blue-50={!isTemporary && !isExample && !isShared && activeId === child.id}
+          class:border-blue-300={!isTemporary && !isExample && !isShared && activeId === child.id}
+          class:text-blue-700={!isTemporary && !isExample && !isShared && activeId === child.id}
+          class:border-gray-200={!isTemporary && !isExample && !isShared && activeId !== child.id}
+          class:text-gray-700={!isTemporary && !isExample && !isShared && activeId !== child.id}
+          title={isTemporary
+            ? $t('children.temporary.hint')
+            : isExample
+              ? $t('children.example.hint')
+              : ''}
         >
           {getChildLabel(child, index)}
           {#if isTemporary}
             <span class="ml-1 text-yellow-600">●</span>
+          {/if}
+          {#if isExample}
+            <span class="ml-1 text-green-600">●</span>
           {/if}
           {#if isShared}
             <span class="ml-1 text-purple-500 text-xs"
@@ -86,7 +101,7 @@
             >
           {/if}
         </button>
-        {#if !isTemporary}
+        {#if !isTemporary && !isExample}
           <button
             on:click={(e) => handleDeleteClick(e, child.id)}
             class="absolute top-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 hover:bg-red-50"

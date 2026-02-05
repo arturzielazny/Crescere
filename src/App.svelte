@@ -11,18 +11,14 @@
   import {
     childStore,
     activeChild,
-    setStore,
     resetStore,
-    createExampleState,
     addTemporaryChild,
     discardTemporaryChild,
-    temporaryChildId,
     sharedChildIds,
     dataLoading,
     dataError,
     enableSync,
     disableSync,
-    syncChildToBackend,
     acceptLiveShare
   } from './stores/childStore.js';
   import {
@@ -33,13 +29,7 @@
     signInAnonymously,
     signOut
   } from './stores/authStore.js';
-  import {
-    loadFromStorage,
-    saveToStorage,
-    exportData,
-    clearStorage,
-    migrateData
-  } from './lib/storage.js';
+  import { migrateData } from './lib/storage.js';
   import { migrateToSupabase, hasLocalData } from './lib/migrate.js';
   import {
     generateShareUrl,
@@ -49,17 +39,12 @@
   } from './lib/share.js';
   import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
 
-  let loaded = false;
   let showWelcome = false;
   let showShareModal = false;
   let shareUrl = '';
   let toast = null;
   let migrating = false;
   let menuOpen = false;
-
-  // Check if Supabase is configured
-  const supabaseConfigured =
-    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   function checkForSharedChild() {
     // Check for snapshot share first
@@ -81,7 +66,7 @@
 
     clearShareHash();
 
-    if (!supabaseConfigured || !$isAuthenticated) {
+    if (!$isAuthenticated) {
       toast = { message: $t('share.live.requiresAuth'), type: 'error' };
       return;
     }
@@ -113,53 +98,24 @@
       }
     }
 
-    // Load data from Supabase
-    await enableSync();
-
-    // If no data exists, create example state
-    if ($childStore.children.length === 0) {
-      const exampleState = createExampleState($t('children.example'));
-      setStore(exampleState);
-
-      // Sync example child to backend so measurements can be added
-      if (exampleState.activeChildId) {
-        try {
-          await syncChildToBackend(exampleState.activeChildId);
-        } catch (err) {
-          console.error('Failed to sync example child:', err);
-        }
-      }
-    }
+    // Load data from Supabase (injects local-only example child if no data exists)
+    await enableSync($t('children.example'));
   }
 
   async function initializeApp() {
-    if (supabaseConfigured) {
-      // Initialize auth
-      await initAuth();
+    await initAuth();
 
-      // If no session, show welcome screen instead of auto-signing in
-      if (!$isAuthenticated && !$authLoading) {
-        showWelcome = true;
-        loaded = true;
-        return;
-      }
-
-      // Already authenticated - load data
-      await loadAuthenticatedData();
-    } else {
-      // Fallback: localStorage-only mode (no Supabase configured)
-      const saved = loadFromStorage();
-      if (saved) {
-        setStore(saved);
-      } else {
-        setStore(createExampleState($t('children.example')));
-      }
+    // If no session, show welcome screen instead of auto-signing in
+    if (!$isAuthenticated && !$authLoading) {
+      showWelcome = true;
+      return;
     }
+
+    // Already authenticated - load data
+    await loadAuthenticatedData();
 
     // Check for share URL and add as temporary child
     checkForSharedChild();
-
-    loaded = true;
   }
 
   async function handleContinueAsGuest() {
@@ -197,41 +153,19 @@
     window.removeEventListener('hashchange', checkForSharedChild);
   });
 
-  // Auto-save on changes (only in localStorage-only mode)
-  $: if (loaded && $childStore && !supabaseConfigured) {
-    const tempId = $temporaryChildId;
-    const dataToSave = tempId
-      ? {
-          ...$childStore,
-          children: $childStore.children.filter((c) => c.id !== tempId),
-          activeChildId:
-            $childStore.activeChildId === tempId
-              ? $childStore.children.find((c) => c.id !== tempId)?.id || null
-              : $childStore.activeChildId
-        }
-      : $childStore;
-    saveToStorage(dataToSave);
-  }
-
   function handleExport() {
-    if (supabaseConfigured) {
-      // In Supabase mode, export from the store (not localStorage)
-      const data = { ...$childStore, version: 2 };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `growth-data-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } else {
-      exportData();
-    }
+    const data = { ...$childStore, version: 2 };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `growth-data-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function handleClear() {
     if (confirm($t('app.clear.confirm'))) {
-      clearStorage();
       resetStore();
     }
   }
@@ -262,9 +196,6 @@
           activeChildId: state.activeChildId || newChildren[0]?.id || null
         }));
 
-        if (!supabaseConfigured) {
-          saveToStorage($childStore);
-        }
         toast = { message: $t('app.import.success'), type: 'success' };
       } catch (_err) {
         toast = { message: $t('app.import.error'), type: 'error' };
@@ -276,11 +207,7 @@
 
   // Whether to use live sharing mode
   $: useLiveShare =
-    supabaseConfigured &&
-    $isAuthenticated &&
-    !$isAnonymous &&
-    $activeChild &&
-    !$sharedChildIds.has($activeChild?.id);
+    $isAuthenticated && !$isAnonymous && $activeChild && !$sharedChildIds.has($activeChild?.id);
 
   function handleShare() {
     if ($activeChild) {
@@ -293,9 +220,7 @@
 
   $: isLoading = $authLoading || $dataLoading || migrating;
   $: footerStorageText =
-    supabaseConfigured && $isAuthenticated && !$isAnonymous
-      ? $t('app.footer.storage.cloud')
-      : $t('app.footer.storage');
+    $isAuthenticated && !$isAnonymous ? $t('app.footer.storage.cloud') : $t('app.footer.storage');
 </script>
 
 {#if showWelcome}
@@ -423,11 +348,9 @@
             {/if}
           </div>
 
-          {#if supabaseConfigured}
-            <div class="border-l border-gray-200 pl-2 ml-1">
-              <Header onSignOut={handleSignOut} />
-            </div>
-          {/if}
+          <div class="border-l border-gray-200 pl-2 ml-1">
+            <Header onSignOut={handleSignOut} />
+          </div>
         </div>
       </div>
     </header>
@@ -451,7 +374,7 @@
           </div>
         {/if}
 
-        {#if supabaseConfigured && $isAnonymous}
+        {#if $isAnonymous}
           <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
             {$t('auth.guestMode')}
           </div>

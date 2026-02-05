@@ -3,6 +3,7 @@
     activeChild,
     updateProfile,
     temporaryChildId,
+    exampleChildId,
     isActiveChildReadOnly,
     saveTemporaryChild,
     discardTemporaryChild
@@ -12,6 +13,7 @@
 
   $: profile = $activeChild?.profile;
   $: isTemporary = $activeChild?.id === $temporaryChildId;
+  $: isExample = $activeChild?.id === $exampleChildId;
   $: isReadOnly = $isActiveChildReadOnly;
   $: hasMeasurementsBeforeBirth =
     profile?.birthDate &&
@@ -47,8 +49,9 @@
 
 <div
   class="bg-white rounded-lg shadow p-6 mb-6"
-  class:ring-2={isTemporary || isReadOnly}
+  class:ring-2={isTemporary || isExample || isReadOnly}
   class:ring-yellow-400={isTemporary}
+  class:ring-green-400={isExample}
   class:ring-purple-400={isReadOnly}
 >
   <div class="flex items-center justify-between mb-4">
@@ -76,6 +79,12 @@
   {#if isTemporary}
     <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
       {$t('profile.temporary.hint')}
+    </div>
+  {/if}
+
+  {#if isExample}
+    <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
+      {$t('children.example.hint')}
     </div>
   {/if}
 
