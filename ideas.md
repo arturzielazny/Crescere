@@ -35,7 +35,7 @@
 - ☐ **No print view.** Parents often want to print growth charts for doctor visits. Current layout doesn't print well.
 - ☐ **No date range filtering on charts.** Charts show all data. Can't zoom into last 3 months.
 - ☐ **Drag-to-reorder charts is desktop-only.** No touch drag support for mobile users.
-- ☐ **Share URLs can be very long.** A child with many measurements produces a URL that might exceed URL length limits or be unwieldy to share.
+- ☑ **Share URLs can be very long.** Fixed — removed snapshot URL sharing (LZ-String compression). Sharing now uses short Supabase token-based live links only.
 - ☐ **No multi-child chart comparison.** Can't overlay two siblings' growth curves to compare.
 - ☐ **Missing keyboard shortcuts.** No way to navigate between children, add measurements, or switch chart views from keyboard.
 - ☑ **Live child sharing via Supabase.** Implemented — named share links with management UI. Recipients get read-only access with live data. Snapshot sharing preserved for non-Supabase mode.

@@ -22,9 +22,6 @@ export const dataLoading = writable(true);
 // Error state for async operations
 export const dataError = writable(null);
 
-// Track temporary (shared) child that hasn't been saved yet
-export const temporaryChildId = writable(null);
-
 // Track the example (demo) child — client-side only, never synced to backend
 export const exampleChildId = writable(null);
 
@@ -193,7 +190,7 @@ export function updateProfile(profile) {
           console.error('Failed to sync new child:', err);
         });
       }
-    } else if (get(temporaryChildId) !== activeChild.id) {
+    } else {
       api.updateChild(activeChild.id, profile).catch((err) => {
         console.error('Failed to update profile:', err);
         childStore.set(state);
@@ -219,11 +216,10 @@ export function addMeasurement(measurement) {
     }))
   );
 
-  // Sync to backend (skip example/pending/temporary children)
+  // Sync to backend (skip example/pending children)
   if (
     syncEnabled &&
     get(exampleChildId) !== activeChild.id &&
-    get(temporaryChildId) !== activeChild.id &&
     !pendingChildIds.has(activeChild.id)
   ) {
     api
@@ -348,7 +344,6 @@ export function resetStore() {
   childStore.set(initialState);
   dataLoading.set(true);
   dataError.set(null);
-  temporaryChildId.set(null);
   exampleChildId.set(null);
   sharedChildIds.set(new Set());
   pendingChildIds.clear();
@@ -542,55 +537,6 @@ export function createExampleState(exampleName = 'Example Child') {
     children: [exampleChild],
     activeChildId: id
   };
-}
-
-// Add a shared child as temporary (not saved to localStorage yet)
-export function addTemporaryChild(child) {
-  temporaryChildId.set(child.id);
-  childStore.update((state) => ({
-    ...state,
-    activeChildId: child.id,
-    children: [...state.children, child]
-  }));
-}
-
-// Save the temporary child (make it permanent)
-export async function saveTemporaryChild() {
-  const tempId = get(temporaryChildId);
-  if (!tempId) return;
-
-  if (syncEnabled) {
-    try {
-      const state = get(childStore);
-      const child = state.children.find((c) => c.id === tempId);
-
-      if (child?.profile?.birthDate && child?.profile?.sex) {
-        const realId = await api.importChild(child);
-
-        // Update local store with new ID
-        childStore.update((s) => ({
-          ...s,
-          activeChildId: s.activeChildId === tempId ? realId : s.activeChildId,
-          children: s.children.map((c) => (c.id === tempId ? { ...c, id: realId } : c))
-        }));
-      }
-    } catch (err) {
-      console.error('Failed to save temporary child:', err);
-      dataError.set(err.message);
-    }
-  }
-
-  temporaryChildId.set(null);
-}
-
-// Remove the temporary child without saving
-export function discardTemporaryChild() {
-  const tempId = get(temporaryChildId);
-
-  if (tempId) {
-    removeChild(tempId);
-    temporaryChildId.set(null);
-  }
 }
 
 /**

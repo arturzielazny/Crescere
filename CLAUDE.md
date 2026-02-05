@@ -46,16 +46,13 @@ Svelte 5 SPA for pediatric growth monitoring. Uses Supabase for persistence, aut
 
 5. **WHO Reference Data** (`src/data/`): Four datasets in compact array format `{ [sex]: [[l,m,s], ...] }` where array index = day. Sex: 1=male, 2=female. Age range: 0-1826 days (0-5 years). WFL uses length strings as keys.
 
-6. **Sharing** (`src/lib/share.js`): Two mechanisms:
-   - **Snapshot sharing**: URL-based via LZ-String compression in hash fragment (`#share=...`). Static point-in-time copy. No auth required to view.
-   - **Live sharing**: Supabase token-based (`#live-share=<token>`). Named share links with read-only access. Both parties must be authenticated.
+6. **Sharing** (`src/lib/share.js`): Supabase token-based live sharing (`#live-share=<token>`). Named share links with read-only access. Both parties must be authenticated. Owner can revoke access at any time.
 
 7. **i18n** (`src/stores/i18n.js`): English (en) and Polish (pl). Auto-detects browser language.
 
 ### Special Child Types
 
 - **Example child** (`exampleChildId`): Client-side demo data, never synced. Auto-removed when user adds a real child.
-- **Temporary child** (`temporaryChildId`): Imported from a share URL, held in-memory until explicitly saved.
 - **Pending child** (`pendingChildIds`): Created locally but missing required fields (birthDate, sex). Synced to Supabase once profile is complete.
 
 ### Key Data Models

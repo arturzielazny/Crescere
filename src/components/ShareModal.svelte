@@ -5,16 +5,10 @@
   import { generateLiveShareUrl } from '../lib/share.js';
   import ConfirmModal from './ConfirmModal.svelte';
 
-  // Snapshot mode props
-  export let url = '';
   export let onClose = () => {};
-
-  // Live mode props
-  export let liveMode = false;
   export let childId = '';
   export let childName = '';
 
-  let copied = false;
   let copiedShareId = null;
 
   // Live mode state
@@ -26,7 +20,7 @@
   let showRevokeConfirm = false;
 
   onMount(async () => {
-    if (liveMode && childId) {
+    if (childId) {
       await loadShares();
     }
   });
@@ -78,18 +72,6 @@
     revokeTargetId = null;
   }
 
-  async function copySnapshotUrl() {
-    try {
-      await navigator.clipboard.writeText(url);
-      copied = true;
-      setTimeout(() => {
-        copied = false;
-      }, 2000);
-    } catch (_err) {
-      console.error('Failed to copy:', _err);
-    }
-  }
-
   async function copyLiveShareUrl(share) {
     try {
       const liveUrl = generateLiveShareUrl(share.token);
@@ -122,104 +104,72 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6" on:click|stopPropagation>
-    {#if liveMode}
-      <!-- Live sharing mode -->
-      <h2 id="share-modal-title" class="text-lg font-semibold text-gray-800 mb-2">
-        {$t('share.live.title')}
-        {#if childName}
-          <span class="text-gray-500 font-normal">— {childName}</span>
-        {/if}
-      </h2>
+    <h2 id="share-modal-title" class="text-lg font-semibold text-gray-800 mb-2">
+      {$t('share.live.title')}
+      {#if childName}
+        <span class="text-gray-500 font-normal">— {childName}</span>
+      {/if}
+    </h2>
 
-      <p class="text-sm text-gray-600 mb-4">
-        {$t('share.live.description')}
-      </p>
+    <p class="text-sm text-gray-600 mb-4">
+      {$t('share.live.description')}
+    </p>
 
-      <!-- Create new share -->
-      <div class="flex gap-2 mb-6">
-        <input
-          type="text"
-          bind:value={newLabel}
-          placeholder={$t('share.live.label.placeholder')}
-          on:keydown={(e) => e.key === 'Enter' && handleCreateShare()}
-          class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          on:click={handleCreateShare}
-          disabled={creating}
-          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md whitespace-nowrap disabled:opacity-50"
-        >
-          {$t('share.live.create')}
-        </button>
+    <!-- Create new share -->
+    <div class="flex gap-2 mb-6">
+      <input
+        type="text"
+        bind:value={newLabel}
+        placeholder={$t('share.live.label.placeholder')}
+        on:keydown={(e) => e.key === 'Enter' && handleCreateShare()}
+        class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <button
+        on:click={handleCreateShare}
+        disabled={creating}
+        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md whitespace-nowrap disabled:opacity-50"
+      >
+        {$t('share.live.create')}
+      </button>
+    </div>
+
+    <!-- Existing shares list -->
+    {#if loadingShares}
+      <div class="text-center py-4 text-gray-500 text-sm">
+        {$t('auth.loading')}
       </div>
-
-      <!-- Existing shares list -->
-      {#if loadingShares}
-        <div class="text-center py-4 text-gray-500 text-sm">
-          {$t('auth.loading')}
-        </div>
-      {:else if shares.length === 0}
-        <p class="text-sm text-gray-500 text-center py-4">
-          {$t('share.live.noShares')}
-        </p>
-      {:else}
-        <div class="space-y-3 max-h-64 overflow-y-auto">
-          {#each shares as share (share.id)}
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-              <div class="min-w-0 flex-1">
-                <div class="text-sm font-medium text-gray-800 truncate">
-                  {share.label || $t('share.live.sharedBadge')}
-                </div>
-                <div class="text-xs text-gray-500">
-                  {formatDate(share.created_at)}
-                </div>
+    {:else if shares.length === 0}
+      <p class="text-sm text-gray-500 text-center py-4">
+        {$t('share.live.noShares')}
+      </p>
+    {:else}
+      <div class="space-y-3 max-h-64 overflow-y-auto">
+        {#each shares as share (share.id)}
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium text-gray-800 truncate">
+                {share.label || $t('share.live.sharedBadge')}
               </div>
-              <div class="flex gap-2 ml-3">
-                <button
-                  on:click={() => copyLiveShareUrl(share)}
-                  class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded"
-                >
-                  {copiedShareId === share.id ? $t('share.copied') : $t('share.copy')}
-                </button>
-                <button
-                  on:click={() => handleRevokeClick(share.id)}
-                  class="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded"
-                >
-                  {$t('share.live.revoke')}
-                </button>
+              <div class="text-xs text-gray-500">
+                {formatDate(share.created_at)}
               </div>
             </div>
-          {/each}
-        </div>
-      {/if}
-    {:else}
-      <!-- Snapshot sharing mode (original) -->
-      <h2 id="share-modal-title" class="text-lg font-semibold text-gray-800 mb-2">
-        {$t('share.title')}
-      </h2>
-
-      <p class="text-sm text-gray-600 mb-4">
-        {$t('share.description')}
-      </p>
-
-      <div class="flex gap-2 mb-4">
-        <input
-          type="text"
-          readonly
-          value={url}
-          class="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm font-mono truncate"
-        />
-        <button
-          on:click={copySnapshotUrl}
-          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md whitespace-nowrap"
-        >
-          {copied ? $t('share.copied') : $t('share.copy')}
-        </button>
-      </div>
-
-      <div class="text-xs text-gray-500 mb-4">
-        {$t('share.urlLength')}: {url.length}
-        {$t('share.chars')}
+            <div class="flex gap-2 ml-3">
+              <button
+                on:click={() => copyLiveShareUrl(share)}
+                class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded"
+              >
+                {copiedShareId === share.id ? $t('share.copied') : $t('share.copy')}
+              </button>
+              <button
+                on:click={() => handleRevokeClick(share.id)}
+                class="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded"
+              >
+                {$t('share.live.revoke')}
+              </button>
+            </div>
+          </div>
+        {/each}
       </div>
     {/if}
 

@@ -12,8 +12,6 @@
     childStore,
     activeChild,
     resetStore,
-    addTemporaryChild,
-    discardTemporaryChild,
     sharedChildIds,
     dataLoading,
     dataError,
@@ -31,34 +29,14 @@
   } from './stores/authStore.js';
   import { migrateData } from './lib/storage.js';
   import { migrateToSupabase, hasLocalData } from './lib/migrate.js';
-  import {
-    generateShareUrl,
-    parseShareUrl,
-    parseLiveShareUrl,
-    clearShareHash
-  } from './lib/share.js';
+  import { parseLiveShareUrl, clearShareHash } from './lib/share.js';
   import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
 
   let showWelcome = false;
   let showShareModal = false;
-  let shareUrl = '';
   let toast = null;
   let migrating = false;
   let menuOpen = false;
-
-  function checkForSharedChild() {
-    // Check for snapshot share first
-    const sharedChild = parseShareUrl();
-    if (sharedChild) {
-      discardTemporaryChild();
-      addTemporaryChild(sharedChild);
-      clearShareHash();
-      return;
-    }
-
-    // Check for live share
-    checkForLiveShare();
-  }
 
   async function checkForLiveShare() {
     const token = parseLiveShareUrl();
@@ -114,8 +92,8 @@
     // Already authenticated - load data
     await loadAuthenticatedData();
 
-    // Check for share URL and add as temporary child
-    checkForSharedChild();
+    // Check for live share URL
+    checkForLiveShare();
   }
 
   async function handleContinueAsGuest() {
@@ -127,7 +105,7 @@
       return;
     }
     await loadAuthenticatedData();
-    checkForSharedChild();
+    checkForLiveShare();
   }
 
   async function handleSignOut() {
@@ -146,11 +124,11 @@
     initializeApp();
 
     // Listen for hash changes (when user opens share link while app is loaded)
-    window.addEventListener('hashchange', checkForSharedChild);
+    window.addEventListener('hashchange', checkForLiveShare);
   });
 
   onDestroy(() => {
-    window.removeEventListener('hashchange', checkForSharedChild);
+    window.removeEventListener('hashchange', checkForLiveShare);
   });
 
   function handleExport() {
@@ -205,15 +183,11 @@
     event.target.value = '';
   }
 
-  // Whether to use live sharing mode
-  $: useLiveShare =
+  $: canShare =
     $isAuthenticated && !$isAnonymous && $activeChild && !$sharedChildIds.has($activeChild?.id);
 
   function handleShare() {
-    if ($activeChild) {
-      if (!useLiveShare) {
-        shareUrl = generateShareUrl($activeChild);
-      }
+    if (canShare) {
       showShareModal = true;
     }
   }
@@ -249,7 +223,7 @@
           </select>
           <button
             on:click={handleShare}
-            disabled={!$activeChild}
+            disabled={!canShare}
             class="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {$t('app.share')}
@@ -436,8 +410,6 @@
 
 {#if showShareModal}
   <ShareModal
-    url={shareUrl}
-    liveMode={useLiveShare}
     childId={$activeChild?.id || ''}
     childName={$activeChild?.profile?.name || ''}
     onClose={() => (showShareModal = false)}

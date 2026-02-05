@@ -231,7 +231,6 @@ Supabase (Postgres + Auth)
 |----------------|----------------------|--------------------|--------------------------------------|
 | Regular        | `childStore`         | Yes                | Normal user children                 |
 | Example        | `exampleChildId`     | No                 | Demo data for new users              |
-| Temporary      | `temporaryChildId`   | No (until saved)   | Imported from share URL              |
 | Pending        | `pendingChildIds`    | After profile done | Missing required fields              |
 | Shared         | `sharedChildIds`     | Read-only          | Shared by another user               |
 
@@ -256,16 +255,7 @@ When running with local Supabase, emails are caught by **Inbucket** at http://12
 
 ## Sharing System
 
-Two independent sharing mechanisms:
-
-### Snapshot sharing (URL-based)
-
-- Compresses child data with LZ-String into a URL hash fragment (`#share=...`)
-- No auth required — anyone with the URL sees a static copy
-- Recipient gets a "temporary child" they can optionally save
-- Good for: sharing with someone who doesn't have an account
-
-### Live sharing (Supabase token-based)
+Sharing is done via Supabase token-based live links:
 
 - Owner creates a named share link with a unique token (`#live-share=<token>`)
 - Stored in `child_shares` table
