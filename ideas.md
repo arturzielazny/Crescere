@@ -7,8 +7,10 @@
 - ☐ **"Clear" button is dangerous and prominent.** It's a red button in the top bar next to Export/Import. One misclick and a confirm dialog is all that stands between the user and total data loss. This should be buried in settings or at least not red and prominent.
 - ☐ **No way to undo measurement deletion.** Delete is instant (optimistic) with only a confirm dialog. No toast with "Undo" option.
 - ☐ **Measurement table is hard to use on mobile.** Seven columns on a phone screen. Even with horizontal scroll, it's painful.
-- ☐ **Example child is confusing for new users.** A guest gets pre-filled fake data. They might think it's real or not understand they should delete it. There's no onboarding that explains what they're looking at.
+- ☑ **Example child is confusing for new users.** Fixed — example child is now client-side only (never synced to Supabase), shown with green indicator and a demo banner. Auto-removed when user adds their first real child. Cleaned up 8 previously synced example children from production DB.
 - ☐ **Charts have no empty state.** If a child has no measurements, charts render empty with just reference bands. No helpful message like "Add measurements to see growth charts."
+- ☐ **Ability to login with password** Magic link is ok, but it would be nice to have an option for password.
+
 
 ## Data & Feature Gaps
 
@@ -23,7 +25,7 @@
 
 - ☐ **No offline support.** If Supabase is configured but the network is down, the app breaks. A service worker caching strategy would let it work offline and sync when back online.
 - ☐ **No conflict resolution.** If two devices edit the same child simultaneously, last-write-wins with no warning. Data can be silently overwritten.
-- ☑ **Export in Supabase mode exports raw store data.** Fixed — exports from store instead of empty localStorage.
+- ☑ **Export in Supabase mode exports raw store data.** Fixed — exports from store instead of empty localStorage. localStorage fallback mode has since been removed entirely (Supabase is always configured in production).
 - ☐ **No data backup/recovery for anonymous users.** If an anonymous user's session expires or they clear cookies, their data is orphaned in Supabase forever. Could offer a recovery code or QR code as backup.
 - ☐ **Bundle size (553 KB).** Chart.js is the biggest contributor. Code splitting the chart components behind a dynamic import would improve initial load.
 - ☐ **No rate limiting on auth actions.** Users can spam "Send link" button repeatedly. Should debounce or disable after first send with a cooldown timer.
