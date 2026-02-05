@@ -2,22 +2,77 @@ import { writable } from 'svelte/store';
 
 const STORAGE_KEY = 'crescere-charts';
 
-// All charts in a single unified list (2 columns default)
-// Row 1: weight, length
-// Row 2: waz, lhaz
-// Row 3: headCirc, wflz
-// Row 4: headcz
+/** Map each chart ID to its group */
+const chartGroupMap = {
+  weight: 'weight',
+  waz: 'weight',
+  weightVelocity: 'weight',
+  length: 'length',
+  lhaz: 'length',
+  lengthVelocity: 'length',
+  headCirc: 'headCirc',
+  headcz: 'headCirc',
+  wflz: 'wfl'
+};
+
 const defaultChartOrder = [
-  { id: 'weight', type: 'growth' },
-  { id: 'length', type: 'growth' },
-  { id: 'waz', type: 'zscore' },
-  { id: 'lhaz', type: 'zscore' },
-  { id: 'headCirc', type: 'growth' },
-  { id: 'wflz', type: 'zscore' },
-  { id: 'headcz', type: 'zscore' },
-  { id: 'weightVelocity', type: 'velocity' },
-  { id: 'lengthVelocity', type: 'velocity' }
+  {
+    groupId: 'weight',
+    charts: [
+      { id: 'weight', type: 'growth' },
+      { id: 'waz', type: 'zscore' },
+      { id: 'weightVelocity', type: 'velocity' }
+    ]
+  },
+  {
+    groupId: 'length',
+    charts: [
+      { id: 'length', type: 'growth' },
+      { id: 'lhaz', type: 'zscore' },
+      { id: 'lengthVelocity', type: 'velocity' }
+    ]
+  },
+  {
+    groupId: 'headCirc',
+    charts: [
+      { id: 'headCirc', type: 'growth' },
+      { id: 'headcz', type: 'zscore' }
+    ]
+  },
+  {
+    groupId: 'wfl',
+    charts: [{ id: 'wflz', type: 'zscore' }]
+  }
 ];
+
+/**
+ * Convert a flat chart order array to the grouped format.
+ * Preserves group ordering by first appearance of any chart in that group.
+ */
+function convertFlatToGrouped(flatOrder) {
+  const groups = new Map();
+
+  for (const chart of flatOrder) {
+    const groupId = chartGroupMap[chart.id];
+    if (!groupId) continue;
+    if (!groups.has(groupId)) {
+      groups.set(groupId, []);
+    }
+    groups.get(groupId).push(chart);
+  }
+
+  // Add velocity charts if missing
+  for (const [groupId, charts] of groups) {
+    if (groupId === 'weight' && !charts.some((c) => c.id === 'weightVelocity')) {
+      charts.push({ id: 'weightVelocity', type: 'velocity' });
+    }
+    if (groupId === 'length' && !charts.some((c) => c.id === 'lengthVelocity')) {
+      charts.push({ id: 'lengthVelocity', type: 'velocity' });
+    }
+  }
+
+  return Array.from(groups.entries()).map(([groupId, charts]) => ({ groupId, charts }));
+}
 
 function loadChartSettings() {
   if (typeof localStorage === 'undefined') {
@@ -28,23 +83,21 @@ function loadChartSettings() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Migrate from old format if needed
+      // Migrate from old growthOrder/zscoreOrder format
       if (parsed.growthOrder || parsed.zscoreOrder) {
-        return { chartOrder: defaultChartOrder, columnsPerRow: parsed.columnsPerRow || 3 };
+        return { chartOrder: defaultChartOrder, columnsPerRow: parsed.columnsPerRow || 2 };
       }
+
       let chartOrder = parsed.chartOrder || defaultChartOrder;
-      // Migrate: add velocity charts if missing
-      const hasVelocity = chartOrder.some((c) => c.type === 'velocity');
-      if (!hasVelocity) {
-        chartOrder = [
-          ...chartOrder,
-          { id: 'weightVelocity', type: 'velocity' },
-          { id: 'lengthVelocity', type: 'velocity' }
-        ];
+
+      // Detect flat format: first element has no groupId property
+      if (chartOrder.length > 0 && !chartOrder[0].groupId) {
+        chartOrder = convertFlatToGrouped(chartOrder);
       }
+
       return {
         chartOrder,
-        columnsPerRow: parsed.columnsPerRow || 3
+        columnsPerRow: parsed.columnsPerRow || 2
       };
     }
   } catch (_e) {

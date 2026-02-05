@@ -253,7 +253,7 @@
   }
 </script>
 
-<div class="bg-white rounded-lg shadow p-6 mb-6">
+<div class="p-4">
   <h2 class="text-lg font-semibold text-gray-800 mb-4">{title}</h2>
 
   <div class="h-80" role="img" aria-label={title}>

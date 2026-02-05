@@ -9,7 +9,7 @@
 - ☐ **Measurement table is hard to use on mobile.** Seven columns on a phone screen. Even with horizontal scroll, it's painful.
 - ☑ **Example child is confusing for new users.** Fixed — example child is now client-side only (never synced to Supabase), shown with green indicator and a demo banner. Auto-removed when user adds their first real child. Cleaned up 8 previously synced example children from production DB.
 - ☐ **Charts have no empty state.** If a child has no measurements, charts render empty with just reference bands. No helpful message like "Add measurements to see growth charts."
-- ☐ **Ability to login with password** Magic link is ok, but it would be nice to have an option for password.
+- ☑ **Ability to login with password.** Fixed — added email+password sign-in and sign-up flows alongside magic link. Anonymous accounts can be upgraded via `linkWithPassword()`.
 
 
 ## Data & Feature Gaps

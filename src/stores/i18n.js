@@ -85,6 +85,10 @@ const translations = {
     'chart.minimize': 'Close',
     'chart.drag': 'Drag to reorder',
     'chart.columns': 'Columns',
+    'chart.group.weight': 'Weight',
+    'chart.group.length': 'Length',
+    'chart.group.headCirc': 'Head Circumference',
+    'chart.group.wfl': 'Weight-for-Length',
     'explain.title': 'What do these indicators mean?',
     'explain.summary':
       "Doctors and midwives don't just look at a child's weight or height alone — they check how these values compare to other children of the same age and sex. This is what Z-scores are for.",
@@ -262,6 +266,10 @@ const translations = {
     'chart.minimize': 'Zamknij',
     'chart.drag': 'Przeciągnij, aby zmienić kolejność',
     'chart.columns': 'Kolumny',
+    'chart.group.weight': 'Masa',
+    'chart.group.length': 'Długość',
+    'chart.group.headCirc': 'Obwód głowy',
+    'chart.group.wfl': 'Masa do długości',
     'explain.title': 'Co oznaczają te wskaźniki?',
     'explain.summary':
       "Lekarze i położne nie patrzą tylko na samą wagę czy wzrost dziecka, ale sprawdzają jak te wartości wypadają na tle innych dzieci w tym samym wieku i tej samej płci. Do tego służą tzw. Z-score'y.",

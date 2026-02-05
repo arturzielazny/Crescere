@@ -21,9 +21,8 @@
       2: 'md:grid-cols-2',
       3: 'md:grid-cols-3',
       4: 'md:grid-cols-4'
-    }[$columnsPerRow] || 'md:grid-cols-3';
+    }[$columnsPerRow] || 'md:grid-cols-2';
 
-  // Reactive titles that update when language changes
   $: chartTitles = {
     weight: $t('chart.weight.title'),
     length: $t('chart.length.title'),
@@ -34,6 +33,13 @@
     wflz: $t('chart.wflz'),
     weightVelocity: $t('chart.weightVelocity.title'),
     lengthVelocity: $t('chart.lengthVelocity.title')
+  };
+
+  $: groupTitles = {
+    weight: $t('chart.group.weight'),
+    length: $t('chart.group.length'),
+    headCirc: $t('chart.group.headCirc'),
+    wfl: $t('chart.group.wfl')
   };
 
   function handleDragStart(event, index) {
@@ -112,41 +118,27 @@
 </div>
 
 <div class="grid grid-cols-1 {gridClass} gap-6">
-  {#each $chartOrder as chart, index (chart.id)}
+  {#each $chartOrder as group, groupIndex (group.groupId)}
     <div
-      class="relative group"
-      class:opacity-50={draggedIndex === index}
-      class:ring-2={dragOverIndex === index}
-      class:ring-blue-400={dragOverIndex === index}
-      class:ring-offset-2={dragOverIndex === index}
+      class="group/card bg-white rounded-lg shadow border border-gray-200"
+      class:opacity-50={draggedIndex === groupIndex}
+      class:ring-2={dragOverIndex === groupIndex}
+      class:ring-blue-400={dragOverIndex === groupIndex}
+      class:ring-offset-2={dragOverIndex === groupIndex}
       draggable="true"
-      on:dragstart={(e) => handleDragStart(e, index)}
-      on:dragover={(e) => handleDragOver(e, index)}
+      on:dragstart={(e) => handleDragStart(e, groupIndex)}
+      on:dragover={(e) => handleDragOver(e, groupIndex)}
       on:dragleave={handleDragLeave}
-      on:drop={(e) => handleDrop(e, index)}
+      on:drop={(e) => handleDrop(e, groupIndex)}
       on:dragend={handleDragEnd}
       role="listitem"
     >
-      <div
-        class="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <button
-          on:click={() => handleMaximize(chart.id)}
-          class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800"
-          title={$t('chart.maximize')}
-          aria-label={$t('chart.maximize')}
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-            />
-          </svg>
-        </button>
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <h3 class="text-sm font-semibold text-gray-700">
+          {groupTitles[group.groupId] || group.groupId}
+        </h3>
         <div
-          class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800 cursor-grab active:cursor-grabbing"
+          class="p-1.5 text-gray-400 opacity-0 group-hover/card:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded hover:bg-gray-100 hover:text-gray-600"
           title={$t('chart.drag')}
           aria-label={$t('chart.drag')}
         >
@@ -161,22 +153,48 @@
         </div>
       </div>
 
-      {#if chart.type === 'growth'}
-        <GrowthMetricChart
-          metric={chart.id}
-          title={chartTitles[chart.id]}
-          unit={getChartUnit(chart)}
-          maxAge={$maxAgeInDays}
-        />
-      {:else if chart.type === 'velocity'}
-        <VelocityChart
-          metric={getVelocityMetric(chart.id)}
-          title={chartTitles[chart.id]}
-          maxAge={$maxAgeInDays}
-        />
-      {:else}
-        <ZScoreChart metric={chart.id} title={chartTitles[chart.id]} maxAge={$maxAgeInDays} />
-      {/if}
+      <div class="flex flex-col">
+        {#each group.charts as chart (chart.id)}
+          <div class="relative group/chart">
+            <div
+              class="absolute top-2 right-2 z-10 opacity-0 group-hover/chart:opacity-100 transition-opacity"
+            >
+              <button
+                on:click={() => handleMaximize(chart.id)}
+                class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800"
+                title={$t('chart.maximize')}
+                aria-label={$t('chart.maximize')}
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {#if chart.type === 'growth'}
+              <GrowthMetricChart
+                metric={chart.id}
+                title={chartTitles[chart.id]}
+                unit={getChartUnit(chart)}
+                maxAge={$maxAgeInDays}
+              />
+            {:else if chart.type === 'velocity'}
+              <VelocityChart
+                metric={getVelocityMetric(chart.id)}
+                title={chartTitles[chart.id]}
+                maxAge={$maxAgeInDays}
+              />
+            {:else}
+              <ZScoreChart metric={chart.id} title={chartTitles[chart.id]} maxAge={$maxAgeInDays} />
+            {/if}
+          </div>
+        {/each}
+      </div>
     </div>
   {/each}
 </div>
@@ -214,31 +232,33 @@
         </svg>
       </button>
       <div class="p-4 maximized-chart">
-        {#each $chartOrder as chart (chart.id)}
-          {#if chart.id === $maximizedChart}
-            {#key $maximizedChart}
-              {#if chart.type === 'growth'}
-                <GrowthMetricChart
-                  metric={chart.id}
-                  title={chartTitles[chart.id]}
-                  unit={getChartUnit(chart)}
-                  maxAge={$maxAgeInDays}
-                />
-              {:else if chart.type === 'velocity'}
-                <VelocityChart
-                  metric={getVelocityMetric(chart.id)}
-                  title={chartTitles[chart.id]}
-                  maxAge={$maxAgeInDays}
-                />
-              {:else}
-                <ZScoreChart
-                  metric={chart.id}
-                  title={chartTitles[chart.id]}
-                  maxAge={$maxAgeInDays}
-                />
-              {/if}
-            {/key}
-          {/if}
+        {#each $chartOrder as group (group.groupId)}
+          {#each group.charts as chart (chart.id)}
+            {#if chart.id === $maximizedChart}
+              {#key $maximizedChart}
+                {#if chart.type === 'growth'}
+                  <GrowthMetricChart
+                    metric={chart.id}
+                    title={chartTitles[chart.id]}
+                    unit={getChartUnit(chart)}
+                    maxAge={$maxAgeInDays}
+                  />
+                {:else if chart.type === 'velocity'}
+                  <VelocityChart
+                    metric={getVelocityMetric(chart.id)}
+                    title={chartTitles[chart.id]}
+                    maxAge={$maxAgeInDays}
+                  />
+                {:else}
+                  <ZScoreChart
+                    metric={chart.id}
+                    title={chartTitles[chart.id]}
+                    maxAge={$maxAgeInDays}
+                  />
+                {/if}
+              {/key}
+            {/if}
+          {/each}
         {/each}
       </div>
     </div>

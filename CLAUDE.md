@@ -11,37 +11,52 @@ npm install          # Install dependencies
 npm run dev          # Start Vite dev server with HMR
 npm run build        # Create production build in dist/
 npm run preview      # Serve production build locally
-npm run test         # Run tests once
-npm run test:watch   # Run tests in watch mode
+npm run test         # Run unit tests once
+npm run test:watch   # Run unit tests in watch mode
+npm run test:integration  # Run Supabase integration tests (requires local Supabase)
+npm run test:all     # Run all tests (unit + integration)
 npm run lint         # Check code with ESLint
 npm run lint:fix     # Auto-fix ESLint issues
 npm run format       # Format code with Prettier
 npm run format:check # Check formatting without changes
 ```
 
-**Pre-commit hooks:** Husky + lint-staged automatically runs ESLint, Prettier, and tests on every commit.
+**Pre-commit hooks:** Husky + lint-staged automatically runs ESLint, Prettier, and unit tests on every commit.
 
 **Deployment:** Push to `master` triggers GitHub Actions deployment to https://arturzielazny.github.io/Crescere/
 
 ## Architecture Overview
 
-Svelte 5 SPA for pediatric growth monitoring. Runs entirely client-side with localStorage persistence.
+Svelte 5 SPA for pediatric growth monitoring. Uses Supabase for persistence, authentication, and real-time sharing.
 
 ### Core Data Flow
 
-1. **State Management** (`src/stores/childStore.js`): Central `childStore` (writable) holds `children[]` array and `activeChildId`. Derived stores (`activeChild`, `measurementsWithZScores`) compute current selection and enriched data.
+1. **State Management** (`src/stores/childStore.js`): Central `childStore` (writable) holds `children[]` array and `activeChildId`. Derived stores (`activeChild`, `measurementsWithZScores`) compute current selection and enriched data. All mutations use **optimistic updates** — the UI updates instantly, then an async Supabase call runs in the background. On failure, the store rolls back and `dataError` is set.
 
-2. **Z-Score Calculation** (`src/lib/zscore.js`): Implements WHO LMS method with two variants:
+2. **Persistence** (`src/lib/api.js` + Supabase): All data is stored in Supabase (tables: `children`, `measurements`, `user_preferences`). There is no localStorage persistence for child data. The `src/lib/storage.js` file is retained solely for migrating legacy localStorage data to Supabase (imported by `App.svelte` and `src/lib/migrate.js`).
+
+3. **Authentication** (`src/stores/authStore.js`): Three methods via Supabase Auth:
+   - Anonymous sign-in (auto-created, upgradeable)
+   - Magic link (email OTP)
+   - Email + password
+
+4. **Z-Score Calculation** (`src/lib/zscore.js`): Implements WHO LMS method with two variants:
    - Standard LMS for length-for-age, head circumference-for-age
    - Bounded LMS for weight-for-age, weight-for-length (clamps at ±3 SD with linear extrapolation)
 
-3. **WHO Reference Data** (`src/data/`): Four datasets in compact array format `{ [sex]: [[l,m,s], ...] }` where array index = day. Sex: 1=male, 2=female. Age range: 0-1826 days (0-5 years). WFL uses length strings as keys.
+5. **WHO Reference Data** (`src/data/`): Four datasets in compact array format `{ [sex]: [[l,m,s], ...] }` where array index = day. Sex: 1=male, 2=female. Age range: 0-1826 days (0-5 years). WFL uses length strings as keys.
 
-4. **Persistence** (`src/lib/storage.js`): localStorage with schema versioning (current: v2). Auto-saves on state changes.
+6. **Sharing** (`src/lib/share.js`): Two mechanisms:
+   - **Snapshot sharing**: URL-based via LZ-String compression in hash fragment (`#share=...`). Static point-in-time copy. No auth required to view.
+   - **Live sharing**: Supabase token-based (`#live-share=<token>`). Named share links with read-only access. Both parties must be authenticated.
 
-5. **Sharing** (`src/lib/share.js`): URL-based sharing using LZ-String compression in hash fragment (`#share=...`).
+7. **i18n** (`src/stores/i18n.js`): English (en) and Polish (pl). Auto-detects browser language.
 
-6. **i18n** (`src/stores/i18n.js`): English (en) and Polish (pl). Auto-detects browser language.
+### Special Child Types
+
+- **Example child** (`exampleChildId`): Client-side demo data, never synced. Auto-removed when user adds a real child.
+- **Temporary child** (`temporaryChildId`): Imported from a share URL, held in-memory until explicitly saved.
+- **Pending child** (`pendingChildIds`): Created locally but missing required fields (birthDate, sex). Synced to Supabase once profile is complete.
 
 ### Key Data Models
 
@@ -55,19 +70,26 @@ Svelte 5 SPA for pediatric growth monitoring. Runs entirely client-side with loc
 
 ### Charts
 
-Charts use Chart.js (tree-shaken imports) with:
-- WHO reference bands (±1SD, ±2SD)
+Charts use Chart.js (tree-shaken imports) organized into **vertical groups** (Weight, Length, Head Circumference, Weight-for-Length). Groups are drag-reorderable as a unit; individual charts are not. Chart types within each group:
+- **Growth charts**: Raw measurements over time with WHO reference bands (±1SD, ±2SD)
+- **Z-score charts**: Standard deviation scores over time
+- **Velocity charts**: Daily gain rate between consecutive measurements
+
+Chart features:
 - Vertical "now" line at current age (chartjs-plugin-annotation)
 - 4-level z-score coloring: green bold (±1SD), yellow (±1-2SD), red (±2-3SD), red bold (>±3SD)
 - Future measurements as faded triangles
+- Column count selector (2/3/4 groups per row)
+
+Chart configuration is persisted in localStorage via `src/stores/chartStore.js` with automatic migration from the old flat format to the grouped format.
 
 ## Code Style
 
 - 2-space indentation, single quotes, semicolons (enforced by Prettier)
 - PascalCase for `.svelte` components, lowercase for `.js` utilities
-- Tailwind CSS via `@import "tailwindcss"` in `app.css`
+- Tailwind CSS v4 via `@tailwindcss/vite` plugin (no separate tailwind.config.js)
 - JavaScript with JSDoc type hints (`checkJs: true`)
-- ESLint with Svelte plugin for code quality
+- ESLint 9 flat config with Svelte plugin
 - Prefix unused variables with `_` (e.g., `_err` in catch blocks)
 
 ## Svelte 5 Gotchas
@@ -96,17 +118,20 @@ Charts use Chart.js (tree-shaken imports) with:
 
 ## Build Optimizations
 
-Bundle: ~553 KB (172 KB gzipped)
+Bundle: ~777 KB (233 KB gzipped)
 
 1. **Tree-shaken Chart.js**: Only imports LineController, LineElement, PointElement, LinearScale, Filler, Legend, Tooltip.
 
 2. **Compact WHO data**: Arrays `[l,m,s]` instead of objects. Run `node scripts/compress-who-data.js` to recompress if data changes.
 
-## Schema Migrations
+## Supabase
 
-localStorage data is versioned (current: v2). When adding schema changes:
+Database schema is defined in `supabase/migrations/`. Two migrations exist:
+- `20250201000000_initial_schema.sql`: Core tables (`children`, `measurements`, `user_preferences`) with RLS policies
+- `20250202000000_child_sharing.sql`: Sharing tables (`child_shares`, `shared_child_access`) with RLS and `accept_share` RPC
 
-1. Increment `CURRENT_VERSION` in `src/lib/storage.js`
-2. Add migration function to `migrations` object (key = source version)
-3. Add tests in `src/lib/storage.test.js` to verify migration from all previous versions
-4. Run `npm test` to ensure all migrations work correctly
+Local development uses Docker-based Supabase (`supabase start`). Production credentials are injected via GitHub Actions secrets during deployment.
+
+### Legacy localStorage Migration
+
+`src/lib/storage.js` contains a schema-versioned localStorage system (current: v2). This is no longer the primary data store — it exists solely to support one-time migration of pre-Supabase data. The `migrateToSupabase()` function in `src/lib/migrate.js` reads from localStorage and writes to Supabase, then clears localStorage. Do not add new localStorage-based persistence.
