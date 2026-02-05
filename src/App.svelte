@@ -6,7 +6,9 @@
   import ChartGrid from './components/ChartGrid.svelte';
   import ShareModal from './components/ShareModal.svelte';
   import Toast from './components/Toast.svelte';
-  import Header from './components/Header.svelte';
+  import UserMenu from './components/UserMenu.svelte';
+  import AuthModal from './components/AuthModal.svelte';
+  import OverflowMenu from './components/OverflowMenu.svelte';
   import WelcomeScreen from './components/WelcomeScreen.svelte';
   import {
     childStore,
@@ -30,14 +32,15 @@
   import { migrateData } from './lib/storage.js';
   import { migrateToSupabase, hasLocalData } from './lib/migrate.js';
   import { parseLiveShareUrl, clearShareHash } from './lib/share.js';
-  import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
+  import { t } from './stores/i18n.js';
   import { calculateAgeInDays, formatAge } from './lib/zscore.js';
 
   let showWelcome = false;
   let showShareModal = false;
   let toast = null;
   let migrating = false;
-  let menuOpen = false;
+  /** @type {null | 'signIn' | 'claimAccount' | 'setPassword'} */
+  let authModalMode = null;
 
   async function checkForLiveShare() {
     const token = parseLiveShareUrl();
@@ -238,20 +241,6 @@
           {$t('app.title')}
         </h1>
         <div class="flex gap-2 items-center">
-          <!-- Language & Share: always visible -->
-          <select
-            id="language-select"
-            value={$language}
-            on:change={(event) => setLanguage(event.target.value)}
-            class="px-2 py-1.5 text-sm border border-gray-200 rounded bg-white hidden sm:block"
-            aria-label={$t('app.language.label')}
-          >
-            {#each availableLanguages as lang (lang)}
-              <option value={lang}>
-                {$t(`app.language.${lang}`)}
-              </option>
-            {/each}
-          </select>
           <button
             on:click={handleShare}
             disabled={!canShare}
@@ -266,111 +255,14 @@
           >
             {$t('app.print')}
           </button>
-
-          <!-- Desktop: inline buttons -->
-          <button
-            on:click={handleExport}
-            class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded hidden sm:block"
-          >
-            {$t('app.export')}
-          </button>
-          <label
-            class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded cursor-pointer hidden sm:block"
-          >
-            {$t('app.import')}
-            <input type="file" accept=".json" on:change={handleImport} class="hidden" />
-          </label>
-          <button
-            on:click={handleClear}
-            class="px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded hidden sm:block"
-          >
-            {$t('app.clear')}
-          </button>
-
-          <!-- Mobile: kebab menu -->
-          <div class="relative sm:hidden">
-            <button
-              on:click={() => (menuOpen = !menuOpen)}
-              class="p-1.5 rounded hover:bg-gray-100"
-              aria-label={$t('app.menu')}
-            >
-              <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"
-                />
-              </svg>
-            </button>
-            {#if menuOpen}
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <!-- svelte-ignore a11y_click_events_have_key_events -->
-              <div class="fixed inset-0 z-40" on:click={() => (menuOpen = false)}></div>
-              <div
-                class="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1"
-              >
-                <div class="px-3 py-2 border-b border-gray-100">
-                  <select
-                    value={$language}
-                    on:change={(event) => {
-                      setLanguage(event.target.value);
-                      menuOpen = false;
-                    }}
-                    class="w-full px-2 py-1 text-sm border border-gray-200 rounded bg-white"
-                    aria-label={$t('app.language.label')}
-                  >
-                    {#each availableLanguages as lang (lang)}
-                      <option value={lang}>
-                        {$t(`app.language.${lang}`)}
-                      </option>
-                    {/each}
-                  </select>
-                </div>
-                <button
-                  on:click={() => {
-                    handlePrint();
-                    menuOpen = false;
-                  }}
-                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  {$t('app.print')}
-                </button>
-                <button
-                  on:click={() => {
-                    handleExport();
-                    menuOpen = false;
-                  }}
-                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  {$t('app.export')}
-                </button>
-                <label
-                  class="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  {$t('app.import')}
-                  <input
-                    type="file"
-                    accept=".json"
-                    on:change={(e) => {
-                      handleImport(e);
-                      menuOpen = false;
-                    }}
-                    class="hidden"
-                  />
-                </label>
-                <button
-                  on:click={() => {
-                    handleClear();
-                    menuOpen = false;
-                  }}
-                  class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                >
-                  {$t('app.clear')}
-                </button>
-              </div>
-            {/if}
-          </div>
-
+          <OverflowMenu
+            onExport={handleExport}
+            onImport={handleImport}
+            onClear={handleClear}
+            onPrint={handlePrint}
+          />
           <div class="border-l border-gray-200 pl-2 ml-1">
-            <Header onSignOut={handleSignOut} />
+            <UserMenu onSignOut={handleSignOut} onOpenAuth={(mode) => (authModalMode = mode)} />
           </div>
         </div>
       </div>
@@ -496,6 +388,19 @@
       <p class="mt-1">{$t('app.footer.disclaimer')}</p>
     </footer>
   </div>
+{/if}
+
+{#if authModalMode}
+  <AuthModal
+    mode={authModalMode}
+    onClose={() => (authModalMode = null)}
+    onSuccess={authModalMode === 'signIn'
+      ? () => {
+          authModalMode = null;
+          handleSignedIn();
+        }
+      : () => (authModalMode = null)}
+  />
 {/if}
 
 {#if showShareModal}
