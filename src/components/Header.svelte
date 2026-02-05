@@ -9,6 +9,7 @@
     signUpWithPassword,
     linkWithEmail,
     linkWithPassword,
+    setPassword,
     error as authError,
     clearError
   } from '../stores/authStore.js';
@@ -23,6 +24,48 @@
   let isLinking = false;
   let usePassword = false;
   let isSignUp = false;
+
+  let showSetPassword = false;
+  let newPassword = '';
+  let confirmPassword = '';
+  let passwordSet = false;
+  let passwordError = '';
+
+  function openSetPassword() {
+    showSetPassword = true;
+    newPassword = '';
+    confirmPassword = '';
+    passwordSet = false;
+    passwordError = '';
+    clearError();
+  }
+
+  function closeSetPassword() {
+    showSetPassword = false;
+    newPassword = '';
+    confirmPassword = '';
+    passwordSet = false;
+    passwordError = '';
+    clearError();
+  }
+
+  async function handleSetPassword() {
+    passwordError = '';
+    if (newPassword.length < 6) {
+      passwordError = $t('auth.setPassword.tooShort');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      passwordError = $t('auth.setPassword.mismatch');
+      return;
+    }
+    try {
+      await setPassword(newPassword);
+      passwordSet = true;
+    } catch (_err) {
+      // error is set in auth store
+    }
+  }
 
   function openEmailInput(linking = false) {
     isLinking = linking;
@@ -190,15 +233,70 @@
       </button>
     {:else}
       <!-- Authenticated user -->
-      <span class="text-sm text-gray-600 hidden sm:block truncate max-w-32" title={displayName}>
-        {displayName}
-      </span>
-      <button
-        on:click={handleSignOut}
-        class="px-3 py-1.5 text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 rounded"
-      >
-        {$t('auth.signOut')}
-      </button>
+      {#if showSetPassword}
+        <div class="flex items-center gap-2 flex-wrap">
+          {#if passwordSet}
+            <span class="text-sm text-green-600">{$t('auth.setPassword.success')}</span>
+            <button
+              on:click={closeSetPassword}
+              class="px-2 py-1 text-sm text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          {:else}
+            <input
+              type="password"
+              bind:value={newPassword}
+              placeholder={$t('auth.setPassword.newPlaceholder')}
+              class="px-2 py-1 text-sm border border-gray-200 rounded w-36 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              on:keydown={(e) => e.key === 'Enter' && confirmPassword && handleSetPassword()}
+            />
+            <input
+              type="password"
+              bind:value={confirmPassword}
+              placeholder={$t('auth.setPassword.confirmPlaceholder')}
+              class="px-2 py-1 text-sm border border-gray-200 rounded w-36 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              on:keydown={(e) => e.key === 'Enter' && handleSetPassword()}
+            />
+            <button
+              on:click={handleSetPassword}
+              disabled={!newPassword || !confirmPassword}
+              class="px-3 py-1 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {$t('auth.setPassword.submit')}
+            </button>
+            <button
+              on:click={closeSetPassword}
+              class="px-2 py-1 text-sm text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+            {#if passwordError}
+              <span class="text-xs text-red-600 w-full">{passwordError}</span>
+            {/if}
+            {#if $authError}
+              <span class="text-xs text-red-600 w-full">{$authError}</span>
+            {/if}
+          {/if}
+        </div>
+      {:else}
+        <span class="text-sm text-gray-600 hidden sm:block truncate max-w-32" title={displayName}>
+          {displayName}
+        </span>
+        <button
+          on:click={openSetPassword}
+          class="px-3 py-1.5 text-sm bg-gray-50 text-gray-600 hover:bg-gray-100 rounded"
+          title={$t('auth.setPassword.title')}
+        >
+          {$t('auth.setPassword.button')}
+        </button>
+        <button
+          on:click={handleSignOut}
+          class="px-3 py-1.5 text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 rounded"
+        >
+          {$t('auth.signOut')}
+        </button>
+      {/if}
     {/if}
   {:else}
     <!-- Not authenticated -->
