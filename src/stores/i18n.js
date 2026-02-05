@@ -6,6 +6,10 @@ const translations = {
   en: {
     'app.title': 'Crescere - Growth Tracker',
     'app.share': 'Share',
+    'app.share.disabled.notSignedIn': 'Sign in to share',
+    'app.share.disabled.guest': 'Save your account to share',
+    'app.share.disabled.noChild': 'Select a child to share',
+    'app.share.disabled.alreadyShared': 'This child is shared with you',
     'app.export': 'Export',
     'app.import': 'Import',
     'app.clear': 'Clear',
@@ -190,6 +194,10 @@ const translations = {
   pl: {
     'app.title': 'Crescere - Monitorowanie wzrostu',
     'app.share': 'Udostępnij',
+    'app.share.disabled.notSignedIn': 'Zaloguj się, aby udostępnić',
+    'app.share.disabled.guest': 'Zapisz konto, aby udostępnić',
+    'app.share.disabled.noChild': 'Wybierz dziecko, aby udostępnić',
+    'app.share.disabled.alreadyShared': 'To dziecko jest Ci udostępnione',
     'app.export': 'Eksportuj',
     'app.import': 'Importuj',
     'app.clear': 'Wyczyść',
