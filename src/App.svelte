@@ -3,6 +3,7 @@
   import ChildProfile from './components/ChildProfile.svelte';
   import ChildList from './components/ChildList.svelte';
   import MeasurementTable from './components/MeasurementTable.svelte';
+  import ZScoreTable from './components/ZScoreTable.svelte';
   import ChartGrid from './components/ChartGrid.svelte';
   import ShareModal from './components/ShareModal.svelte';
   import Toast from './components/Toast.svelte';
@@ -356,38 +357,52 @@
 
         <ChildList />
         <ChildProfile />
-        <MeasurementTable />
 
-        <ChartGrid />
+        <div class="lg:flex lg:gap-4 lg:items-start">
+          <!-- Left sidebar: compact measurement entry -->
+          <aside
+            class="lg:w-72 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto mb-4 lg:mb-0 bg-white rounded-lg shadow p-3"
+          >
+            <h2 class="text-sm font-semibold text-gray-800 mb-2">{$t('measurements.title')}</h2>
+            <MeasurementTable compact />
+          </aside>
 
-        <section class="bg-white rounded-lg shadow p-6 mt-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
-          <p class="text-sm text-gray-600 mb-3">
-            {$t('explain.summary')}
-          </p>
-          <p class="text-sm text-gray-600 mb-4">
-            {$t('explain.meaning')}
-          </p>
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('explain.shortcuts')}</h3>
-          <dl class="text-sm text-gray-600 space-y-3">
-            <div>
-              <dt class="font-medium text-gray-700">{$t('explain.waz.title')}</dt>
-              <dd class="ml-0 mt-0.5">{$t('explain.waz.desc')}</dd>
-            </div>
-            <div>
-              <dt class="font-medium text-gray-700">{$t('explain.lhaz.title')}</dt>
-              <dd class="ml-0 mt-0.5">{$t('explain.lhaz.desc')}</dd>
-            </div>
-            <div>
-              <dt class="font-medium text-gray-700">{$t('explain.headcz.title')}</dt>
-              <dd class="ml-0 mt-0.5">{$t('explain.headcz.desc')}</dd>
-            </div>
-            <div>
-              <dt class="font-medium text-gray-700">{$t('explain.wflz.title')}</dt>
-              <dd class="ml-0 mt-0.5">{$t('explain.wflz.desc')}</dd>
-            </div>
-          </dl>
-        </section>
+          <!-- Right main: charts, z-scores, explanation -->
+          <div class="flex-1 min-w-0">
+            <ChartGrid />
+
+            <ZScoreTable />
+
+            <section class="bg-white rounded-lg shadow p-6 mt-6">
+              <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
+              <p class="text-sm text-gray-600 mb-3">
+                {$t('explain.summary')}
+              </p>
+              <p class="text-sm text-gray-600 mb-4">
+                {$t('explain.meaning')}
+              </p>
+              <h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('explain.shortcuts')}</h3>
+              <dl class="text-sm text-gray-600 space-y-3">
+                <div>
+                  <dt class="font-medium text-gray-700">{$t('explain.waz.title')}</dt>
+                  <dd class="ml-0 mt-0.5">{$t('explain.waz.desc')}</dd>
+                </div>
+                <div>
+                  <dt class="font-medium text-gray-700">{$t('explain.lhaz.title')}</dt>
+                  <dd class="ml-0 mt-0.5">{$t('explain.lhaz.desc')}</dd>
+                </div>
+                <div>
+                  <dt class="font-medium text-gray-700">{$t('explain.headcz.title')}</dt>
+                  <dd class="ml-0 mt-0.5">{$t('explain.headcz.desc')}</dd>
+                </div>
+                <div>
+                  <dt class="font-medium text-gray-700">{$t('explain.wflz.title')}</dt>
+                  <dd class="ml-0 mt-0.5">{$t('explain.wflz.desc')}</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        </div>
       {/if}
     </main>
 
