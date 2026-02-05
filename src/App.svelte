@@ -362,13 +362,13 @@
             class="lg:w-1/3 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto mb-4 lg:mb-0"
           >
             <MeasurementTable compact />
-
-            <ZScoreTable />
           </aside>
 
-          <!-- Right panel: charts (2/3) -->
+          <!-- Right panel: charts + z-scores (2/3) -->
           <div class="flex-1 min-w-0">
             <ChartGrid />
+
+            <ZScoreTable />
 
             <section class="bg-white rounded-lg shadow p-6 mt-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
