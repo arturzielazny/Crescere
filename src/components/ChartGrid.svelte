@@ -94,7 +94,7 @@
 <div class="flex flex-col gap-6 mt-6">
   {#each $chartOrder as group, groupIndex (group.groupId)}
     <div
-      class="group/card bg-white rounded-lg shadow border border-gray-200"
+      class="group/card bg-white rounded-lg shadow border border-gray-200 print-chart-group"
       class:opacity-50={draggedIndex === groupIndex}
       class:ring-2={dragOverIndex === groupIndex}
       class:ring-blue-400={dragOverIndex === groupIndex}
@@ -112,7 +112,7 @@
           {groupTitles[group.groupId] || group.groupId}
         </h3>
         <div
-          class="p-1.5 text-gray-400 opacity-0 group-hover/card:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded hover:bg-gray-100 hover:text-gray-600"
+          class="p-1.5 text-gray-400 opacity-0 group-hover/card:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded hover:bg-gray-100 hover:text-gray-600 print-hidden"
           title={$t('chart.drag')}
           aria-label={$t('chart.drag')}
         >
@@ -132,7 +132,7 @@
           <div class="relative group/chart">
             <button
               on:click={() => handleMaximize(chart.id)}
-              class="absolute top-2 right-2 z-10 p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800 opacity-0 group-hover/chart:opacity-100 transition-opacity"
+              class="absolute top-2 right-2 z-10 p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800 opacity-0 group-hover/chart:opacity-100 transition-opacity print-hidden"
               title={$t('chart.maximize')}
               aria-label={$t('chart.maximize')}
             >
@@ -172,7 +172,7 @@
 {#if $maximizedChart}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
-    class="fixed inset-0 bg-black/50 z-40 flex items-center justify-center"
+    class="fixed inset-0 bg-black/50 z-40 flex items-center justify-center print-hidden"
     style="padding: 5vh 5vw;"
     on:click={closeMaximize}
     on:keydown={(e) => e.key === 'Escape' && closeMaximize()}

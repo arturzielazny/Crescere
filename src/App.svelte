@@ -31,6 +31,7 @@
   import { migrateToSupabase, hasLocalData } from './lib/migrate.js';
   import { parseLiveShareUrl, clearShareHash } from './lib/share.js';
   import { availableLanguages, language, setLanguage, t } from './stores/i18n.js';
+  import { calculateAgeInDays, formatAge } from './lib/zscore.js';
 
   let showWelcome = false;
   let showShareModal = false;
@@ -195,13 +196,37 @@
   $: isLoading = $authLoading || $dataLoading || migrating;
   $: footerStorageText =
     $isAuthenticated && !$isAnonymous ? $t('app.footer.storage.cloud') : $t('app.footer.storage');
+
+  $: printAge = (() => {
+    const child = $activeChild;
+    if (!child?.profile?.birthDate) return '';
+    const today = new Date().toISOString().slice(0, 10);
+    const days = calculateAgeInDays(child.profile.birthDate, today);
+    if (days < 0) return '';
+    return formatAge(days, {
+      invalid: $t('age.invalid'),
+      month: $t('age.month'),
+      day: $t('age.day')
+    });
+  })();
+
+  $: printSex = (() => {
+    const sex = $activeChild?.profile?.sex;
+    if (sex === 1) return $t('profile.sex.male');
+    if (sex === 2) return $t('profile.sex.female');
+    return '';
+  })();
+
+  function handlePrint() {
+    window.print();
+  }
 </script>
 
 {#if showWelcome}
   <WelcomeScreen onContinueAsGuest={handleContinueAsGuest} />
 {:else}
   <div class="min-h-screen bg-gray-100">
-    <header class="bg-white shadow-sm">
+    <header class="bg-white shadow-sm print-hidden">
       <div class="px-4 py-3 flex justify-between items-center gap-2">
         <h1 class="text-xl font-bold text-gray-800 whitespace-nowrap">
           {$t('app.title')}
@@ -227,6 +252,13 @@
             class="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {$t('app.share')}
+          </button>
+          <button
+            on:click={handlePrint}
+            disabled={!$activeChild}
+            class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hidden sm:block"
+          >
+            {$t('app.print')}
           </button>
 
           <!-- Desktop: inline buttons -->
@@ -288,6 +320,15 @@
                 </div>
                 <button
                   on:click={() => {
+                    handlePrint();
+                    menuOpen = false;
+                  }}
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  {$t('app.print')}
+                </button>
+                <button
+                  on:click={() => {
                     handleExport();
                     menuOpen = false;
                   }}
@@ -343,23 +384,52 @@
         </div>
       {:else}
         {#if $dataError}
-          <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div
+            class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 print-hidden"
+          >
             {$t('auth.error')}: {$dataError}
           </div>
         {/if}
 
         {#if $isAnonymous}
-          <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+          <div
+            class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 print-hidden"
+          >
             {$t('auth.guestMode')}
           </div>
         {/if}
 
-        <ChildList />
+        <div class="print-hidden">
+          <ChildList />
+        </div>
 
-        <div class="lg:flex lg:gap-6 lg:items-start">
+        <!-- Print-only header with child info -->
+        {#if $activeChild}
+          <div class="print-only hidden mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">{$t('print.title')}</h1>
+            <div class="text-sm text-gray-700 space-y-1">
+              <p class="text-lg font-semibold">
+                {$activeChild?.profile?.name || $t('children.unnamed')}
+              </p>
+              {#if $activeChild?.profile?.birthDate}
+                <p>
+                  {$t('print.born')}: {$activeChild.profile.birthDate}
+                  {#if printSex}&middot; {$t('print.sex')}: {printSex}{/if}
+                  {#if printAge}&middot; {$t('profile.age.current')} {printAge}{/if}
+                </p>
+              {/if}
+              <p class="text-xs text-gray-500">
+                {$t('print.generated')}: {new Date().toLocaleDateString()}
+              </p>
+            </div>
+            <hr class="mt-3 border-gray-300" />
+          </div>
+        {/if}
+
+        <div class="lg:flex lg:gap-6 lg:items-start print-full-width">
           <!-- Left panel: measurement entry (1/3) -->
           <aside
-            class="lg:w-1/3 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto mb-4 lg:mb-0"
+            class="lg:w-1/3 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto mb-4 lg:mb-0 print-hidden"
           >
             <MeasurementTable compact />
           </aside>
@@ -368,9 +438,11 @@
           <div class="flex-1 min-w-0">
             <ChartGrid />
 
-            <ZScoreTable />
+            <div class="print-table-break">
+              <ZScoreTable />
+            </div>
 
-            <section class="bg-white rounded-lg shadow p-6 mt-6">
+            <section class="bg-white rounded-lg shadow p-6 mt-6 print-hidden">
               <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
               <p class="text-sm text-gray-600 mb-3">
                 {$t('explain.summary')}
@@ -403,7 +475,7 @@
       {/if}
     </main>
 
-    <footer class="text-center py-4 text-sm text-gray-500">
+    <footer class="text-center py-4 text-sm text-gray-500 print-hidden">
       <p>
         {$t('app.footer.source')}
         <a

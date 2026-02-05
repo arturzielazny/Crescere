@@ -166,7 +166,12 @@ const translations = {
     'auth.welcome.guestNote':
       'Guest data is tied to this browser session. Sign in to access your data from any device.',
     'app.footer.storage.cloud': 'Data synced to the cloud',
-    'app.menu': 'Menu'
+    'app.menu': 'Menu',
+    'app.print': 'Print',
+    'print.title': 'Growth Report',
+    'print.generated': 'Generated',
+    'print.born': 'Born',
+    'print.sex': 'Sex'
   },
   pl: {
     'app.title': 'Crescere - Monitorowanie wzrostu',
@@ -333,7 +338,12 @@ const translations = {
     'auth.welcome.guestNote':
       'Dane gościa są powiązane z tą sesją przeglądarki. Zaloguj się, aby mieć dostęp z dowolnego urządzenia.',
     'app.footer.storage.cloud': 'Dane zsynchronizowane z chmurą',
-    'app.menu': 'Menu'
+    'app.menu': 'Menu',
+    'app.print': 'Drukuj',
+    'print.title': 'Raport wzrostu',
+    'print.generated': 'Wygenerowano',
+    'print.born': 'Data urodzenia',
+    'print.sex': 'Płeć'
   }
 };
 

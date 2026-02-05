@@ -15,3 +15,52 @@ body {
 #app {
   width: 100%;
 }
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* Remove shadows and borders from chart groups */
+  .print-chart-group {
+    box-shadow: none !important;
+    border: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Make charts fill available width */
+  .print-chart-group .h-80 {
+    height: 280px !important;
+  }
+
+  /* Z-score table page break */
+  .print-table-break {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Ensure full width layout (override lg:flex sidebar layout) */
+  .print-full-width {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .print-full-width > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+    position: static !important;
+  }
+}
