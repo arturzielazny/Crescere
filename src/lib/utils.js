@@ -2,7 +2,7 @@
  * Shared utility functions
  */
 
-import { getZScoreClass } from './zscore.js';
+import { getZScoreClass, zToPercentile } from './zscore.js';
 
 /**
  * Check if a date string is in the future
@@ -52,4 +52,35 @@ export function getZScoreColorClass(z) {
 export function formatZScore(z) {
   if (z === null || z === undefined || isNaN(z)) return '—';
   return z.toFixed(2);
+}
+
+/**
+ * Format z-score as a percentile with ordinal suffix
+ * @param {number|null} z - Z-score value
+ * @param {string} [locale='en'] - Locale code ('en' or 'pl')
+ * @returns {string} Formatted percentile string (e.g., "50th", "1st", "<1st", ">99th"; Polish: "50.", "<1.", ">99.")
+ */
+export function formatPercentile(z, locale = 'en') {
+  const p = zToPercentile(z);
+  if (p === null) return '—';
+
+  const rounded = Math.round(p);
+
+  if (locale === 'pl') {
+    if (rounded < 1) return '<1.';
+    if (rounded > 99) return '>99.';
+    return `${rounded}.`;
+  }
+
+  if (rounded < 1) return '<1st';
+  if (rounded > 99) return '>99th';
+
+  const mod10 = rounded % 10;
+  const mod100 = rounded % 100;
+  let suffix = 'th';
+  if (mod10 === 1 && mod100 !== 11) suffix = 'st';
+  else if (mod10 === 2 && mod100 !== 12) suffix = 'nd';
+  else if (mod10 === 3 && mod100 !== 13) suffix = 'rd';
+
+  return `${rounded}${suffix}`;
 }

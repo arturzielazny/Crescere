@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateAgeInDays, formatAge, calculateZScores } from './zscore.js';
+import { calculateAgeInDays, formatAge, calculateZScores, zToPercentile } from './zscore.js';
 
 describe('zscore helpers', () => {
   it('calculates age in days', () => {
@@ -41,5 +41,31 @@ describe('zscore helpers', () => {
     const measurement = { weight: 3500, length: 50, headCirc: 35 };
     const result = calculateZScores(measurement, 1, 731);
     expect(result.wflz).toBeNull();
+  });
+});
+
+describe('zToPercentile', () => {
+  it('returns 50 for z=0', () => {
+    expect(zToPercentile(0)).toBeCloseTo(50, 1);
+  });
+
+  it('returns ~97.5 for z=1.96', () => {
+    expect(zToPercentile(1.96)).toBeCloseTo(97.5, 0);
+  });
+
+  it('returns ~2.5 for z=-1.96', () => {
+    expect(zToPercentile(-1.96)).toBeCloseTo(2.5, 0);
+  });
+
+  it('returns null for null', () => {
+    expect(zToPercentile(null)).toBeNull();
+  });
+
+  it('returns null for NaN', () => {
+    expect(zToPercentile(NaN)).toBeNull();
+  });
+
+  it('returns null for undefined', () => {
+    expect(zToPercentile(undefined)).toBeNull();
   });
 });

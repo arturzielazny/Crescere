@@ -122,6 +122,30 @@ export function calculateZScores(measurement, sex, ageInDays) {
 }
 
 /**
+ * Convert z-score to percentile using the standard normal CDF
+ * Uses Abramowitz & Stegun rational approximation (formula 26.2.17)
+ * @param {number|null} z - Z-score value
+ * @returns {number|null} Percentile 0-100, or null for invalid input
+ */
+export function zToPercentile(z) {
+  if (z === null || z === undefined || isNaN(z)) return null;
+
+  const a1 = 0.254829592;
+  const a2 = -0.284496736;
+  const a3 = 1.421413741;
+  const a4 = -1.453152027;
+  const a5 = 1.061405429;
+  const p = 0.3275911;
+
+  const sign = z < 0 ? -1 : 1;
+  const x = Math.abs(z) / Math.sqrt(2);
+  const t = 1.0 / (1.0 + p * x);
+  const erf = 1 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+
+  return ((1 + sign * erf) / 2) * 100;
+}
+
+/**
  * Get z-score classification for display
  */
 export function getZScoreClass(z) {

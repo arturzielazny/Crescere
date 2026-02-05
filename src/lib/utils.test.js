@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hexToRgba, formatZScore, getZScoreColorClass } from './utils.js';
+import { hexToRgba, formatZScore, getZScoreColorClass, formatPercentile } from './utils.js';
 
 describe('utils helpers', () => {
   it('converts hex to rgba', () => {
@@ -20,5 +20,30 @@ describe('utils helpers', () => {
     expect(getZScoreColorClass(2.2)).toContain('red');
     expect(getZScoreColorClass(3.5)).toContain('red');
     expect(getZScoreColorClass(null)).toContain('gray');
+  });
+
+  it('formats percentiles with ordinal suffix', () => {
+    expect(formatPercentile(0)).toBe('50th');
+    expect(formatPercentile(null)).toBe('—');
+    expect(formatPercentile(NaN)).toBe('—');
+  });
+
+  it('formats 1st, 2nd, 3rd percentiles correctly', () => {
+    // z=-2.326 ≈ 1st percentile
+    expect(formatPercentile(-2.326)).toBe('1st');
+  });
+
+  it('clamps extreme percentiles', () => {
+    // z=4 → >99th
+    expect(formatPercentile(4)).toBe('>99th');
+    // z=-4 → <1st
+    expect(formatPercentile(-4)).toBe('<1st');
+  });
+
+  it('formats percentiles in Polish with dot notation', () => {
+    expect(formatPercentile(0, 'pl')).toBe('50.');
+    expect(formatPercentile(4, 'pl')).toBe('>99.');
+    expect(formatPercentile(-4, 'pl')).toBe('<1.');
+    expect(formatPercentile(null, 'pl')).toBe('—');
   });
 });

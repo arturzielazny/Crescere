@@ -8,8 +8,13 @@
     isActiveChildReadOnly
   } from '../stores/childStore.js';
   import { formatAge } from '../lib/zscore.js';
-  import { isFutureDate, formatZScore, getZScoreColorClass } from '../lib/utils.js';
-  import { t } from '../stores/i18n.js';
+  import {
+    isFutureDate,
+    formatZScore,
+    getZScoreColorClass,
+    formatPercentile
+  } from '../lib/utils.js';
+  import { t, language } from '../stores/i18n.js';
   import ConfirmModal from './ConfirmModal.svelte';
 
   // New measurement form
@@ -175,15 +180,27 @@
               </td>
               <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.waz)}">
                 {formatZScore(m.zscores?.waz)}
+                <div class="text-xs text-gray-500">
+                  {formatPercentile(m.zscores?.waz, $language)}
+                </div>
               </td>
               <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.lhaz)}">
                 {formatZScore(m.zscores?.lhaz)}
+                <div class="text-xs text-gray-500">
+                  {formatPercentile(m.zscores?.lhaz, $language)}
+                </div>
               </td>
               <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.headcz)}">
                 {formatZScore(m.zscores?.headcz)}
+                <div class="text-xs text-gray-500">
+                  {formatPercentile(m.zscores?.headcz, $language)}
+                </div>
               </td>
               <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.wflz)}">
                 {formatZScore(m.zscores?.wflz)}
+                <div class="text-xs text-gray-500">
+                  {formatPercentile(m.zscores?.wflz, $language)}
+                </div>
               </td>
               <td class="py-2 px-2">
                 {#if !$isActiveChildReadOnly}

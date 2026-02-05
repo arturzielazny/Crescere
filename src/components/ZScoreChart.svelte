@@ -13,8 +13,8 @@
   import annotationPlugin from 'chartjs-plugin-annotation';
   import { measurementsWithZScores, activeChild } from '../stores/childStore.js';
   import { calculateAgeInDays } from '../lib/zscore.js';
-  import { isFutureDate, hexToRgba } from '../lib/utils.js';
-  import { t } from '../stores/i18n.js';
+  import { isFutureDate, hexToRgba, formatPercentile } from '../lib/utils.js';
+  import { t, language } from '../stores/i18n.js';
 
   Chart.register(
     LineController,
@@ -221,7 +221,7 @@
               const capped = Math.max(-MAX_Z, Math.min(MAX_Z, rawValue));
               const suffix =
                 Math.abs(rawValue) > DISPLAY_RANGE ? ` (${$t('chart.tooltip.capped')})` : '';
-              return `${label}: ${capped.toFixed(2)}${suffix}`;
+              return `${label}: ${capped.toFixed(2)} (${formatPercentile(rawValue, $language)})${suffix}`;
             }
           }
         },
