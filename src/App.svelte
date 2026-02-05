@@ -109,6 +109,12 @@
     checkForLiveShare();
   }
 
+  async function handleSignedIn() {
+    showWelcome = false;
+    await loadAuthenticatedData();
+    checkForLiveShare();
+  }
+
   async function handleSignOut() {
     try {
       await signOut();
@@ -223,7 +229,7 @@
 </script>
 
 {#if showWelcome}
-  <WelcomeScreen onContinueAsGuest={handleContinueAsGuest} />
+  <WelcomeScreen onContinueAsGuest={handleContinueAsGuest} onSignedIn={handleSignedIn} />
 {:else}
   <div class="min-h-screen bg-gray-100">
     <header class="bg-white shadow-sm print-hidden">

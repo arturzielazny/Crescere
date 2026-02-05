@@ -9,6 +9,7 @@
   } from '../stores/authStore.js';
 
   export let onContinueAsGuest;
+  export let onSignedIn = () => {};
 
   let showEmailInput = false;
   let email = '';
@@ -52,6 +53,7 @@
         emailSent = true;
       } else {
         await signInWithPassword(email, password);
+        onSignedIn();
       }
     } catch (_err) {
       // error is set in auth store
