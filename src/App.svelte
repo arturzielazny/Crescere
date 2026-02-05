@@ -1,6 +1,5 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import ChildProfile from './components/ChildProfile.svelte';
   import ChildList from './components/ChildList.svelte';
   import MeasurementTable from './components/MeasurementTable.svelte';
   import ZScoreTable from './components/ZScoreTable.svelte';
@@ -356,7 +355,6 @@
         {/if}
 
         <ChildList />
-        <ChildProfile />
 
         <div class="lg:flex lg:gap-6 lg:items-start">
           <!-- Left panel: measurement entry (1/3) -->

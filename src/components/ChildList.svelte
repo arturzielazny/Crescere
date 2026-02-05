@@ -1,22 +1,20 @@
 <script>
   import {
     childStore,
+    activeChild,
     setActiveChild,
     addChild,
     removeChild,
+    updateProfile,
     exampleChildId,
     sharedChildIds
   } from '../stores/childStore.js';
+  import { calculateAgeInDays, formatAge } from '../lib/zscore.js';
   import { t } from '../stores/i18n.js';
   import ConfirmModal from './ConfirmModal.svelte';
 
   let showDeleteModal = false;
   let deleteTargetId = null;
-
-  function getChildLabel(child, index) {
-    if (child.profile?.name?.trim()) return child.profile.name.trim();
-    return `${$t('children.unnamed')} ${index + 1}`;
-  }
 
   function handleDeleteClick(event, childId) {
     event.stopPropagation();
@@ -37,81 +35,169 @@
     deleteTargetId = null;
   }
 
+  function handleNameChange(child, e) {
+    if ($activeChild?.id !== child.id) setActiveChild(child.id);
+    updateProfile({ name: e.target.value });
+  }
+
+  function handleBirthDateChange(child, e) {
+    if ($activeChild?.id !== child.id) setActiveChild(child.id);
+    updateProfile({ birthDate: e.target.value });
+  }
+
+  function handleSexChange(child, value) {
+    if ($activeChild?.id !== child.id) setActiveChild(child.id);
+    updateProfile({ sex: value });
+  }
+
+  function getAge(child) {
+    if (!child.profile?.birthDate) return null;
+    return formatAge(
+      calculateAgeInDays(child.profile.birthDate, new Date().toISOString().slice(0, 10)),
+      {
+        invalid: $t('age.invalid'),
+        month: $t('age.month'),
+        day: $t('age.day')
+      }
+    );
+  }
+
   $: activeId = $childStore.activeChildId || $childStore.children[0]?.id;
 </script>
 
-<div class="bg-white rounded-lg shadow p-6 mb-6">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold text-gray-800">{$t('children.title')}</h2>
-  </div>
+<div class="flex flex-wrap gap-3 mb-6">
+  {#each $childStore.children as child (child.id)}
+    {@const isActive = activeId === child.id}
+    {@const isExample = child.id === $exampleChildId}
+    {@const isShared = $sharedChildIds.has(child.id)}
+    {@const isReadOnly = isShared}
+    {@const age = getAge(child)}
+    {@const hasMissingFields = !child.profile?.birthDate || !child.profile?.sex}
 
-  {#if $childStore.children.length === 0}
-    <p class="text-sm text-gray-600 mb-3">{$t('children.empty')}</p>
-  {/if}
+    <div
+      class="relative bg-white rounded-lg shadow border-2 p-3 w-64 flex flex-col gap-2 transition-colors"
+      class:border-blue-400={isActive && !isExample && !isShared}
+      class:border-green-400={isActive && isExample}
+      class:border-purple-400={isActive && isShared}
+      class:border-gray-200={!isActive}
+    >
+      {#if isExample}
+        <div class="text-xs text-green-700 bg-green-50 rounded px-2 py-1">
+          {$t('children.example.hint')}
+        </div>
+      {/if}
 
-  <div class="flex flex-wrap gap-2">
-    {#each $childStore.children as child, index (child.id)}
-      {@const isExample = child.id === $exampleChildId}
-      {@const isShared = $sharedChildIds.has(child.id)}
-      <div class="relative group">
-        <button
-          on:click={() => setActiveChild(child.id)}
-          class="px-3 py-2 pr-7 text-sm rounded border transition"
-          class:bg-green-100={isExample && activeId === child.id}
-          class:border-green-400={isExample && activeId === child.id}
-          class:text-green-800={isExample && activeId === child.id}
-          class:bg-green-50={isExample && activeId !== child.id}
-          class:border-green-300={isExample && activeId !== child.id}
-          class:text-green-700={isExample && activeId !== child.id}
-          class:bg-purple-100={isShared && activeId === child.id}
-          class:border-purple-300={isShared && activeId === child.id}
-          class:text-purple-700={isShared && activeId === child.id}
-          class:bg-purple-50={isShared && activeId !== child.id}
-          class:border-purple-200={isShared && activeId !== child.id}
-          class:text-purple-600={isShared && activeId !== child.id}
-          class:bg-blue-50={!isExample && !isShared && activeId === child.id}
-          class:border-blue-300={!isExample && !isShared && activeId === child.id}
-          class:text-blue-700={!isExample && !isShared && activeId === child.id}
-          class:border-gray-200={!isExample && !isShared && activeId !== child.id}
-          class:text-gray-700={!isExample && !isShared && activeId !== child.id}
-          title={isExample ? $t('children.example.hint') : ''}
-        >
-          {getChildLabel(child, index)}
-          {#if isExample}
-            <span class="ml-1 text-green-600">●</span>
-          {/if}
-          {#if isShared}
-            <span class="ml-1 text-purple-500 text-xs"
-              >({child._shareLabel || $t('share.live.sharedBadge')})</span
-            >
-          {/if}
-        </button>
+      {#if isShared}
+        <div class="text-xs text-purple-700 bg-purple-50 rounded px-2 py-1">
+          {$t('share.live.readOnlyBanner')}
+        </div>
+      {/if}
+
+      <!-- Name -->
+      <input
+        type="text"
+        value={child.profile?.name ?? ''}
+        on:input={(e) => handleNameChange(child, e)}
+        disabled={isReadOnly}
+        placeholder={$t('profile.name.placeholder')}
+        class="text-sm font-medium px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
+      />
+
+      <!-- Birth date -->
+      <input
+        type="date"
+        value={child.profile?.birthDate ?? ''}
+        on:change={(e) => handleBirthDateChange(child, e)}
+        disabled={isReadOnly}
+        class="text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
+      />
+
+      <!-- Sex -->
+      <div class="flex gap-3 text-sm">
+        <label class="inline-flex items-center gap-1">
+          <input
+            type="radio"
+            name="sex-{child.id}"
+            value="1"
+            checked={child.profile?.sex === 1}
+            on:change={() => handleSexChange(child, 1)}
+            disabled={isReadOnly}
+            class="form-radio text-blue-600 disabled:cursor-not-allowed"
+          />
+          <span>{$t('profile.sex.male')}</span>
+        </label>
+        <label class="inline-flex items-center gap-1">
+          <input
+            type="radio"
+            name="sex-{child.id}"
+            value="2"
+            checked={child.profile?.sex === 2}
+            on:change={() => handleSexChange(child, 2)}
+            disabled={isReadOnly}
+            class="form-radio text-pink-600 disabled:cursor-not-allowed"
+          />
+          <span>{$t('profile.sex.female')}</span>
+        </label>
+      </div>
+
+      <!-- Age / missing fields warning -->
+      {#if hasMissingFields}
+        <p class="text-xs text-amber-600">{$t('profile.age.missing')}</p>
+      {:else if age}
+        <p class="text-xs text-gray-500">
+          {$t('profile.age.current')} <span class="font-medium">{age}</span>
+        </p>
+      {/if}
+
+      <!-- Actions -->
+      <div class="flex gap-2 mt-1">
+        {#if !isActive}
+          <button
+            on:click={() => setActiveChild(child.id)}
+            class="flex-1 px-2 py-1 text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+          >
+            {$t('children.select')}
+          </button>
+        {:else}
+          <span
+            class="flex-1 px-2 py-1 text-xs font-medium text-center rounded"
+            class:bg-blue-100={!isExample && !isShared}
+            class:text-blue-700={!isExample && !isShared}
+            class:bg-green-100={isExample}
+            class:text-green-700={isExample}
+            class:bg-purple-100={isShared}
+            class:text-purple-700={isShared}
+          >
+            {$t('children.selected')}
+          </span>
+        {/if}
         {#if !isExample}
           <button
             on:click={(e) => handleDeleteClick(e, child.id)}
-            class="absolute top-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 hover:bg-red-50"
+            class="px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
             aria-label={isShared ? $t('share.live.remove') : $t('children.remove')}
           >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
               />
             </svg>
           </button>
         {/if}
       </div>
-    {/each}
+    </div>
+  {/each}
 
-    <button
-      on:click={addChild}
-      class="px-3 py-2 text-sm rounded border border-dashed border-gray-300 text-gray-500 hover:text-gray-700 hover:border-gray-400 transition"
-    >
-      + {$t('children.add')}
-    </button>
-  </div>
+  <!-- Add child button -->
+  <button
+    on:click={addChild}
+    class="w-64 rounded-lg border-2 border-dashed border-gray-300 p-3 text-sm text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-colors flex items-center justify-center gap-1"
+  >
+    + {$t('children.add')}
+  </button>
 </div>
 
 {#if showDeleteModal}
