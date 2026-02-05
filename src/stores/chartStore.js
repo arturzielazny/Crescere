@@ -76,7 +76,7 @@ function convertFlatToGrouped(flatOrder) {
 
 function loadChartSettings() {
   if (typeof localStorage === 'undefined') {
-    return { chartOrder: defaultChartOrder, columnsPerRow: 2 };
+    return { chartOrder: defaultChartOrder };
   }
 
   try {
@@ -85,7 +85,7 @@ function loadChartSettings() {
       const parsed = JSON.parse(stored);
       // Migrate from old growthOrder/zscoreOrder format
       if (parsed.growthOrder || parsed.zscoreOrder) {
-        return { chartOrder: defaultChartOrder, columnsPerRow: parsed.columnsPerRow || 2 };
+        return { chartOrder: defaultChartOrder };
       }
 
       let chartOrder = parsed.chartOrder || defaultChartOrder;
@@ -95,16 +95,13 @@ function loadChartSettings() {
         chartOrder = convertFlatToGrouped(chartOrder);
       }
 
-      return {
-        chartOrder,
-        columnsPerRow: parsed.columnsPerRow || 2
-      };
+      return { chartOrder };
     }
   } catch (_e) {
     // Ignore parse errors
   }
 
-  return { chartOrder: defaultChartOrder, columnsPerRow: 2 };
+  return { chartOrder: defaultChartOrder };
 }
 
 function saveChartSettings(settings) {
@@ -116,18 +113,10 @@ function saveChartSettings(settings) {
 const initial = loadChartSettings();
 
 export const chartOrder = writable(initial.chartOrder);
-export const columnsPerRow = writable(initial.columnsPerRow);
-export const maximizedChart = writable(null);
 
 // Auto-save on changes
 chartOrder.subscribe((order) => {
-  const current = loadChartSettings();
-  saveChartSettings({ ...current, chartOrder: order });
-});
-
-columnsPerRow.subscribe((cols) => {
-  const current = loadChartSettings();
-  saveChartSettings({ ...current, columnsPerRow: cols });
+  saveChartSettings({ chartOrder: order });
 });
 
 export function reorderCharts(fromIndex, toIndex) {
@@ -137,12 +126,4 @@ export function reorderCharts(fromIndex, toIndex) {
     newOrder.splice(toIndex, 0, moved);
     return newOrder;
   });
-}
-
-export function setColumnsPerRow(cols) {
-  columnsPerRow.set(cols);
-}
-
-export function closeMaximize() {
-  maximizedChart.set(null);
 }
