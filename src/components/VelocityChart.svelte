@@ -78,7 +78,11 @@
 
   function getYRange(data) {
     if (data.length === 0) return { min: 0, max: 1 };
-    const values = data.map((d) => d.y);
+    // Exclude first-week data from range calculation to avoid the dramatic
+    // post-birth drop from dominating the Y axis scale
+    const afterFirstWeek = data.filter((d) => d.x >= 7);
+    const rangeData = afterFirstWeek.length > 0 ? afterFirstWeek : data;
+    const values = rangeData.map((d) => d.y);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const padding = (max - min) * 0.15 || 0.5;
