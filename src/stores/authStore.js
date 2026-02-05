@@ -67,18 +67,35 @@ export async function initAuth() {
   }
 }
 
+/** Rate limiting: track last call time per action to prevent rapid-fire requests */
+const AUTH_COOLDOWN_MS = 2000;
+const lastCallTime = new Map();
+
 /**
- * Wraps an auth operation with loading/error state management.
+ * Wraps an auth operation with loading/error state management and rate limiting.
  * Sets loading=true before, loading=false after, captures errors.
  * @param {() => Promise<{data?: any, error?: any}>} fn - Supabase auth call
  * @param {(data: any) => void} [onSuccess] - Optional callback to set auth state on success
+ * @param {{ key?: string, cooldown?: number }} [opts] - Rate limiting options
  */
-async function withAuthLoading(fn, onSuccess) {
+async function withAuthLoading(fn, onSuccess, opts = {}) {
+  const key = opts.key || fn.toString();
+  const cooldown = opts.cooldown ?? AUTH_COOLDOWN_MS;
+  const now = Date.now();
+  const last = lastCallTime.get(key) || 0;
+
+  if (now - last < cooldown) {
+    const err = new Error('Please wait before trying again');
+    authState.update((s) => ({ ...s, error: err.message }));
+    throw err;
+  }
+
   authState.update((s) => ({ ...s, loading: true, error: null }));
   try {
     const result = await fn();
     const { data, error } = result;
     if (error) throw error;
+    lastCallTime.set(key, now);
     if (onSuccess) {
       onSuccess(data);
     } else {
@@ -103,16 +120,21 @@ function setAuthSession(data) {
 
 /** Sign in anonymously — creates a new anonymous user */
 export function signInAnonymously() {
-  return withAuthLoading(() => supabase.auth.signInAnonymously(), setAuthSession);
+  return withAuthLoading(() => supabase.auth.signInAnonymously(), setAuthSession, {
+    key: 'signInAnonymously'
+  });
 }
 
 /** Sign in with email (magic link) */
 export function signInWithEmail(email) {
-  return withAuthLoading(() =>
-    supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin + window.location.pathname }
-    })
+  return withAuthLoading(
+    () =>
+      supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin + window.location.pathname }
+      }),
+    null,
+    { key: 'signInWithEmail', cooldown: 10000 }
   );
 }
 
@@ -120,41 +142,53 @@ export function signInWithEmail(email) {
 export function signInWithPassword(email, password) {
   return withAuthLoading(
     () => supabase.auth.signInWithPassword({ email, password }),
-    setAuthSession
+    setAuthSession,
+    { key: 'signInWithPassword' }
   );
 }
 
 /** Sign up with email and password */
 export function signUpWithPassword(email, password) {
-  return withAuthLoading(() =>
-    supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin + window.location.pathname }
-    })
+  return withAuthLoading(
+    () =>
+      supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin + window.location.pathname }
+      }),
+    null,
+    { key: 'signUpWithPassword' }
   );
 }
 
 /** Link anonymous account to email */
 export function linkWithEmail(email) {
-  return withAuthLoading(() => supabase.auth.updateUser({ email }));
+  return withAuthLoading(() => supabase.auth.updateUser({ email }), null, {
+    key: 'linkWithEmail',
+    cooldown: 10000
+  });
 }
 
 /** Link anonymous account with email and password */
 export function linkWithPassword(email, password) {
-  return withAuthLoading(() => supabase.auth.updateUser({ email, password }));
+  return withAuthLoading(() => supabase.auth.updateUser({ email, password }), null, {
+    key: 'linkWithPassword'
+  });
 }
 
 /** Set or update password for current user */
 export function setPassword(password) {
-  return withAuthLoading(() => supabase.auth.updateUser({ password }));
+  return withAuthLoading(() => supabase.auth.updateUser({ password }), null, {
+    key: 'setPassword'
+  });
 }
 
 /** Sign out the current user */
 export function signOut() {
   return withAuthLoading(
     () => supabase.auth.signOut(),
-    () => authState.set({ user: null, session: null, loading: false, error: null })
+    () => authState.set({ user: null, session: null, loading: false, error: null }),
+    { key: 'signOut' }
   );
 }
 
@@ -163,4 +197,9 @@ export function signOut() {
  */
 export function clearError() {
   authState.update((s) => ({ ...s, error: null }));
+}
+
+/** Reset rate limit state (for testing) */
+export function resetRateLimit() {
+  lastCallTime.clear();
 }

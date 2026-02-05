@@ -126,7 +126,8 @@ import {
   linkWithPassword,
   setPassword,
   signOut,
-  clearError
+  clearError,
+  resetRateLimit
 } from './authStore.js';
 
 describe('Auth Store', () => {
@@ -135,6 +136,7 @@ describe('Auth Store', () => {
     mockUser = null;
     mockSession = null;
     authStateCallback = null;
+    resetRateLimit();
   });
 
   describe('initAuth', () => {
@@ -438,6 +440,37 @@ describe('Auth Store', () => {
       // Session should still be intact
       expect(get(session)).toBeTruthy();
       expect(get(isAuthenticated)).toBe(true);
+    });
+  });
+
+  describe('rate limiting', () => {
+    it('blocks rapid duplicate calls after a successful action', async () => {
+      await initAuth();
+      await signInAnonymously();
+
+      // Second call immediately after success should be blocked
+      await expect(signInAnonymously()).rejects.toThrow('Please wait before trying again');
+      expect(get(error)).toBe('Please wait before trying again');
+    });
+
+    it('allows retry after a failed action', async () => {
+      await initAuth();
+
+      // First call fails (wrong password)
+      await expect(signInWithPassword('test@example.com', 'wrong')).rejects.toThrow();
+
+      // Immediate retry should be allowed since the first call failed
+      await signInWithPassword('test@example.com', 'correct');
+      expect(get(isAuthenticated)).toBe(true);
+    });
+
+    it('allows calls to different actions in sequence', async () => {
+      await initAuth();
+      await signInAnonymously();
+
+      // Different action should not be blocked
+      await signOut();
+      expect(get(isAuthenticated)).toBe(false);
     });
   });
 
