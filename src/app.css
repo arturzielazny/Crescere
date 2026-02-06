@@ -55,6 +55,17 @@ body {
     font-size: 11px !important;
   }
 
+  /* Strip grey page background */
+  .min-h-screen {
+    background: transparent !important;
+  }
+
+  /* Strip shadows/borders from remaining card elements */
+  .bg-white.rounded-lg.shadow {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
   /* Ensure full width layout (override lg:flex sidebar layout) */
   .print-full-width {
     display: block !important;
