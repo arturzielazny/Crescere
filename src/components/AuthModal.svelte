@@ -206,7 +206,9 @@
       {#if emailSent}
         <p class="text-sm text-green-600 mb-4">
           {mode === 'claimAccount'
-            ? $t('auth.emailSent.claim')
+            ? usePassword
+              ? $t('auth.emailSent.claimPassword')
+              : $t('auth.emailSent.claim')
             : isSignUp
               ? $t('auth.signUpSent')
               : $t('auth.emailSent.signIn')}
@@ -261,7 +263,11 @@
             class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {#if usePassword}
-              {isSignUp ? $t('auth.signUp') : $t('auth.signInWithPassword')}
+              {mode === 'claimAccount'
+                ? $t('auth.claimAccount.submitPassword')
+                : isSignUp
+                  ? $t('auth.signUpWithPassword')
+                  : $t('auth.signInWithPassword')}
             {:else}
               {$t('auth.sendLink')}
             {/if}
