@@ -1,4 +1,5 @@
 <script>
+  import { onMount, onDestroy } from 'svelte';
   import { t } from '../stores/i18n.js';
 
   export let title = '';
@@ -6,11 +7,27 @@
   export let confirmLabel = '';
   export let onConfirm = () => {};
   export let onCancel = () => {};
+
+  let modalElement;
+
+  // Move modal to body to escape any stacking context issues
+  onMount(() => {
+    if (modalElement) {
+      document.body.appendChild(modalElement);
+    }
+  });
+
+  onDestroy(() => {
+    if (modalElement && modalElement.parentNode === document.body) {
+      document.body.removeChild(modalElement);
+    }
+  });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
+  bind:this={modalElement}
   class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
   role="dialog"
   aria-modal="true"
