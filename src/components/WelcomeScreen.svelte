@@ -3,7 +3,6 @@
   import {
     signInWithEmail,
     signInWithPassword,
-    signUpWithPassword,
     error as authError,
     clearError
   } from '../stores/authStore.js';
@@ -17,7 +16,6 @@
   let emailSent = false;
   let sending = false;
   let usePassword = false;
-  let isSignUp = false;
 
   function resetForm() {
     showEmailInput = false;
@@ -25,7 +23,6 @@
     password = '';
     emailSent = false;
     usePassword = false;
-    isSignUp = false;
     clearError();
   }
 
@@ -48,13 +45,8 @@
     sending = true;
     clearError();
     try {
-      if (isSignUp) {
-        await signUpWithPassword(email, password);
-        emailSent = true;
-      } else {
-        await signInWithPassword(email, password);
-        onSignedIn();
-      }
+      await signInWithPassword(email, password);
+      onSignedIn();
     } catch (_err) {
       // error is set in auth store
     } finally {
@@ -82,7 +74,7 @@
 
       {#if emailSent}
         <div class="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-          {isSignUp ? $t('auth.signUpSent') : $t('auth.emailSent.signIn')}
+          {$t('auth.emailSent.signIn')}
         </div>
       {:else if showEmailInput}
         <div class="space-y-2">
@@ -116,7 +108,7 @@
                 disabled={!email || !password || sending}
                 class="flex-1 px-4 py-2 text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSignUp ? $t('auth.signUpWithPassword') : $t('auth.signInWithPassword')}
+                {$t('auth.signInWithPassword')}
               </button>
             {:else}
               <button
@@ -139,25 +131,12 @@
             on:click={() => {
               usePassword = !usePassword;
               password = '';
-              isSignUp = false;
               clearError();
             }}
             class="w-full text-xs text-blue-500 hover:text-blue-700"
           >
             {usePassword ? $t('auth.switchToMagicLink') : $t('auth.switchToPassword')}
           </button>
-
-          {#if usePassword}
-            <button
-              on:click={() => {
-                isSignUp = !isSignUp;
-                clearError();
-              }}
-              class="w-full text-xs text-gray-500 hover:text-gray-700"
-            >
-              {isSignUp ? $t('auth.switchToSignIn') : $t('auth.switchToSignUp')}
-            </button>
-          {/if}
         </div>
       {:else}
         <button

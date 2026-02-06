@@ -5,7 +5,6 @@
     clearError,
     signInWithEmail,
     signInWithPassword,
-    signUpWithPassword,
     linkWithEmail,
     linkWithPassword,
     setPassword
@@ -21,7 +20,6 @@
   let password = '';
   let confirmPassword = '';
   let usePassword = false;
-  let isSignUp = false;
   let emailSent = false;
   let passwordSet = false;
   let localError = '';
@@ -31,7 +29,6 @@
     password = '';
     confirmPassword = '';
     usePassword = false;
-    isSignUp = false;
     emailSent = false;
     passwordSet = false;
     localError = '';
@@ -62,14 +59,14 @@
     }
   }
 
-  $: needsConfirmPassword = usePassword && (isSignUp || mode === 'claimAccount');
+  $: needsConfirmPassword = usePassword && mode === 'claimAccount';
 
   async function handleEmailSubmit() {
     if (!email) return;
     localError = '';
     clearError();
 
-    // Validate password for sign-up / claim-account flows
+    // Validate password for claim-account flow
     if (needsConfirmPassword) {
       if (password.length < 6) {
         localError = $t('auth.setPassword.tooShort');
@@ -85,21 +82,15 @@
       if (mode === 'claimAccount') {
         if (usePassword) {
           await linkWithPassword(email, password);
-          emailSent = true;
         } else {
           await linkWithEmail(email);
-          emailSent = true;
         }
+        emailSent = true;
       } else {
         // signIn mode
         if (usePassword) {
-          if (isSignUp) {
-            await signUpWithPassword(email, password);
-            emailSent = true;
-          } else {
-            await signInWithPassword(email, password);
-            onSuccess();
-          }
+          await signInWithPassword(email, password);
+          onSuccess();
         } else {
           await signInWithEmail(email);
           emailSent = true;
@@ -209,9 +200,7 @@
             ? usePassword
               ? $t('auth.emailSent.claimPassword')
               : $t('auth.emailSent.claim')
-            : isSignUp
-              ? $t('auth.signUpSent')
-              : $t('auth.emailSent.signIn')}
+            : $t('auth.emailSent.signIn')}
         </p>
         <div class="flex justify-end">
           <button
@@ -265,41 +254,23 @@
             {#if usePassword}
               {mode === 'claimAccount'
                 ? $t('auth.claimAccount.submitPassword')
-                : isSignUp
-                  ? $t('auth.signUpWithPassword')
-                  : $t('auth.signInWithPassword')}
+                : $t('auth.signInWithPassword')}
             {:else}
               {$t('auth.sendLink')}
             {/if}
           </button>
-          <div class="flex items-center justify-between">
-            <button
-              on:click={() => {
-                usePassword = !usePassword;
-                password = '';
-                confirmPassword = '';
-                isSignUp = false;
-                localError = '';
-                clearError();
-              }}
-              class="text-xs text-blue-500 hover:text-blue-700"
-            >
-              {usePassword ? $t('auth.switchToMagicLink') : $t('auth.switchToPassword')}
-            </button>
-            {#if usePassword && mode !== 'claimAccount'}
-              <button
-                on:click={() => {
-                  isSignUp = !isSignUp;
-                  confirmPassword = '';
-                  localError = '';
-                  clearError();
-                }}
-                class="text-xs text-gray-500 hover:text-gray-700"
-              >
-                {isSignUp ? $t('auth.switchToSignIn') : $t('auth.switchToSignUp')}
-              </button>
-            {/if}
-          </div>
+          <button
+            on:click={() => {
+              usePassword = !usePassword;
+              password = '';
+              confirmPassword = '';
+              localError = '';
+              clearError();
+            }}
+            class="text-xs text-blue-500 hover:text-blue-700"
+          >
+            {usePassword ? $t('auth.switchToMagicLink') : $t('auth.switchToPassword')}
+          </button>
         </div>
       {/if}
     {/if}
