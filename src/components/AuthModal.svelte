@@ -62,10 +62,24 @@
     }
   }
 
+  $: needsConfirmPassword = usePassword && (isSignUp || mode === 'claimAccount');
+
   async function handleEmailSubmit() {
     if (!email) return;
     localError = '';
     clearError();
+
+    // Validate password for sign-up / claim-account flows
+    if (needsConfirmPassword) {
+      if (password.length < 6) {
+        localError = $t('auth.setPassword.tooShort');
+        return;
+      }
+      if (password !== confirmPassword) {
+        localError = $t('auth.setPassword.mismatch');
+        return;
+      }
+    }
 
     try {
       if (mode === 'claimAccount') {
@@ -220,15 +234,30 @@
               bind:value={password}
               placeholder={$t('auth.passwordPlaceholder')}
               class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              on:keydown={(e) => e.key === 'Enter' && handleEmailSubmit()}
+              on:keydown={(e) => e.key === 'Enter' && !needsConfirmPassword && handleEmailSubmit()}
             />
+            {#if needsConfirmPassword}
+              <input
+                type="password"
+                bind:value={confirmPassword}
+                placeholder={$t('auth.setPassword.confirmPlaceholder')}
+                class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                on:keydown={(e) => e.key === 'Enter' && handleEmailSubmit()}
+              />
+            {/if}
+          {/if}
+          {#if localError}
+            <p class="text-xs text-red-600">{localError}</p>
           {/if}
           {#if $authError}
             <p class="text-xs text-red-600">{$authError}</p>
           {/if}
           <button
             on:click={handleEmailSubmit}
-            disabled={!email || (usePassword && !password) || $loading}
+            disabled={!email ||
+              (usePassword && !password) ||
+              (needsConfirmPassword && !confirmPassword) ||
+              $loading}
             class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {#if usePassword}
@@ -242,7 +271,9 @@
               on:click={() => {
                 usePassword = !usePassword;
                 password = '';
+                confirmPassword = '';
                 isSignUp = false;
+                localError = '';
                 clearError();
               }}
               class="text-xs text-blue-500 hover:text-blue-700"
@@ -253,6 +284,8 @@
               <button
                 on:click={() => {
                   isSignUp = !isSignUp;
+                  confirmPassword = '';
+                  localError = '';
                   clearError();
                 }}
                 class="text-xs text-gray-500 hover:text-gray-700"
