@@ -166,6 +166,17 @@ export function disableSync() {
 // Sync helpers — shared by all optimistic-update functions below
 // ============================================================================
 
+/**
+ * Convert the example child to a pending child so edits are preserved.
+ * After conversion, addChild() will no longer remove it (exampleChildId is null).
+ */
+function convertExampleToPending(childId) {
+  exampleChildId.set(null);
+  if (syncEnabled) {
+    pendingChildIds.add(childId);
+  }
+}
+
 /** Whether a child should be synced to the backend (not example, not pending) */
 function shouldSync(childId) {
   return syncEnabled && get(exampleChildId) !== childId && !pendingChildIds.has(childId);
@@ -188,6 +199,11 @@ export function updateProfile(profile) {
   const activeChild = getActiveChild(state);
   if (activeChild && get(sharedChildIds).has(activeChild.id)) return;
 
+  // Convert example child to pending on first edit
+  if (activeChild && get(exampleChildId) === activeChild.id) {
+    convertExampleToPending(activeChild.id);
+  }
+
   // Optimistic update
   childStore.update((s) =>
     updateActiveChild(s, (child) => ({
@@ -196,8 +212,8 @@ export function updateProfile(profile) {
     }))
   );
 
-  // Sync to backend (skip example child — it's client-side only)
-  if (syncEnabled && activeChild && get(exampleChildId) !== activeChild.id) {
+  // Sync to backend
+  if (syncEnabled && activeChild) {
     if (pendingChildIds.has(activeChild.id)) {
       const updatedState = get(childStore);
       const updatedChild = getActiveChild(updatedState);
@@ -217,6 +233,11 @@ export function addMeasurement(measurement) {
   const activeChild = getActiveChild(state);
   if (!activeChild) return;
   if (get(sharedChildIds).has(activeChild.id)) return;
+
+  // Convert example child to pending on first edit
+  if (get(exampleChildId) === activeChild.id) {
+    convertExampleToPending(activeChild.id);
+  }
 
   const tempId = crypto.randomUUID();
 

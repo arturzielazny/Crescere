@@ -693,10 +693,13 @@ describe('childStore - example child', () => {
     expect(get(exampleChildId)).toBeNull();
   });
 
-  it('addMeasurement skips backend for example child', async () => {
+  it('addMeasurement on example child converts it to pending and preserves data', async () => {
     await enableSync('Example Child');
 
-    // Add measurement to example child - should work locally but NOT hit DB
+    const exId = get(exampleChildId);
+    expect(exId).toBeTruthy();
+
+    // Add measurement to example child - triggers conversion
     addMeasurement({
       date: '2024-02-15',
       weight: 4500,
@@ -704,16 +707,14 @@ describe('childStore - example child', () => {
       headCirc: 37.5
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // exampleChildId should be cleared (converted to pending)
+    expect(get(exampleChildId)).toBeNull();
 
-    // Measurement should exist locally
+    // Measurement should exist locally, child preserved
     const state = get(childStore);
-    const exId = get(exampleChildId);
     const child = state.children.find((c) => c.id === exId);
+    expect(child).toBeDefined();
     expect(child.measurements.length).toBeGreaterThan(0);
-
-    // Nothing new in DB
-    expect(getMockData('measurements')).toHaveLength(0);
   });
 
   it('addChild auto-removes example child', async () => {
@@ -778,5 +779,125 @@ describe('childStore - example child', () => {
 
     resetStore();
     expect(get(exampleChildId)).toBeNull();
+  });
+});
+
+describe('childStore - example child conversion on edit', () => {
+  beforeEach(() => {
+    resetMockData();
+    resetStore();
+    setMockUser({ id: 'guest-user-123', is_anonymous: true });
+  });
+
+  afterEach(() => {
+    disableSync();
+  });
+
+  it('updateProfile on example child clears exampleChildId and preserves child', async () => {
+    await enableSync('Example Child');
+
+    const exId = get(exampleChildId);
+    expect(exId).toBeTruthy();
+
+    // Edit the example child's profile
+    updateProfile({ name: 'My Baby' });
+
+    // exampleChildId should be cleared
+    expect(get(exampleChildId)).toBeNull();
+
+    // Child should still exist in the store
+    const state = get(childStore);
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].id).toBe(exId);
+    expect(state.children[0].profile.name).toBe('My Baby');
+  });
+
+  it('after conversion, addChild does NOT remove the converted child', async () => {
+    await enableSync('Example Child');
+
+    const exId = get(exampleChildId);
+
+    // Edit the example child (converts it)
+    updateProfile({ name: 'My Baby' });
+    expect(get(exampleChildId)).toBeNull();
+
+    // Now add a new child - converted child should NOT be removed
+    addChild();
+
+    const state = get(childStore);
+    expect(state.children).toHaveLength(2);
+    expect(state.children.find((c) => c.id === exId)).toBeDefined();
+  });
+
+  it('conversion triggers immediate sync since profile is already complete', async () => {
+    await enableSync('Example Child');
+
+    // Example child already has birthDate and sex
+    updateProfile({ name: 'My Baby' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Should have been synced to backend (profile was already complete)
+    const dbChildren = getMockData('children');
+    expect(dbChildren).toHaveLength(1);
+    expect(dbChildren[0].name).toBe('My Baby');
+  });
+
+  it('addMeasurement on example child triggers conversion', async () => {
+    await enableSync('Example Child');
+
+    const exId = get(exampleChildId);
+    expect(exId).toBeTruthy();
+
+    addMeasurement({
+      date: '2024-06-01',
+      weight: 7000,
+      length: 65,
+      headCirc: 43
+    });
+
+    // exampleChildId should be cleared
+    expect(get(exampleChildId)).toBeNull();
+
+    // Child should still exist
+    const state = get(childStore);
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].id).toBe(exId);
+  });
+
+  it('measurements on ex-example child are synced after conversion', async () => {
+    await enableSync('Example Child');
+
+    // Example child starts with 7 measurements
+    const initialState = get(childStore);
+    const initialMeasCount = initialState.children[0].measurements.length;
+    expect(initialMeasCount).toBe(7);
+
+    // Convert by editing profile
+    updateProfile({ name: 'My Baby' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Child should be synced now (with all existing measurements)
+    const dbChildren = getMockData('children');
+    expect(dbChildren).toHaveLength(1);
+
+    const state = get(childStore);
+    const realId = state.children[0].id;
+
+    // Existing measurements should have been synced
+    const dbMeasurements = getMockData('measurements');
+    expect(dbMeasurements.length).toBe(initialMeasCount);
+
+    // Add another measurement - should also sync
+    addMeasurement({
+      date: '2024-06-01',
+      weight: 7000,
+      length: 65,
+      headCirc: 43
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const updatedMeasurements = getMockData('measurements');
+    expect(updatedMeasurements.length).toBe(initialMeasCount + 1);
+    expect(updatedMeasurements[updatedMeasurements.length - 1].child_id).toBe(realId);
   });
 });
