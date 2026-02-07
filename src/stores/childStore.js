@@ -31,6 +31,22 @@ export const sharedChildIds = writable(new Set());
 // Track if we're in sync mode (Supabase connected)
 let syncEnabled = false;
 
+// Reactive guard: auto-remove example child when real children exist.
+// This is the single place that enforces the invariant — individual functions
+// (addChild, acceptLiveShare, etc.) don't need to worry about it.
+childStore.subscribe((state) => {
+  const exId = get(exampleChildId);
+  if (!exId) return;
+  const hasRealChildren = state.children.some((c) => c.id !== exId);
+  if (hasRealChildren) {
+    exampleChildId.set(null);
+    childStore.update((s) => ({
+      ...s,
+      children: s.children.filter((c) => c.id !== exId)
+    }));
+  }
+});
+
 // Track children currently being synced to prevent double-sync
 const syncingChildIds = new Set();
 
@@ -135,8 +151,7 @@ export async function enableSync(exampleName) {
     const allChildren = [...ownChildren, ...uniqueShared];
 
     if (allChildren.length > 0) {
-      // Real data exists — no example child needed
-      exampleChildId.set(null);
+      // Real data exists — reactive guard will clear example child if any
       childStore.set({
         children: allChildren,
         activeChildId: activeChildPref || allChildren[0]?.id || null
@@ -408,16 +423,6 @@ export function removeChild(childId) {
 }
 
 export function addChild() {
-  // Auto-remove example child when user adds their first real child
-  const currentExampleId = get(exampleChildId);
-  if (currentExampleId) {
-    childStore.update((state) => ({
-      ...state,
-      children: state.children.filter((c) => c.id !== currentExampleId)
-    }));
-    exampleChildId.set(null);
-  }
-
   const tempId = crypto.randomUUID();
   const newChild = {
     id: tempId,
@@ -558,7 +563,7 @@ export async function acceptLiveShare(token) {
   const sharedIds = new Set(shared.map((c) => c.id));
   sharedChildIds.set(sharedIds);
 
-  // Merge into store (avoid duplicates)
+  // Merge into store (avoid duplicates; reactive guard handles example child)
   childStore.update((state) => {
     const ownChildren = state.children.filter((c) => !sharedIds.has(c.id));
     return {

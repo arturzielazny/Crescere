@@ -369,6 +369,50 @@ describe('childStore - shared children', () => {
     const state = get(childStore);
     expect(state.activeChildId).toBe('shared-1');
   });
+
+  it('acceptLiveShare removes example child from store', async () => {
+    const { seedMockData } = await import('../lib/__mocks__/supabaseClient.js');
+
+    // Start with no data — enableSync will create an example child
+    await enableSync('Example');
+    const exId = get(exampleChildId);
+    expect(exId).not.toBeNull();
+
+    let state = get(childStore);
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].id).toBe(exId);
+
+    // Seed shared child data
+    seedMockData('children', [
+      {
+        id: 'shared-2',
+        user_id: 'other-user',
+        name: 'Shared Child',
+        birth_date: '2024-03-01',
+        sex: 2
+      }
+    ]);
+    seedMockData('child_shares', [
+      {
+        id: 'share-2',
+        child_id: 'shared-2',
+        owner_id: 'other-user',
+        token: 'tok-xyz',
+        label: 'Grandma'
+      }
+    ]);
+
+    const { acceptLiveShare } = childStoreModule;
+    await acceptLiveShare('tok-xyz');
+
+    // Example child should be gone
+    expect(get(exampleChildId)).toBeNull();
+    state = get(childStore);
+    expect(state.children.find((c) => c.id === exId)).toBeUndefined();
+    // Only the shared child remains
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].id).toBe('shared-2');
+  });
 });
 
 describe('childStore - pending child (RLS fix)', () => {
