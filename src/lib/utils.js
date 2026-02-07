@@ -86,6 +86,28 @@ export function formatPercentile(z, locale = 'en') {
 }
 
 /**
+ * Find the index of the data point closest to the child's current age.
+ * Only considers past/current measurements (not future ones).
+ * @param {Array} data - Array of data points with x (age in days) or ageInDays property
+ * @param {number|null} nowAge - Current age in days
+ * @returns {number} Index of closest point, or -1 if none found
+ */
+export function findClosestToNowIndex(data, nowAge) {
+  if (!data?.length || nowAge == null) return -1;
+  let closest = 0;
+  let minDist = Infinity;
+  for (let i = 0; i < data.length; i++) {
+    const dist = Math.abs((data[i].x ?? data[i].ageInDays) - nowAge);
+    if (dist < minDist) {
+      minDist = dist;
+      closest = i;
+    }
+  }
+  if (data[closest]?.date && isFutureDate(data[closest].date)) return -1;
+  return closest;
+}
+
+/**
  * Compute growth velocity (daily rate of change) between consecutive measurements
  * @param {Array} measurements - Sorted array of measurement objects with date field
  * @param {string} key - Data key ('weight' or 'length')

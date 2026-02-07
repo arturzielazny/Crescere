@@ -13,7 +13,7 @@
   import annotationPlugin from 'chartjs-plugin-annotation';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { measurementsWithZScores, activeChild } from '../stores/childStore.js';
-  import { calculateAgeInDays } from '../lib/zscore.js';
+  import { calculateAgeInDays, zToPercentile } from '../lib/zscore.js';
   import {
     isFutureDate,
     hexToRgba,
@@ -34,7 +34,7 @@
     ChartDataLabels
   );
 
-  export let metric = 'all'; // 'waz', 'lhaz', 'headcz', 'wflz', or 'all'
+  export let metric = 'waz';
   export let title = null;
   export let maxAge = null;
 
@@ -49,16 +49,10 @@
   };
 
   $: labels = {
-    waz: $t('chart.waz'),
-    lhaz: $t('chart.lhaz'),
-    headcz: $t('chart.headcz'),
-    wflz: $t('chart.wflz')
-  };
-
-  $: _referenceLabels = {
-    median: $t('chart.reference.median'),
-    sd2plus: $t('chart.reference.sd2plus'),
-    sd2minus: $t('chart.reference.sd2minus')
+    waz: $t('chart.waz.percentile'),
+    lhaz: $t('chart.lhaz.percentile'),
+    headcz: $t('chart.headcz.percentile'),
+    wflz: $t('chart.wflz.percentile')
   };
 
   $: resolvedTitle = title || $t('chart.title');
@@ -66,10 +60,11 @@
   const MAX_Z = 5;
   const DISPLAY_RANGE = 3;
 
-  function clampZScore(z) {
-    if (z === null || z === undefined || isNaN(z)) return z;
-    return Math.max(-MAX_Z, Math.min(MAX_Z, z));
-  }
+  // Percentile equivalents of SD bands
+  const BAND_SD1_LOW = zToPercentile(-1); // ~15.87
+  const BAND_SD1_HIGH = zToPercentile(1); // ~84.13
+  const BAND_SD2_LOW = zToPercentile(-2); // ~2.28
+  const BAND_SD2_HIGH = zToPercentile(2); // ~97.72
 
   function getPointRadius(z) {
     if (z === null || z === undefined || isNaN(z)) return 0;
@@ -78,68 +73,61 @@
     return 3.5 + Math.round((abs - DISPLAY_RANGE) * 1.4);
   }
 
-  function getMaxAbsZScore(measurements) {
-    let maxAbs = 0;
-    for (const measurement of measurements) {
-      if (!measurement?.zscores) continue;
-      for (const value of Object.values(measurement.zscores)) {
-        if (value === null || value === undefined || isNaN(value)) continue;
-        maxAbs = Math.max(maxAbs, Math.min(MAX_Z, Math.abs(value)));
-      }
-    }
-    return maxAbs;
-  }
-
   function getDatasets(measurements) {
-    const metrics = metric === 'all' ? ['waz', 'lhaz', 'headcz', 'wflz'] : [metric];
+    const m = metric;
+    const measurementData = measurements
+      .filter((d) => d.zscores?.[m] !== null && d.zscores?.[m] !== undefined)
+      .map((d) => {
+        const rawZ = d.zscores[m];
+        const percentile = zToPercentile(rawZ);
+        const future = isFutureDate(d.date);
+        const pointColor = future ? hexToRgba(colors[m].border, 0.45) : colors[m].border;
+        return {
+          x: d.ageInDays,
+          y: percentile,
+          rawZ,
+          date: d.date,
+          pointRadius: getPointRadius(rawZ),
+          pointStyle: future ? 'triangle' : 'circle',
+          pointColor
+        };
+      });
 
-    const datasets = metrics.map((m) => ({
-      label: labels[m],
-      data: measurements
-        .filter((d) => d.zscores?.[m] !== null && d.zscores?.[m] !== undefined)
-        .map((d) => {
-          const rawValue = d.zscores[m];
-          const future = isFutureDate(d.date);
-          const pointColor = future ? hexToRgba(colors[m].border, 0.45) : colors[m].border;
-          return {
-            x: d.ageInDays,
-            y: clampZScore(rawValue),
-            rawValue,
-            pointRadius: getPointRadius(rawValue),
-            pointStyle: future ? 'triangle' : 'circle',
-            pointColor
-          };
-        }),
-      borderColor: colors[m].border,
-      backgroundColor: colors[m].bg,
-      borderWidth: 2,
-      pointRadius: (ctx) => ctx.raw?.pointRadius ?? 3.5,
-      pointHoverRadius: (ctx) => (ctx.raw?.pointRadius ?? 3.5) + 1.5,
-      pointStyle: (ctx) => ctx.raw?.pointStyle ?? 'circle',
-      pointBackgroundColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
-      pointBorderColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
-      tension: 0.1,
-      fill: false
-    }));
+    const datasets = [
+      {
+        label: labels[m],
+        data: measurementData,
+        borderColor: colors[m].border,
+        backgroundColor: colors[m].bg,
+        borderWidth: 2,
+        pointRadius: (ctx) => ctx.raw?.pointRadius ?? 3.5,
+        pointHoverRadius: (ctx) => (ctx.raw?.pointRadius ?? 3.5) + 1.5,
+        pointStyle: (ctx) => ctx.raw?.pointStyle ?? 'circle',
+        pointBackgroundColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
+        pointBorderColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
+        tension: 0.1,
+        fill: false
+      }
+    ];
 
-    // Add reference lines
-    if (metric !== 'all' && measurements.length > 0) {
-      const measMaxAge = Math.max(...measurements.map((m) => m.ageInDays || 0), 100);
+    // Add reference bands at percentile equivalents
+    if (measurements.length > 0) {
+      const measMaxAge = Math.max(...measurements.map((d) => d.ageInDays || 0), 100);
       const xEnd = maxAge ? Math.ceil(maxAge * 1.1) : measMaxAge;
       const refPoints = [0, xEnd];
-      const bandColor = hexToRgba(colors[metric].border, 0.12);
-      const bandColorWide = hexToRgba(colors[metric].border, 0.08);
+      const bandColor = hexToRgba(colors[m].border, 0.12);
+      const bandColorWide = hexToRgba(colors[m].border, 0.08);
 
       datasets.push(
         {
           label: '_sd2_lower',
-          data: refPoints.map((x) => ({ x, y: -2 })),
+          data: refPoints.map((x) => ({ x, y: BAND_SD2_LOW })),
           borderWidth: 0,
           pointRadius: 0
         },
         {
           label: $t('chart.band.sd2'),
-          data: refPoints.map((x) => ({ x, y: 2 })),
+          data: refPoints.map((x) => ({ x, y: BAND_SD2_HIGH })),
           borderWidth: 0,
           pointRadius: 0,
           fill: '-1',
@@ -147,13 +135,13 @@
         },
         {
           label: '_sd1_lower',
-          data: refPoints.map((x) => ({ x, y: -1 })),
+          data: refPoints.map((x) => ({ x, y: BAND_SD1_LOW })),
           borderWidth: 0,
           pointRadius: 0
         },
         {
           label: $t('chart.band.sd1'),
-          data: refPoints.map((x) => ({ x, y: 1 })),
+          data: refPoints.map((x) => ({ x, y: BAND_SD1_HIGH })),
           borderWidth: 0,
           pointRadius: 0,
           fill: '-1',
@@ -195,8 +183,7 @@
     };
   }
 
-  function getChartOptions(maxAbs = DISPLAY_RANGE) {
-    const range = Math.min(MAX_Z, Math.max(DISPLAY_RANGE, Math.ceil(maxAbs)));
+  function getChartOptions() {
     const nowAge = getCurrentAgeInDays();
     const datasets = chart?.data?.datasets;
     const measurementData = datasets?.[0]?.data || [];
@@ -219,8 +206,8 @@
         tooltip: {
           filter: (item) => {
             if (item.dataset.label?.startsWith('_')) return false;
-            const rawValue = item.raw?.rawValue;
-            return rawValue !== null && rawValue !== undefined && !isNaN(rawValue);
+            const rawZ = item.raw?.rawZ;
+            return rawZ !== null && rawZ !== undefined && !isNaN(rawZ);
           },
           callbacks: {
             title: (items) => {
@@ -230,11 +217,9 @@
             },
             label: (context) => {
               const label = context.dataset.label || '';
-              const rawValue = context.raw?.rawValue;
-              const capped = Math.max(-MAX_Z, Math.min(MAX_Z, rawValue));
-              const suffix =
-                Math.abs(rawValue) > DISPLAY_RANGE ? ` (${$t('chart.tooltip.capped')})` : '';
-              return `${label}: ${capped.toFixed(2)} (${formatPercentile(rawValue, $language)})${suffix}`;
+              const rawZ = context.raw?.rawZ;
+              const percentileStr = formatPercentile(rawZ, $language);
+              return `${label}: ${percentileStr} (z: ${rawZ.toFixed(2)})`;
             }
           }
         },
@@ -249,8 +234,8 @@
           align: 'top',
           offset: 4,
           font: { size: 11, weight: 'bold' },
-          color: metric !== 'all' ? colors[metric]?.border : '#2563eb',
-          formatter: (value) => value?.rawValue?.toFixed(2) ?? ''
+          color: colors[metric].border,
+          formatter: (value) => formatPercentile(value.rawZ, $language)
         }
       },
       scales: {
@@ -266,12 +251,12 @@
         y: {
           title: {
             display: true,
-            text: $t('chart.axis.zscore')
+            text: $t('chart.axis.percentile')
           },
-          min: -range,
-          max: range,
+          min: 0,
+          max: 100,
           ticks: {
-            stepSize: 1
+            stepSize: 10
           }
         }
       }
@@ -282,21 +267,20 @@
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const maxAbs = getMaxAbsZScore($measurementsWithZScores);
 
     chart = new Chart(ctx, {
       type: 'line',
       data: {
         datasets: getDatasets($measurementsWithZScores)
       },
-      options: getChartOptions(maxAbs)
+      options: getChartOptions()
     });
   }
 
   function updateChart() {
     if (!chart) return;
     chart.data.datasets = getDatasets($measurementsWithZScores);
-    chart.options = getChartOptions(getMaxAbsZScore($measurementsWithZScores));
+    chart.options = getChartOptions();
     chart.update();
   }
 

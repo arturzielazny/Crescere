@@ -11,9 +11,10 @@
     Tooltip
   } from 'chart.js';
   import annotationPlugin from 'chartjs-plugin-annotation';
+  import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { activeChild } from '../stores/childStore.js';
   import { calculateAgeInDays } from '../lib/zscore.js';
-  import { isFutureDate, hexToRgba } from '../lib/utils.js';
+  import { isFutureDate, hexToRgba, findClosestToNowIndex } from '../lib/utils.js';
   import { WHO_WEIGHT } from '../data/who-weight.js';
   import { WHO_LENGTH } from '../data/who-length.js';
   import { WHO_HEADC } from '../data/who-headc.js';
@@ -27,7 +28,8 @@
     Filler,
     Legend,
     Tooltip,
-    annotationPlugin
+    annotationPlugin,
+    ChartDataLabels
   );
 
   export let metric = 'weight'; // weight | length | headCirc
@@ -267,6 +269,11 @@
   function getChartOptions(range) {
     const unitLabel = unit || metricConfig[metric].unit;
     const stepSize = getStepSize(unitLabel, range);
+    const nowAge = getCurrentAgeInDays();
+    const datasets = chart?.data?.datasets;
+    const measurementDatasetIndex = datasets ? datasets.length - 1 : 4;
+    const measurementData = datasets?.[measurementDatasetIndex]?.data || [];
+    const closestIndex = findClosestToNowIndex(measurementData, nowAge);
     // Round to nearest step; since range.min already has 10% padding, allow rounding up
     const min = Math.round(range.min / stepSize) * stepSize;
     const max = Math.ceil(range.max / stepSize) * stepSize;
@@ -308,6 +315,22 @@
         },
         annotation: {
           annotations: getNowAnnotation()
+        },
+        datalabels: {
+          display: (ctx) => {
+            return ctx.datasetIndex === measurementDatasetIndex && ctx.dataIndex === closestIndex;
+          },
+          anchor: 'end',
+          align: 'top',
+          offset: 4,
+          font: { size: 11, weight: 'bold' },
+          color: metricConfig[metric].color,
+          formatter: (value) => {
+            const v = value?.y;
+            if (v == null) return '';
+            const decimals = unitLabel === 'g' ? 0 : 1;
+            return `${Number(v).toFixed(decimals)} ${unitLabel}`;
+          }
         }
       },
       scales: {

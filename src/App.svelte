@@ -9,6 +9,7 @@
   import UserMenu from './components/UserMenu.svelte';
   import AuthModal from './components/AuthModal.svelte';
   import OverflowMenu from './components/OverflowMenu.svelte';
+  import LanguageSwitcher from './components/LanguageSwitcher.svelte';
   import WelcomeScreen from './components/WelcomeScreen.svelte';
   import OnboardingBanner from './components/OnboardingBanner.svelte';
   import {
@@ -242,6 +243,7 @@
           {$t('app.title')}
         </h1>
         <div class="flex gap-2 items-center">
+          <LanguageSwitcher />
           <OverflowMenu
             onExport={handleExport}
             onImport={handleImport}

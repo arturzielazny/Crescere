@@ -10,9 +10,10 @@
     Tooltip
   } from 'chart.js';
   import annotationPlugin from 'chartjs-plugin-annotation';
+  import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { activeChild } from '../stores/childStore.js';
   import { calculateAgeInDays } from '../lib/zscore.js';
-  import { computeVelocity, isFutureDate, hexToRgba } from '../lib/utils.js';
+  import { computeVelocity, isFutureDate, hexToRgba, findClosestToNowIndex } from '../lib/utils.js';
   import { t } from '../stores/i18n.js';
 
   Chart.register(
@@ -22,7 +23,8 @@
     LinearScale,
     Legend,
     Tooltip,
-    annotationPlugin
+    annotationPlugin,
+    ChartDataLabels
   );
 
   export let metric = 'weight'; // weight | length
@@ -152,6 +154,9 @@
     const unitLabel = config.unit;
     const isWeight = metric === 'weight';
     const decimals = isWeight ? 1 : 2;
+    const nowAge = getCurrentAgeInDays();
+    const measurementData = chart?.data?.datasets?.[0]?.data || [];
+    const closestIndex = findClosestToNowIndex(measurementData, nowAge);
 
     return {
       responsive: true,
@@ -189,6 +194,21 @@
         },
         annotation: {
           annotations: getNowAnnotation()
+        },
+        datalabels: {
+          display: (ctx) => {
+            return ctx.datasetIndex === 0 && ctx.dataIndex === closestIndex;
+          },
+          anchor: 'end',
+          align: 'top',
+          offset: 4,
+          font: { size: 11, weight: 'bold' },
+          color: config.color,
+          formatter: (value) => {
+            const v = value?.y;
+            if (v == null) return '';
+            return `${Number(v).toFixed(decimals)} ${unitLabel}`;
+          }
         }
       },
       scales: {

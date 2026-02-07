@@ -9,6 +9,7 @@
   import { t } from '../stores/i18n.js';
   import GrowthMetricChart from './GrowthMetricChart.svelte';
   import ZScoreChart from './ZScoreChart.svelte';
+  import PercentileChart from './PercentileChart.svelte';
   import VelocityChart from './VelocityChart.svelte';
 
   let draggedIndex = null;
@@ -24,6 +25,13 @@
     wflz: $t('chart.wflz'),
     weightVelocity: $t('chart.weightVelocity.title'),
     lengthVelocity: $t('chart.lengthVelocity.title')
+  };
+
+  $: percentileTitles = {
+    waz: $t('chart.waz.percentile'),
+    lhaz: $t('chart.lhaz.percentile'),
+    headcz: $t('chart.headcz.percentile'),
+    wflz: $t('chart.wflz.percentile')
   };
 
   $: groupTitles = {
@@ -149,18 +157,36 @@
             {#if chart.type === 'growth'}
               <GrowthMetricChart
                 metric={chart.id}
-                title={chartTitles[chart.id]}
+                title={chart.type === 'percentile'
+                  ? percentileTitles[chart.id]
+                  : chartTitles[chart.id]}
                 unit={getChartUnit(chart)}
                 maxAge={$maxAgeInDays}
               />
             {:else if chart.type === 'velocity'}
               <VelocityChart
                 metric={getVelocityMetric(chart.id)}
-                title={chartTitles[chart.id]}
+                title={chart.type === 'percentile'
+                  ? percentileTitles[chart.id]
+                  : chartTitles[chart.id]}
+                maxAge={$maxAgeInDays}
+              />
+            {:else if chart.type === 'percentile'}
+              <PercentileChart
+                metric={chart.id}
+                title={chart.type === 'percentile'
+                  ? percentileTitles[chart.id]
+                  : chartTitles[chart.id]}
                 maxAge={$maxAgeInDays}
               />
             {:else}
-              <ZScoreChart metric={chart.id} title={chartTitles[chart.id]} maxAge={$maxAgeInDays} />
+              <ZScoreChart
+                metric={chart.id}
+                title={chart.type === 'percentile'
+                  ? percentileTitles[chart.id]
+                  : chartTitles[chart.id]}
+                maxAge={$maxAgeInDays}
+              />
             {/if}
           </div>
         {/each}
@@ -210,20 +236,34 @@
                 {#if chart.type === 'growth'}
                   <GrowthMetricChart
                     metric={chart.id}
-                    title={chartTitles[chart.id]}
+                    title={chart.type === 'percentile'
+                      ? percentileTitles[chart.id]
+                      : chartTitles[chart.id]}
                     unit={getChartUnit(chart)}
                     maxAge={$maxAgeInDays}
                   />
                 {:else if chart.type === 'velocity'}
                   <VelocityChart
                     metric={getVelocityMetric(chart.id)}
-                    title={chartTitles[chart.id]}
+                    title={chart.type === 'percentile'
+                      ? percentileTitles[chart.id]
+                      : chartTitles[chart.id]}
+                    maxAge={$maxAgeInDays}
+                  />
+                {:else if chart.type === 'percentile'}
+                  <PercentileChart
+                    metric={chart.id}
+                    title={chart.type === 'percentile'
+                      ? percentileTitles[chart.id]
+                      : chartTitles[chart.id]}
                     maxAge={$maxAgeInDays}
                   />
                 {:else}
                   <ZScoreChart
                     metric={chart.id}
-                    title={chartTitles[chart.id]}
+                    title={chart.type === 'percentile'
+                      ? percentileTitles[chart.id]
+                      : chartTitles[chart.id]}
                     maxAge={$maxAgeInDays}
                   />
                 {/if}

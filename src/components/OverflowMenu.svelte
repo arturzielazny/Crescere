@@ -1,5 +1,6 @@
 <script>
-  import { availableLanguages, language, setLanguage, t } from '../stores/i18n.js';
+  import { t } from '../stores/i18n.js';
+  import { chartDisplayMode, toggleChartMode } from '../stores/chartStore.js';
 
   export let onExport = () => {};
   export let onImport = (_event) => {};
@@ -42,24 +43,13 @@
     <div
       class="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1"
     >
-      <!-- Language selector -->
-      <div class="px-3 py-2 border-b border-gray-100">
-        <select
-          value={$language}
-          on:change={(event) => {
-            setLanguage(event.target.value);
-            close();
-          }}
-          class="w-full px-2 py-1 text-sm border border-gray-200 rounded bg-white"
-          aria-label={$t('app.language.label')}
-        >
-          {#each availableLanguages as lang (lang)}
-            <option value={lang}>
-              {$t(`app.language.${lang}`)}
-            </option>
-          {/each}
-        </select>
-      </div>
+      <!-- Z-Score / Percentile toggle -->
+      <button
+        on:click={() => handleAction(toggleChartMode)}
+        class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+      >
+        {$chartDisplayMode === 'percentile' ? $t('menu.showZScores') : $t('menu.showPercentiles')}
+      </button>
 
       <!-- Print (mobile only) -->
       <button

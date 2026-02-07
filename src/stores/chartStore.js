@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 
 const STORAGE_KEY = 'crescere-charts';
 
@@ -20,7 +20,7 @@ const defaultChartOrder = [
     groupId: 'weight',
     charts: [
       { id: 'weight', type: 'growth' },
-      { id: 'waz', type: 'zscore' },
+      { id: 'waz', type: 'percentile' },
       { id: 'weightVelocity', type: 'velocity' }
     ]
   },
@@ -28,7 +28,7 @@ const defaultChartOrder = [
     groupId: 'length',
     charts: [
       { id: 'length', type: 'growth' },
-      { id: 'lhaz', type: 'zscore' },
+      { id: 'lhaz', type: 'percentile' },
       { id: 'lengthVelocity', type: 'velocity' }
     ]
   },
@@ -36,12 +36,12 @@ const defaultChartOrder = [
     groupId: 'headCirc',
     charts: [
       { id: 'headCirc', type: 'growth' },
-      { id: 'headcz', type: 'zscore' }
+      { id: 'headcz', type: 'percentile' }
     ]
   },
   {
     groupId: 'wfl',
-    charts: [{ id: 'wflz', type: 'zscore' }]
+    charts: [{ id: 'wflz', type: 'percentile' }]
   }
 ];
 
@@ -74,6 +74,32 @@ function convertFlatToGrouped(flatOrder) {
   return Array.from(groups.entries()).map(([groupId, charts]) => ({ groupId, charts }));
 }
 
+/**
+ * Migrate zscore chart types to percentile.
+ */
+function migrateZScoreToPercentile(chartOrder) {
+  return chartOrder.map((group) => ({
+    ...group,
+    charts: group.charts.map((chart) =>
+      chart.type === 'zscore' ? { ...chart, type: 'percentile' } : chart
+    )
+  }));
+}
+
+/**
+ * Get the current display mode from the chart order.
+ * Returns 'percentile' if any chart uses percentile, otherwise 'zscore'.
+ */
+function detectDisplayMode(chartOrder) {
+  for (const group of chartOrder) {
+    for (const chart of group.charts) {
+      if (chart.type === 'percentile') return 'percentile';
+      if (chart.type === 'zscore') return 'zscore';
+    }
+  }
+  return 'percentile';
+}
+
 function loadChartSettings() {
   if (typeof localStorage === 'undefined') {
     return { chartOrder: defaultChartOrder };
@@ -95,6 +121,9 @@ function loadChartSettings() {
         chartOrder = convertFlatToGrouped(chartOrder);
       }
 
+      // Migrate existing zscore charts to percentile
+      chartOrder = migrateZScoreToPercentile(chartOrder);
+
       return { chartOrder };
     }
   } catch (_e) {
@@ -113,6 +142,7 @@ function saveChartSettings(settings) {
 const initial = loadChartSettings();
 
 export const chartOrder = writable(initial.chartOrder);
+export const chartDisplayMode = writable(detectDisplayMode(initial.chartOrder));
 export const maximizedChart = writable(null);
 
 export function closeMaximize() {
@@ -123,6 +153,27 @@ export function closeMaximize() {
 chartOrder.subscribe((order) => {
   saveChartSettings({ chartOrder: order });
 });
+
+export function toggleChartMode() {
+  const currentMode = get(chartDisplayMode);
+  const newMode = currentMode === 'percentile' ? 'zscore' : 'percentile';
+  chartDisplayMode.set(newMode);
+
+  chartOrder.update((order) =>
+    order.map((group) => ({
+      ...group,
+      charts: group.charts.map((chart) => {
+        if (chart.type === 'zscore' && newMode === 'percentile') {
+          return { ...chart, type: 'percentile' };
+        }
+        if (chart.type === 'percentile' && newMode === 'zscore') {
+          return { ...chart, type: 'zscore' };
+        }
+        return chart;
+      })
+    }))
+  );
+}
 
 export function reorderCharts(fromIndex, toIndex) {
   chartOrder.update((order) => {
