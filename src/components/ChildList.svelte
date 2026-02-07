@@ -174,10 +174,11 @@
             {$t('children.selected')}
           </span>
         {/if}
-        {#if isActive && !isShared}
+        {#if !isShared}
           <button
             on:click={(e) => {
               e.stopPropagation();
+              if (!isActive) setActiveChild(child.id);
               onShare();
             }}
             class="px-2 py-1 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
@@ -194,26 +195,25 @@
             </svg>
           </button>
         {/if}
-        {#if isActive}
-          <button
-            on:click={(e) => {
-              e.stopPropagation();
-              onPrint();
-            }}
-            class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors hidden sm:block"
-            aria-label={$t('app.print')}
-            title={$t('app.print')}
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-              />
-            </svg>
-          </button>
-        {/if}
+        <button
+          on:click={(e) => {
+            e.stopPropagation();
+            if (!isActive) setActiveChild(child.id);
+            onPrint();
+          }}
+          class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors hidden sm:block"
+          aria-label={$t('app.print')}
+          title={$t('app.print')}
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+            />
+          </svg>
+        </button>
         {#if !isExample}
           <button
             on:click={(e) => handleDeleteClick(e, child.id)}
