@@ -117,8 +117,9 @@
 
     // Add reference lines
     if (metric !== 'all' && measurements.length > 0) {
-      const maxAge = Math.max(...measurements.map((m) => m.ageInDays || 0), 100);
-      const refPoints = [0, maxAge];
+      const measMaxAge = Math.max(...measurements.map((m) => m.ageInDays || 0), 100);
+      const xEnd = maxAge ? Math.ceil(maxAge * 1.1) : measMaxAge;
+      const refPoints = [0, xEnd];
       const bandColor = hexToRgba(colors[metric].border, 0.12);
       const bandColorWide = hexToRgba(colors[metric].border, 0.08);
 
