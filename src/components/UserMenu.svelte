@@ -1,5 +1,5 @@
 <script>
-  import { user, isAuthenticated, isAnonymous, loading } from '../stores/authStore.js';
+  import { user, isAuthenticated, isAnonymous, hasPassword, loading } from '../stores/authStore.js';
   import { t } from '../stores/i18n.js';
 
   export let onSignOut = () => {};
@@ -114,7 +114,7 @@
             on:click={() => handleAction(() => onOpenAuth('setPassword'))}
             class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
-            {$t('menu.password')}
+            {$hasPassword ? $t('menu.password.change') : $t('menu.password.set')}
           </button>
           <div class="border-t border-gray-100 mt-1 pt-1">
             <button

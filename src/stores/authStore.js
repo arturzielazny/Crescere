@@ -24,6 +24,10 @@ export const isAnonymous = derived(
   ($state) =>
     $state.user?.is_anonymous === true || $state.user?.app_metadata?.provider === 'anonymous'
 );
+export const hasPassword = derived(
+  authState,
+  ($state) => $state.user?.identities?.some((i) => i.provider === 'email') ?? false
+);
 
 /**
  * Initialize auth - call once on app load
