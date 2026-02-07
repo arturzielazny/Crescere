@@ -10,6 +10,7 @@
   import AuthModal from './components/AuthModal.svelte';
   import OverflowMenu from './components/OverflowMenu.svelte';
   import WelcomeScreen from './components/WelcomeScreen.svelte';
+  import OnboardingBanner from './components/OnboardingBanner.svelte';
   import {
     childStore,
     activeChild,
@@ -19,7 +20,8 @@
     dataError,
     enableSync,
     disableSync,
-    acceptLiveShare
+    acceptLiveShare,
+    exampleChildId
   } from './stores/childStore.js';
   import {
     initAuth,
@@ -29,8 +31,7 @@
     signInAnonymously,
     signOut
   } from './stores/authStore.js';
-  import { migrateData } from './lib/storage.js';
-  import { migrateToSupabase, hasLocalData } from './lib/migrate.js';
+  import { exportToCsv, importFromCsv } from './lib/csv.js';
   import { parseLiveShareUrl, clearShareHash } from './lib/share.js';
   import { t } from './stores/i18n.js';
   import { calculateAgeInDays, formatAge } from './lib/zscore.js';
@@ -38,7 +39,6 @@
   let showWelcome = false;
   let showShareModal = false;
   let toast = null;
-  let migrating = false;
   /** @type {null | 'signIn' | 'claimAccount' | 'setPassword'} */
   let authModalMode = null;
 
@@ -67,33 +67,24 @@
   }
 
   async function loadAuthenticatedData() {
-    if (hasLocalData()) {
-      migrating = true;
-      const result = await migrateToSupabase();
-      migrating = false;
-
-      if (result.migrated) {
-        toast = {
-          message: $t('auth.migrated'),
-          type: 'success'
-        };
-      }
-    }
-
-    // Load data from Supabase (injects local-only example child if no data exists)
     await enableSync($t('children.example'));
   }
 
   async function initializeApp() {
     await initAuth();
 
-    // If no session, show welcome screen instead of auto-signing in
     if (!$isAuthenticated && !$authLoading) {
-      showWelcome = true;
-      return;
+      // First visit — auto sign in anonymously so user lands right in the app
+      try {
+        await signInAnonymously();
+      } catch (_err) {
+        // Fall back to welcome screen if auto sign-in fails
+        showWelcome = true;
+        return;
+      }
     }
 
-    // Already authenticated - load data
+    // Authenticated (existing session or just auto-signed-in) — load data
     await loadAuthenticatedData();
 
     // Check for live share URL
@@ -142,12 +133,15 @@
   });
 
   function handleExport() {
-    const data = { ...$childStore, version: 2 };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const exId = $exampleChildId;
+    const sharedIds = $sharedChildIds;
+    const children = $childStore.children.filter((c) => c.id !== exId && !sharedIds.has(c.id));
+    const csv = exportToCsv(children);
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `growth-data-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `growth-data-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -165,24 +159,19 @@
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const rawData = JSON.parse(e.target.result);
-        const importedData = migrateData(rawData);
+        const importedData = importFromCsv(e.target.result);
 
-        // Merge imported children with existing ones
-        const existingIds = new Set($childStore.children.map((c) => c.id));
-        const newChildren = importedData.children.map((child) => {
-          // Generate new ID if it conflicts with existing
-          if (existingIds.has(child.id)) {
-            return { ...child, id: crypto.randomUUID() };
-          }
-          return child;
+        childStore.update((state) => {
+          // Remove example child on import
+          const exId = $exampleChildId;
+          const kept = exId ? state.children.filter((c) => c.id !== exId) : state.children;
+
+          return {
+            ...state,
+            children: [...kept, ...importedData.children],
+            activeChildId: importedData.children[0]?.id || state.activeChildId || null
+          };
         });
-
-        childStore.update((state) => ({
-          ...state,
-          children: [...state.children, ...newChildren],
-          activeChildId: state.activeChildId || newChildren[0]?.id || null
-        }));
 
         toast = { message: $t('app.import.success'), type: 'success' };
       } catch (_err) {
@@ -207,10 +196,12 @@
   function handleShare() {
     if (canShare) {
       showShareModal = true;
+    } else if (shareDisabledReason) {
+      toast = { message: shareDisabledReason, type: 'info' };
     }
   }
 
-  $: isLoading = $authLoading || $dataLoading || migrating;
+  $: isLoading = $authLoading || $dataLoading;
   $: footerStorageText =
     $isAuthenticated && !$isAnonymous ? $t('app.footer.storage.cloud') : $t('app.footer.storage');
 
@@ -251,9 +242,7 @@
         <div class="flex gap-2 items-center">
           <button
             on:click={handleShare}
-            disabled={!canShare}
-            title={shareDisabledReason || null}
-            class="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded"
           >
             {$t('app.share')}
           </button>
@@ -285,7 +274,7 @@
               class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-r-transparent"
             ></div>
             <p class="mt-3 text-gray-600">
-              {migrating ? $t('auth.migrating') : $t('auth.loading')}
+              {$t('auth.loading')}
             </p>
           </div>
         </div>
@@ -299,10 +288,11 @@
         {/if}
 
         {#if $isAnonymous}
-          <div
-            class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 print-hidden"
-          >
-            {$t('auth.guestMode')}
+          <div class="print-hidden">
+            <OnboardingBanner
+              hasRealChildren={!$exampleChildId}
+              onSaveAccount={() => (authModalMode = 'claimAccount')}
+            />
           </div>
         {/if}
 
