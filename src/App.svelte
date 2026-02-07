@@ -22,7 +22,8 @@
     enableSync,
     disableSync,
     acceptLiveShare,
-    exampleChildId
+    exampleChildId,
+    importChildren
   } from './stores/childStore.js';
   import {
     initAuth,
@@ -158,22 +159,10 @@
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const importedData = importFromCsv(e.target.result);
-
-        childStore.update((state) => {
-          // Remove example child on import
-          const exId = $exampleChildId;
-          const kept = exId ? state.children.filter((c) => c.id !== exId) : state.children;
-
-          return {
-            ...state,
-            children: [...kept, ...importedData.children],
-            activeChildId: importedData.children[0]?.id || state.activeChildId || null
-          };
-        });
-
+        await importChildren(importedData.children);
         toast = { message: $t('app.import.success'), type: 'success' };
       } catch (_err) {
         toast = { message: $t('app.import.error'), type: 'error' };

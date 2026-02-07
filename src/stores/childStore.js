@@ -511,6 +511,69 @@ export async function syncChildToBackend(childId) {
   }
 }
 
+/**
+ * Import children from CSV data, syncing each to the backend.
+ * Imported children are created in Supabase immediately so they get real IDs.
+ * @param {Array} children - Array of child objects from CSV import
+ */
+export async function importChildren(children) {
+  if (!children?.length) return;
+
+  // Add locally first (optimistic) with temp IDs
+  const exId = get(exampleChildId);
+  childStore.update((state) => {
+    const kept = exId ? state.children.filter((c) => c.id !== exId) : state.children;
+    return {
+      ...state,
+      children: [...kept, ...children],
+      activeChildId: children[0]?.id || state.activeChildId || null
+    };
+  });
+
+  if (!syncEnabled) return;
+
+  // Sync each imported child to backend
+  for (const child of children) {
+    if (!child.profile?.birthDate || !child.profile?.sex) continue;
+
+    try {
+      const realId = await api.createChild(child.profile);
+
+      childStore.update((s) => ({
+        ...s,
+        activeChildId: s.activeChildId === child.id ? realId : s.activeChildId,
+        children: s.children.map((c) => (c.id === child.id ? { ...c, id: realId } : c))
+      }));
+
+      if (child.measurements?.length) {
+        for (const m of child.measurements) {
+          await api.createMeasurement(realId, m);
+        }
+        // Reload to get real measurement IDs
+        const allChildren = await api.fetchChildren();
+        const updated = allChildren.find((c) => c.id === realId);
+        if (updated) {
+          childStore.update((s) => ({
+            ...s,
+            children: s.children.map((c) => (c.id === realId ? updated : c))
+          }));
+        }
+      }
+
+      // Sync active child preference now that child exists in DB
+      const currentState = get(childStore);
+      if (currentState.activeChildId === realId) {
+        await api.setActiveChildId(realId).catch((err) => {
+          console.error('Failed to sync active child preference:', err);
+        });
+      }
+    } catch (err) {
+      console.error('Failed to import child:', err);
+      dataError.set(err.message);
+    }
+  }
+}
+
 export function createExampleState(exampleName = 'Example Child') {
   const id = crypto.randomUUID();
 
