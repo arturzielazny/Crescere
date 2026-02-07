@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run --exclude '**/*.integration.test.js'",
     "test:watch": "vitest --exclude '**/*.integration.test.js'",
-    "test:integration": "vitest run --include '**/*.integration.test.js'",
+    "test:integration": "vitest run --config vitest.integration.config.js",
     "test:all": "vitest run",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

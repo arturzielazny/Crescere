@@ -113,11 +113,16 @@ describe.skipIf(!(await isSupabaseRunning()))('API Integration Tests', () => {
     });
 
     it('enforces RLS - cannot see other users children', async () => {
-      // Create a child with admin (different user_id)
-      const { data: otherChild } = await adminClient
+      // Create a real second user
+      const otherClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { data: otherAuth } = await otherClient.auth.signInAnonymously();
+      const otherUserId = otherAuth.user.id;
+
+      // Create a child as the other user
+      const { data: otherChild } = await otherClient
         .from('children')
         .insert({
-          user_id: '00000000-0000-0000-0000-000000000001', // Different user
+          user_id: otherUserId,
           name: 'Other User Child',
           birth_date: '2024-01-01',
           sex: 1
@@ -131,7 +136,8 @@ describe.skipIf(!(await isSupabaseRunning()))('API Integration Tests', () => {
       expect(children).toHaveLength(0); // RLS blocks access
 
       // Cleanup
-      await adminClient.from('children').delete().eq('id', otherChild.id);
+      await adminClient.from('children').delete().eq('user_id', otherUserId);
+      await adminClient.auth.admin.deleteUser(otherUserId);
     });
 
     it('cascades delete to measurements', async () => {
@@ -297,6 +303,210 @@ describe.skipIf(!(await isSupabaseRunning()))('API Integration Tests', () => {
         .single();
 
       expect(updatedPref.active_child_id).toBe(child2.id);
+    });
+  });
+
+  describe('Sharing', () => {
+    let childId;
+    let recipientClient;
+    let recipientUserId;
+
+    beforeAll(async () => {
+      // Create a second user (recipient) for sharing tests
+      recipientClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { data, error } = await recipientClient.auth.signInAnonymously();
+      if (error) throw error;
+      recipientUserId = data.user.id;
+    });
+
+    afterAll(async () => {
+      // Clean up recipient
+      if (recipientUserId) {
+        await adminClient.from('shared_child_access').delete().eq('user_id', recipientUserId);
+        await adminClient.from('children').delete().eq('user_id', recipientUserId);
+        await adminClient.auth.admin.deleteUser(recipientUserId);
+      }
+    });
+
+    beforeEach(async () => {
+      // Clean up sharing tables for the owner
+      await adminClient.from('child_shares').delete().eq('owner_id', testUserId);
+      await adminClient.from('shared_child_access').delete().eq('user_id', recipientUserId);
+
+      // Create a child to share
+      const { data } = await supabase
+        .from('children')
+        .insert({
+          user_id: testUserId,
+          name: 'Shared Child',
+          birth_date: '2024-01-15',
+          sex: 1
+        })
+        .select()
+        .single();
+      childId = data.id;
+    });
+
+    it('creates a share link', async () => {
+      const token = 'test-token-' + Date.now();
+      const { data, error } = await supabase
+        .from('child_shares')
+        .insert({
+          child_id: childId,
+          owner_id: testUserId,
+          token,
+          label: 'Doctor'
+        })
+        .select()
+        .single();
+
+      expect(error).toBeNull();
+      expect(data.token).toBe(token);
+      expect(data.label).toBe('Doctor');
+    });
+
+    it('lists shares for a child', async () => {
+      // Create two shares
+      await supabase.from('child_shares').insert([
+        { child_id: childId, owner_id: testUserId, token: 'tok1-' + Date.now(), label: 'Doctor' },
+        { child_id: childId, owner_id: testUserId, token: 'tok2-' + Date.now(), label: 'Grandma' }
+      ]);
+
+      const { data, error } = await supabase
+        .from('child_shares')
+        .select('id, token, label, created_at')
+        .eq('child_id', childId);
+
+      expect(error).toBeNull();
+      expect(data).toHaveLength(2);
+    });
+
+    it('accepts a share via RPC', async () => {
+      const token = 'accept-tok-' + Date.now();
+      await supabase
+        .from('child_shares')
+        .insert({ child_id: childId, owner_id: testUserId, token, label: 'Link' });
+
+      // Recipient accepts the share
+      const { data, error } = await recipientClient.rpc('accept_share', { share_token: token });
+
+      expect(error).toBeNull();
+      expect(data.child_id).toBe(childId);
+      expect(data.already_accepted).toBe(false);
+    });
+
+    it('returns already_accepted on duplicate accept', async () => {
+      const token = 'dup-tok-' + Date.now();
+      await supabase
+        .from('child_shares')
+        .insert({ child_id: childId, owner_id: testUserId, token, label: 'Link' });
+
+      await recipientClient.rpc('accept_share', { share_token: token });
+      const { data } = await recipientClient.rpc('accept_share', { share_token: token });
+
+      expect(data.already_accepted).toBe(true);
+    });
+
+    it('recipient can view shared child data', async () => {
+      const token = 'view-tok-' + Date.now();
+      await supabase
+        .from('child_shares')
+        .insert({ child_id: childId, owner_id: testUserId, token, label: 'View' });
+
+      // Add a measurement to the child
+      await supabase
+        .from('measurements')
+        .insert({ child_id: childId, date: '2024-03-01', weight: 5000 });
+
+      // Accept share
+      await recipientClient.rpc('accept_share', { share_token: token });
+
+      // Recipient can see the child
+      const { data: children } = await recipientClient
+        .from('children')
+        .select('*, measurements (*)')
+        .eq('id', childId);
+
+      expect(children).toHaveLength(1);
+      expect(children[0].name).toBe('Shared Child');
+      expect(children[0].measurements).toHaveLength(1);
+    });
+
+    it('recipient cannot modify shared child', async () => {
+      const token = 'mod-tok-' + Date.now();
+      await supabase
+        .from('child_shares')
+        .insert({ child_id: childId, owner_id: testUserId, token, label: 'ReadOnly' });
+      await recipientClient.rpc('accept_share', { share_token: token });
+
+      // Try to update the child as recipient — RLS should block (no rows matched)
+      await recipientClient.from('children').update({ name: 'Hacked Name' }).eq('id', childId);
+
+      // Verify name unchanged
+      const { data: child } = await supabase.from('children').select().eq('id', childId).single();
+
+      expect(child.name).toBe('Shared Child');
+    });
+
+    it('owner cannot accept their own share', async () => {
+      const token = 'self-tok-' + Date.now();
+      await supabase
+        .from('child_shares')
+        .insert({ child_id: childId, owner_id: testUserId, token, label: 'Self' });
+
+      const { error } = await supabase.rpc('accept_share', { share_token: token });
+
+      expect(error).not.toBeNull();
+      expect(error.message).toContain('Cannot accept your own share');
+    });
+
+    it('revoke removes share and cascades to access', async () => {
+      const token = 'revoke-tok-' + Date.now();
+      const { data: share } = await supabase
+        .from('child_shares')
+        .insert({ child_id: childId, owner_id: testUserId, token, label: 'Revoke' })
+        .select()
+        .single();
+
+      // Accept first
+      await recipientClient.rpc('accept_share', { share_token: token });
+
+      // Revoke
+      await supabase.from('child_shares').delete().eq('id', share.id);
+
+      // Verify access row is gone
+      const { data: access } = await adminClient
+        .from('shared_child_access')
+        .select()
+        .eq('share_id', share.id);
+
+      expect(access).toHaveLength(0);
+
+      // Recipient can no longer see the child
+      const { data: children } = await recipientClient.from('children').select().eq('id', childId);
+
+      expect(children).toHaveLength(0);
+    });
+
+    it('rejects invalid share token', async () => {
+      const { error } = await recipientClient.rpc('accept_share', {
+        share_token: 'nonexistent-token'
+      });
+
+      expect(error).not.toBeNull();
+      expect(error.message).toContain('Invalid share token');
+    });
+
+    it('RLS prevents seeing other users shares', async () => {
+      const token = 'rls-tok-' + Date.now();
+      await supabase
+        .from('child_shares')
+        .insert({ child_id: childId, owner_id: testUserId, token, label: 'Hidden' });
+
+      // Recipient tries to list shares (should see none — not the owner)
+      const { data } = await recipientClient.from('child_shares').select().eq('child_id', childId);
+
+      expect(data).toHaveLength(0);
     });
   });
 });
