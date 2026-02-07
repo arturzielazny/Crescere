@@ -1,0 +1,308 @@
+// Crescere – Complete State Transition Diagram
+// Render: dot -Tsvg docs/state-transitions.dot -o docs/state-transitions.svg
+//    or:  dot -Tpng docs/state-transitions.dot -o docs/state-transitions.png
+
+digraph crescere {
+    rankdir=TB;
+    fontname="Helvetica Neue";
+    fontsize=12;
+    label="Crescere – State Transitions\n(Auth × Children × Sharing × Views)";
+    labelloc=t;
+    compound=true;
+    newrank=true;
+    splines=true;
+    nodesep=0.6;
+    ranksep=0.8;
+
+    node [fontname="Helvetica Neue", fontsize=9, shape=box, style="rounded,filled"];
+    edge [fontname="Helvetica Neue", fontsize=7, color="#555555"];
+
+    // ====================================================================
+    //  1. APP INITIALIZATION FLOW
+    // ====================================================================
+    subgraph cluster_init {
+        label="App Initialization";
+        style="rounded,filled";
+        fillcolor="#f0f7ff";
+        color="#4a90d9";
+        fontsize=10;
+
+        init_mount     [label="onMount()", shape=ellipse, fillcolor="#dbe9f7"];
+        init_auth      [label="initAuth()\nrestore session"];
+        init_has_sess  [label="Has session?", shape=diamond, fillcolor="white"];
+        init_auto_anon [label="signInAnonymously()\n(auto-create guest)"];
+        init_anon_ok   [label="Success?", shape=diamond, fillcolor="white"];
+        init_sync      [label="enableSync()\nload from Supabase", fillcolor="#d4edda"];
+        init_share     [label="checkForLiveShare()\nparse #live-share=<token>"];
+        init_welcome   [label="showWelcome = true\n→ Welcome Screen", fillcolor="#f8d7da"];
+
+        init_mount     -> init_auth;
+        init_auth      -> init_has_sess;
+        init_has_sess  -> init_sync      [label="yes (anon or full)"];
+        init_has_sess  -> init_auto_anon [label="no"];
+        init_auto_anon -> init_anon_ok;
+        init_anon_ok   -> init_sync      [label="yes"];
+        init_anon_ok   -> init_welcome   [label="no"];
+        init_sync      -> init_share;
+    }
+
+    // ====================================================================
+    //  2. AUTHENTICATION STATE MACHINE
+    // ====================================================================
+    subgraph cluster_auth {
+        label="Authentication States";
+        style="rounded,filled";
+        fillcolor="#fef9f0";
+        color="#e67e22";
+        fontsize=10;
+
+        auth_none    [label="Not Authenticated\n(no session)", fillcolor="#f8d7da"];
+        auth_anon    [label="Anonymous\n(guest account)\nis_anonymous = true", fillcolor="#d4edda"];
+        auth_email   [label="Authenticated\n(email, no password)\nmagic-link user", fillcolor="#cce5ff"];
+        auth_full    [label="Authenticated\n(email + password)", fillcolor="#b8daff"];
+    }
+
+    // Auth transitions
+    auth_none  -> auth_anon  [label="signInAnonymously()"];
+    auth_none  -> auth_email [label="signInWithEmail()\n(magic link confirmed)"];
+    auth_none  -> auth_full  [label="signInWithPassword()\nor signUpWithPassword()"];
+
+    auth_anon  -> auth_email [label="linkWithEmail()\n→ confirm email\n(same user_id)"];
+    auth_anon  -> auth_full  [label="linkWithPassword()\n→ confirm email\n(same user_id)"];
+    auth_anon  -> auth_none  [label="signOut()"];
+    auth_anon  -> auth_full  [label="signInWithPassword()\n⚠ DIFFERENT user!\nold anon data orphaned", color="#dc3545", fontcolor="#dc3545", style=dashed];
+
+    auth_email -> auth_full  [label="setPassword()"];
+    auth_email -> auth_none  [label="signOut()"];
+
+    auth_full  -> auth_full  [label="setPassword()\n(change password)"];
+    auth_full  -> auth_none  [label="signOut()"];
+
+    // ====================================================================
+    //  3. CHILD LIFECYCLE
+    // ====================================================================
+    subgraph cluster_child {
+        label="Child Lifecycle";
+        style="rounded,filled";
+        fillcolor="#f0fff0";
+        color="#28a745";
+        fontsize=10;
+
+        child_none    [label="No Children\n(empty store)", fillcolor="#f8d7da"];
+        child_example [label="Example Child\n(local-only demo)\nexampleChildId ≠ null", fillcolor="#d4edda"];
+        child_pending [label="Pending Child\n(local, missing fields)\nin pendingChildIds", fillcolor="#fff3cd"];
+        child_synced  [label="Synced Own Child\n(exists in Supabase)", fillcolor="#cce5ff"];
+        child_shared  [label="Shared Child\n(read-only)\nin sharedChildIds", fillcolor="#e2d5f1"];
+        child_multi   [label="Multiple Children\n(mix of own + shared)", fillcolor="#d1ecf1"];
+    }
+
+    // enableSync loading
+    child_none    -> child_example [label="enableSync()\nno data in DB\n→ inject demo child"];
+    child_none    -> child_synced  [label="enableSync()\nown children exist"];
+    child_none    -> child_shared  [label="enableSync()\nonly shared children"];
+    child_none    -> child_multi   [label="enableSync()\nown + shared exist"];
+
+    // Example child transitions
+    child_example -> child_pending [label="updateProfile() or\naddMeasurement()\n→ convertExampleToPending()"];
+    child_example -> child_none    [label="Reactive guard triggers:\naddChild() / acceptLiveShare()\n/ importChildren()\nremoves example"];
+
+    // Pending child transitions
+    child_pending -> child_synced  [label="updateProfile()\nbirthDate + sex provided\n→ syncChildToBackend()\n(ID replaced with DB UUID)"];
+    child_pending -> child_none    [label="removeChild()\n(local-only delete)"];
+
+    // Synced child transitions
+    child_synced  -> child_synced  [label="updateProfile() / addMeasurement()\nupdateMeasurement() / deleteMeasurement()\nclearMeasurements()\n(optimistic + API sync)"];
+    child_synced  -> child_none    [label="removeChild()\n→ api.deleteChild()\n(if last child)"];
+    child_synced  -> child_multi   [label="addChild() or\nacceptLiveShare()"];
+
+    // Shared child transitions
+    child_shared  -> child_none    [label="removeChild()\n→ api.removeSharedChild()\n(if last child)"];
+
+    // Multi-child transitions
+    child_multi   -> child_multi   [label="addChild() / removeChild()\nacceptLiveShare() / importChildren()"];
+    child_multi   -> child_synced  [label="removeChild()\n(remove last shared)"];
+    child_multi   -> child_shared  [label="removeChild()\n(remove last own)"];
+    child_multi   -> child_none    [label="removeChild()\n(remove last child)"];
+
+    // Import
+    child_none    -> child_synced  [label="importChildren()\n→ immediate DB creation", style=dashed];
+    child_example -> child_synced  [label="importChildren()\n→ example removed\n+ children created in DB", style=dashed];
+
+    // Accept live share from any state
+    child_none    -> child_shared  [label="acceptLiveShare()"];
+    child_synced  -> child_multi   [label="acceptLiveShare()\n(adds read-only child)"];
+
+    // addChild from any state
+    child_none    -> child_pending [label="addChild()"];
+    child_synced  -> child_multi   [label="addChild()\n(adds pending alongside)"];
+
+    // ====================================================================
+    //  4. SHARING STATE MACHINE (OWNER)
+    // ====================================================================
+    subgraph cluster_sharing_owner {
+        label="Sharing – Owner Side\n(requires: authenticated, non-anonymous, synced child)";
+        style="rounded,filled";
+        fillcolor="#f8f0ff";
+        color="#6f42c1";
+        fontsize=10;
+
+        share_o_none  [label="Own Child\nNo share links", fillcolor="white"];
+        share_o_links [label="Own Child\nHas share links\n(1 or more tokens)", fillcolor="#e2d5f1"];
+    }
+
+    share_o_none  -> share_o_links [label="createShare(childId, label)\nvia ShareModal"];
+    share_o_links -> share_o_links [label="createShare()\n(add another link)\nor revokeShare()\n(others remain)"];
+    share_o_links -> share_o_none  [label="revokeShare()\n(last link revoked)"];
+
+    // ====================================================================
+    //  5. SHARING STATE MACHINE (RECIPIENT)
+    // ====================================================================
+    subgraph cluster_sharing_recv {
+        label="Sharing – Recipient Side\n(requires: authenticated, including anonymous)";
+        style="rounded,filled";
+        fillcolor="#f8f0ff";
+        color="#6f42c1";
+        fontsize=10;
+
+        share_r_none [label="No Shared\nChildren", fillcolor="white"];
+        share_r_has  [label="Has Shared Children\n(read-only access)", fillcolor="#e2d5f1"];
+    }
+
+    share_r_none -> share_r_has [label="Open #live-share=<token> URL\n→ acceptLiveShare(token)\n→ api.acceptShare RPC"];
+    share_r_has  -> share_r_has [label="Accept another share"];
+    share_r_has  -> share_r_none [label="removeChild(sharedId)\n→ api.removeSharedChild()"];
+
+    // ====================================================================
+    //  6. APP VIEW FLOW
+    // ====================================================================
+    subgraph cluster_views {
+        label="App Views / UI States";
+        style="rounded,filled";
+        fillcolor="#fff8f0";
+        color="#fd7e14";
+        fontsize=10;
+
+        view_loading   [label="Loading Screen\n(spinner)\nauthLoading || dataLoading", fillcolor="#fff3cd"];
+        view_welcome   [label="Welcome Screen\nshowWelcome = true", fillcolor="#f8d7da"];
+        view_dashboard [label="Main Dashboard\n(child list + charts\n+ measurement table)", fillcolor="#d4edda"];
+        view_onboard   [label="Onboarding Banner\n(shown to anonymous users\non dashboard)", fillcolor="#d4edda", style="rounded,filled,dashed"];
+    }
+
+    view_loading   -> view_dashboard [label="auth + enableSync\ncompleted"];
+    view_loading   -> view_welcome   [label="auto-anon sign-in\nfailed"];
+    view_welcome   -> view_loading   [label="Continue as Guest\nor Sign In → auth starts"];
+    view_loading   -> view_dashboard [label="re-enters after\nauth completes"];
+    view_dashboard -> view_welcome   [label="Sign Out\n→ resetStore() + disableSync()"];
+
+    // Modal overlays (shown on top of dashboard)
+    subgraph cluster_modals {
+        label="Modal Overlays\n(on top of Dashboard)";
+        style="rounded,filled";
+        fillcolor="#fff";
+        color="#999";
+        fontsize=9;
+
+        modal_auth_signin  [label="Auth Modal\nmode = signIn\n(email + magic link\nor password)", fillcolor="#e2d5f1"];
+        modal_auth_claim   [label="Auth Modal\nmode = claimAccount\n(link email to guest\n± password)", fillcolor="#e2d5f1"];
+        modal_auth_setpw   [label="Auth Modal\nmode = setPassword\n(set or change\npassword)", fillcolor="#e2d5f1"];
+        modal_share        [label="Share Modal\n(create/copy/revoke\nshare links)", fillcolor="#d5e8f1"];
+        modal_confirm_del  [label="Confirm Delete\nModal", fillcolor="#f8d7da"];
+        modal_share_info   [label="Share Info\nMessage\n(disabled reason)", fillcolor="#fff3cd"];
+    }
+
+    // Auth modal triggers
+    view_dashboard -> modal_auth_signin  [label="UserMenu: Sign In\n(anonymous or unauth)"];
+    view_dashboard -> modal_auth_claim   [label="UserMenu: Save Account\nor OnboardingBanner"];
+    view_dashboard -> modal_auth_setpw   [label="UserMenu: Set/Change\nPassword"];
+    view_dashboard -> modal_share        [label="Share button\n(own, synced, non-anon,\nnon-example)"];
+    view_dashboard -> modal_share_info   [label="Share button\n(disabled: guest/no child/\nalready shared)"];
+    view_dashboard -> modal_confirm_del  [label="Delete button\non child tile"];
+
+    // Modal results
+    modal_auth_signin  -> view_dashboard [label="Close / signInWithPassword\nsuccess → handleSignedIn()"];
+    modal_auth_signin  -> view_dashboard [label="signInWithEmail success\n→ email sent → close\n(session updates on\nlink confirm)"];
+    modal_auth_claim   -> view_dashboard [label="Close / linkWithEmail\nor linkWithPassword\nsuccess → email sent"];
+    modal_auth_setpw   -> view_dashboard [label="Close / setPassword\nsuccess"];
+    modal_share        -> view_dashboard [label="Close"];
+    modal_confirm_del  -> view_dashboard [label="Cancel or Confirm\n→ removeChild()"];
+    modal_share_info   -> view_dashboard [label="OK / click backdrop"];
+
+    // ====================================================================
+    //  7. SIGN-OUT FLOW (detail)
+    // ====================================================================
+    subgraph cluster_signout {
+        label="Sign-Out Sequence";
+        style="rounded,filled";
+        fillcolor="#fff0f0";
+        color="#dc3545";
+        fontsize=10;
+
+        so_trigger  [label="User clicks\nSign Out", shape=ellipse, fillcolor="#f8d7da"];
+        so_api      [label="signOut()\nSupabase API", fillcolor="#fff3cd"];
+        so_reset    [label="resetStore()\n• childStore → initial\n• dataLoading → true\n• exampleChildId → null\n• sharedChildIds → empty\n• pendingChildIds → clear", fillcolor="#fff3cd"];
+        so_disable  [label="disableSync()\nsyncEnabled = false", fillcolor="#fff3cd"];
+        so_welcome  [label="showWelcome = true", fillcolor="#d4edda"];
+    }
+
+    so_trigger -> so_api -> so_reset -> so_disable -> so_welcome;
+
+    // ====================================================================
+    //  8. CLAIM ACCOUNT FLOW (Anonymous → Authenticated)
+    // ====================================================================
+    subgraph cluster_claim {
+        label="Claim Account Flow\n(upgrade anonymous → authenticated)";
+        style="rounded,filled";
+        fillcolor="#f0fff8";
+        color="#17a2b8";
+        fontsize=10;
+
+        claim_start    [label="Anonymous user\nclicks Save Account", shape=ellipse, fillcolor="#d1ecf1"];
+        claim_modal    [label="Auth Modal\nmode = claimAccount", fillcolor="#e2d5f1"];
+        claim_method   [label="Choose method?", shape=diamond, fillcolor="white"];
+        claim_magic    [label="linkWithEmail(email)\n→ updateUser({email})", fillcolor="#fff3cd"];
+        claim_password [label="linkWithPassword(email, pw)\n→ updateUser({email, pw})", fillcolor="#fff3cd"];
+        claim_confirm  [label="Email sent\nUser confirms link", fillcolor="#d4edda"];
+        claim_done     [label="Account upgraded!\nsame user_id\nall data preserved\nisAnonymous → false", fillcolor="#b8daff"];
+    }
+
+    claim_start    -> claim_modal;
+    claim_modal    -> claim_method;
+    claim_method   -> claim_magic    [label="magic link"];
+    claim_method   -> claim_password [label="email + password"];
+    claim_magic    -> claim_confirm;
+    claim_password -> claim_confirm;
+    claim_confirm  -> claim_done     [label="onAuthStateChange\nUSER_UPDATED event"];
+
+    // ====================================================================
+    //  9. CROSS-REFERENCES (dashed, inter-cluster edges)
+    // ====================================================================
+
+    // enableSync loads children based on auth
+    auth_anon   -> child_example [label="enableSync → no DB data\n→ example child", style=dotted, color="#999"];
+    auth_anon   -> child_synced  [label="enableSync → has DB data", style=dotted, color="#999"];
+    auth_full   -> child_synced  [label="enableSync → load\nuser's children", style=dotted, color="#999"];
+
+    // Sharing preconditions
+    child_synced -> share_o_none [label="Precondition:\nsynced + non-anon\n→ can create shares", style=dotted, color="#6f42c1"];
+
+    // ====================================================================
+    //  LEGEND
+    // ====================================================================
+    subgraph cluster_legend {
+        label="Legend";
+        style="rounded,filled";
+        fillcolor="#f8f9fa";
+        color="#999";
+        fontsize=9;
+        rankdir=LR;
+
+        leg_solid   [label="Solid edge\n= normal transition", shape=plaintext, fontsize=8];
+        leg_dashed  [label="Dashed red edge\n= risky/lossy transition", shape=plaintext, fontsize=8];
+        leg_dotted  [label="Dotted gray edge\n= cross-concern link", shape=plaintext, fontsize=8];
+        leg_red     [label="Red fill\n= blocked/error state", fillcolor="#f8d7da", fontsize=8];
+        leg_green   [label="Green fill\n= normal/active state", fillcolor="#d4edda", fontsize=8];
+        leg_blue    [label="Blue fill\n= synced/cloud state", fillcolor="#cce5ff", fontsize=8];
+        leg_yellow  [label="Yellow fill\n= pending/loading", fillcolor="#fff3cd", fontsize=8];
+        leg_purple  [label="Purple fill\n= shared/modal", fillcolor="#e2d5f1", fontsize=8];
+    }
+}
