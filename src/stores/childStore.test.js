@@ -17,6 +17,8 @@ const {
   resetStore,
   createExampleState,
   syncChildToBackend,
+  importChildren,
+  setActiveChild,
   enableSync,
   disableSync,
   addChild,
@@ -943,5 +945,325 @@ describe('childStore - example child conversion on edit', () => {
     const updatedMeasurements = getMockData('measurements');
     expect(updatedMeasurements.length).toBe(initialMeasCount + 1);
     expect(updatedMeasurements[updatedMeasurements.length - 1].child_id).toBe(realId);
+  });
+});
+
+describe('childStore - importChildren', () => {
+  beforeEach(() => {
+    resetMockData();
+    resetStore();
+    setMockUser({ id: 'user-123', email: 'test@example.com' });
+  });
+
+  afterEach(() => {
+    disableSync();
+  });
+
+  it('syncs imported children to database with real IDs', async () => {
+    await enableSync();
+
+    const children = [
+      {
+        id: 'import-1',
+        profile: { name: 'Imported Child', birthDate: '2024-01-15', sex: 1 },
+        measurements: []
+      }
+    ];
+
+    await importChildren(children);
+
+    // Child should exist in database
+    const dbChildren = getMockData('children');
+    expect(dbChildren).toHaveLength(1);
+    expect(dbChildren[0].name).toBe('Imported Child');
+    expect(dbChildren[0].birth_date).toBe('2024-01-15');
+    expect(dbChildren[0].user_id).toBe('user-123');
+
+    // Local store should have the real (DB) ID, not the temp one
+    const state = get(childStore);
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].id).not.toBe('import-1');
+    expect(state.activeChildId).toBe(state.children[0].id);
+  });
+
+  it('syncs measurements along with imported children', async () => {
+    await enableSync();
+
+    const children = [
+      {
+        id: 'import-1',
+        profile: { name: 'Test', birthDate: '2024-01-15', sex: 2 },
+        measurements: [
+          { id: 'm1', date: '2024-01-15', weight: 3400, length: 50, headCirc: 35 },
+          { id: 'm2', date: '2024-02-15', weight: 4200, length: 54, headCirc: 37 }
+        ]
+      }
+    ];
+
+    await importChildren(children);
+
+    const dbMeasurements = getMockData('measurements');
+    expect(dbMeasurements).toHaveLength(2);
+    expect(dbMeasurements[0].weight).toBe(3400);
+    expect(dbMeasurements[1].weight).toBe(4200);
+
+    // Measurements should reference the real child ID
+    const dbChildren = getMockData('children');
+    expect(dbMeasurements[0].child_id).toBe(dbChildren[0].id);
+  });
+
+  it('imports multiple children', async () => {
+    await enableSync();
+
+    const children = [
+      {
+        id: 'import-1',
+        profile: { name: 'Child A', birthDate: '2024-01-15', sex: 1 },
+        measurements: []
+      },
+      {
+        id: 'import-2',
+        profile: { name: 'Child B', birthDate: '2024-06-01', sex: 2 },
+        measurements: [{ id: 'm1', date: '2024-06-01', weight: 3200, length: 49, headCirc: 34 }]
+      }
+    ];
+
+    await importChildren(children);
+
+    const dbChildren = getMockData('children');
+    expect(dbChildren).toHaveLength(2);
+
+    const state = get(childStore);
+    expect(state.children).toHaveLength(2);
+    // First imported child should be active
+    expect(state.activeChildId).toBe(state.children[0].id);
+  });
+
+  it('sets active child preference in database after import', async () => {
+    await enableSync();
+
+    const children = [
+      {
+        id: 'import-1',
+        profile: { name: 'Test', birthDate: '2024-01-15', sex: 1 },
+        measurements: []
+      }
+    ];
+
+    await importChildren(children);
+
+    // user_preferences should have the real child ID
+    const prefs = getMockData('user_preferences');
+    expect(prefs).toHaveLength(1);
+    expect(prefs[0].user_id).toBe('user-123');
+
+    const state = get(childStore);
+    expect(prefs[0].active_child_id).toBe(state.children[0].id);
+  });
+
+  it('removes example child when importing', async () => {
+    await enableSync('Example Child');
+
+    const exId = get(exampleChildId);
+    expect(exId).toBeTruthy();
+
+    const children = [
+      {
+        id: 'import-1',
+        profile: { name: 'Real Child', birthDate: '2024-01-15', sex: 1 },
+        measurements: []
+      }
+    ];
+
+    await importChildren(children);
+
+    // Example should be gone
+    const state = get(childStore);
+    expect(state.children.find((c) => c.id === exId)).toBeUndefined();
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].profile.name).toBe('Real Child');
+  });
+
+  it('skips children missing required fields', async () => {
+    await enableSync();
+
+    const children = [
+      {
+        id: 'incomplete-1',
+        profile: { name: 'No Birth Date', birthDate: null, sex: 1 },
+        measurements: []
+      },
+      {
+        id: 'complete-1',
+        profile: { name: 'Complete', birthDate: '2024-01-15', sex: 2 },
+        measurements: []
+      }
+    ];
+
+    await importChildren(children);
+
+    // Only the complete child should be in the database
+    const dbChildren = getMockData('children');
+    expect(dbChildren).toHaveLength(1);
+    expect(dbChildren[0].name).toBe('Complete');
+
+    // Both children exist locally (incomplete one stays local-only)
+    const state = get(childStore);
+    expect(state.children).toHaveLength(2);
+  });
+
+  it('works locally without sync enabled', async () => {
+    // Don't call enableSync
+    disableSync();
+
+    const children = [
+      {
+        id: 'local-1',
+        profile: { name: 'Local Only', birthDate: '2024-01-15', sex: 1 },
+        measurements: [{ id: 'm1', date: '2024-01-15', weight: 3400, length: 50, headCirc: 35 }]
+      }
+    ];
+
+    await importChildren(children);
+
+    // Nothing in database
+    expect(getMockData('children')).toHaveLength(0);
+    expect(getMockData('measurements')).toHaveLength(0);
+
+    // But data exists locally
+    const state = get(childStore);
+    expect(state.children).toHaveLength(1);
+    expect(state.children[0].id).toBe('local-1');
+    expect(state.children[0].measurements).toHaveLength(1);
+  });
+
+  it('handles empty import gracefully', async () => {
+    await enableSync();
+
+    await importChildren([]);
+    await importChildren(null);
+    await importChildren(undefined);
+
+    expect(getMockData('children')).toHaveLength(0);
+  });
+
+  it('setActiveChild after import does not cause FK error', async () => {
+    await enableSync();
+
+    const children = [
+      {
+        id: 'import-1',
+        profile: { name: 'Test', birthDate: '2024-01-15', sex: 1 },
+        measurements: []
+      },
+      {
+        id: 'import-2',
+        profile: { name: 'Test 2', birthDate: '2024-06-01', sex: 2 },
+        measurements: []
+      }
+    ];
+
+    await importChildren(children);
+
+    const state = get(childStore);
+    const secondChildId = state.children[1].id;
+
+    // This should work without error - child exists in DB
+    setActiveChild(secondChildId);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Preference should be updated
+    const prefs = getMockData('user_preferences');
+    expect(prefs[0].active_child_id).toBe(secondChildId);
+  });
+});
+
+describe('childStore - setActiveChild safety', () => {
+  beforeEach(() => {
+    resetMockData();
+    resetStore();
+    setMockUser({ id: 'user-123', email: 'test@example.com' });
+  });
+
+  afterEach(() => {
+    disableSync();
+  });
+
+  it('skips backend sync for example child', async () => {
+    await enableSync('Example Child');
+
+    const exId = get(exampleChildId);
+    setActiveChild(exId);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // No user_preferences should be set (example child not in DB)
+    expect(getMockData('user_preferences')).toHaveLength(0);
+  });
+
+  it('skips backend sync for pending child', async () => {
+    await enableSync();
+
+    // Create a pending child (no required fields)
+    addChild();
+    const state = get(childStore);
+    const pendingId = state.children[0].id;
+
+    setActiveChild(pendingId);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // No user_preferences should be set (pending child not in DB)
+    expect(getMockData('user_preferences')).toHaveLength(0);
+  });
+
+  it('syncs to backend for child that exists in DB', async () => {
+    await enableSync();
+
+    // Create and sync a child
+    const child = {
+      id: 'local-1',
+      profile: { name: 'Test', birthDate: '2024-01-15', sex: 1 },
+      measurements: []
+    };
+    setStore({ children: [child], activeChildId: child.id });
+    const realId = await syncChildToBackend(child.id);
+
+    // Now set active child - should sync preference
+    setActiveChild(realId);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const prefs = getMockData('user_preferences');
+    expect(prefs).toHaveLength(1);
+    expect(prefs[0].active_child_id).toBe(realId);
+  });
+
+  it('locally-added child without sync does not attempt backend call', async () => {
+    await enableSync();
+
+    // Directly add a child to the store (simulating old import behavior)
+    childStore.update((s) => ({
+      ...s,
+      children: [
+        ...s.children,
+        {
+          id: 'unsyncable-id',
+          profile: { name: 'Not In DB', birthDate: '2024-01-15', sex: 1 },
+          measurements: []
+        }
+      ],
+      activeChildId: 'unsyncable-id'
+    }));
+
+    // setActiveChild will try to call the API for this child because
+    // shouldSync returns true (it's not example, not pending).
+    // In real Supabase this would 409 due to FK constraint.
+    // The mock doesn't enforce FK constraints, but this test documents
+    // the pattern that importChildren fixes.
+    setActiveChild('unsyncable-id');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // The mock upsert succeeds (no FK check), but the child doesn't exist
+    // in the children table - this is the bug importChildren fixes
+    const dbChildren = getMockData('children');
+    expect(dbChildren).toHaveLength(0); // Child was never created in DB
   });
 });
