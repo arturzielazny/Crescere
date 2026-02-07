@@ -242,19 +242,6 @@
           {$t('app.title')}
         </h1>
         <div class="flex gap-2 items-center">
-          <button
-            on:click={handleShare}
-            class="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded"
-          >
-            {$t('app.share')}
-          </button>
-          <button
-            on:click={handlePrint}
-            disabled={!$activeChild}
-            class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed hidden sm:block"
-          >
-            {$t('app.print')}
-          </button>
           <OverflowMenu
             onExport={handleExport}
             onImport={handleImport}
@@ -299,7 +286,7 @@
         {/if}
 
         <div class="print-hidden">
-          <ChildList />
+          <ChildList onShare={handleShare} onPrint={handlePrint} />
         </div>
 
         <!-- Print-only header with child info -->

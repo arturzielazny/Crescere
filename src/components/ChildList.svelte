@@ -13,6 +13,9 @@
   import { t } from '../stores/i18n.js';
   import ConfirmModal from './ConfirmModal.svelte';
 
+  export let onShare = () => {};
+  export let onPrint = () => {};
+
   let showDeleteModal = false;
   let deleteTargetId = null;
 
@@ -170,6 +173,46 @@
           >
             {$t('children.selected')}
           </span>
+        {/if}
+        {#if isActive && !isShared}
+          <button
+            on:click={(e) => {
+              e.stopPropagation();
+              onShare();
+            }}
+            class="px-2 py-1 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+            aria-label={$t('app.share')}
+            title={$t('app.share')}
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+              />
+            </svg>
+          </button>
+        {/if}
+        {#if isActive}
+          <button
+            on:click={(e) => {
+              e.stopPropagation();
+              onPrint();
+            }}
+            class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors hidden sm:block"
+            aria-label={$t('app.print')}
+            title={$t('app.print')}
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+              />
+            </svg>
+          </button>
         {/if}
         {#if !isExample}
           <button

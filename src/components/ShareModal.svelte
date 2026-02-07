@@ -16,6 +16,7 @@
   let shares = [];
   let loadingShares = false;
   let creating = false;
+  let shareError = '';
   let revokeTargetId = null;
   let showRevokeConfirm = false;
 
@@ -39,12 +40,14 @@
   async function handleCreateShare() {
     if (creating) return;
     creating = true;
+    shareError = '';
     try {
       await createShare(childId, newLabel.trim());
       newLabel = '';
       await loadShares();
-    } catch (_err) {
-      console.error('Failed to create share:', _err);
+    } catch (err) {
+      console.error('Failed to create share:', err);
+      shareError = err?.message || $t('share.live.error');
     } finally {
       creating = false;
     }
@@ -132,6 +135,10 @@
         {$t('share.live.create')}
       </button>
     </div>
+
+    {#if shareError}
+      <p class="text-sm text-red-600 mb-4 -mt-4">{shareError}</p>
+    {/if}
 
     <!-- Existing shares list -->
     {#if loadingShares}

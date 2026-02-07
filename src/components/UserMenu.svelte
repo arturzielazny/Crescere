@@ -39,10 +39,18 @@
   </button>
 {:else}
   <!-- Authenticated: avatar button -->
-  <div class="relative">
+  <div class="relative flex items-center gap-1.5">
+    {#if $isAnonymous}
+      <button
+        on:click={() => onOpenAuth('claimAccount')}
+        class="hidden sm:block px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 transition-colors"
+      >
+        {$t('auth.claimAccount')}
+      </button>
+    {/if}
     <button
       on:click={toggle}
-      class="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+      class="relative flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
         {$isAnonymous ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white'}"
       aria-label={displayName || $t('auth.anonymous')}
     >
@@ -55,6 +63,9 @@
             clip-rule="evenodd"
           />
         </svg>
+        <span
+          class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full ring-2 ring-white"
+        ></span>
       {:else}
         {initial}
       {/if}
