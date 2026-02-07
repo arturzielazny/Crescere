@@ -381,8 +381,8 @@ export function setActiveChild(childId) {
     activeChildId: childId
   }));
 
-  // Sync to backend (skip example child)
-  if (syncEnabled && get(exampleChildId) !== childId) {
+  // Sync to backend (skip example and pending children — they don't exist in DB yet)
+  if (shouldSync(childId)) {
     api.setActiveChildId(childId).catch((err) => {
       console.error('Failed to set active child:', err);
       childStore.set(state);
@@ -492,6 +492,15 @@ export async function syncChildToBackend(childId) {
     }
 
     pendingChildIds.delete(childId);
+
+    // Now that child exists in DB, sync active child preference if needed
+    const currentState = get(childStore);
+    if (currentState.activeChildId === realId) {
+      api.setActiveChildId(realId).catch((err) => {
+        console.error('Failed to sync active child preference:', err);
+      });
+    }
+
     return realId;
   } catch (err) {
     console.error('Failed to sync child:', err);
