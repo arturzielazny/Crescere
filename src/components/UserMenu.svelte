@@ -47,6 +47,12 @@
       >
         {$t('auth.claimAccount')}
       </button>
+      <button
+        on:click={() => onOpenAuth('signIn')}
+        class="hidden sm:block px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
+      >
+        {$t('auth.signIn')}
+      </button>
     {/if}
     <button
       on:click={toggle}
@@ -95,14 +101,6 @@
           >
             {$t('auth.signIn')}
           </button>
-          <div class="border-t border-gray-100 mt-1 pt-1">
-            <button
-              on:click={() => handleAction(onSignOut)}
-              class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              {$t('auth.signOut')}
-            </button>
-          </div>
         {:else}
           <!-- Authenticated dropdown -->
           <div class="px-3 py-2 border-b border-gray-100">

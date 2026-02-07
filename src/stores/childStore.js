@@ -134,6 +134,11 @@ export async function enableSync(exampleName) {
   dataLoading.set(true);
   dataError.set(null);
 
+  // Clear stale local-only state from any previous session
+  // (e.g. anonymous user signs in as a different user)
+  pendingChildIds.clear();
+  syncingChildIds.clear();
+
   try {
     const [ownChildren, activeChildPref, shared] = await Promise.all([
       api.fetchChildren(),

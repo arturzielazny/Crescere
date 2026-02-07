@@ -174,7 +174,7 @@
             {$t('children.selected')}
           </span>
         {/if}
-        {#if !isShared}
+        {#if !isShared && !isExample}
           <button
             on:click={(e) => {
               e.stopPropagation();

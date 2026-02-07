@@ -10,7 +10,6 @@
   import AuthModal from './components/AuthModal.svelte';
   import OverflowMenu from './components/OverflowMenu.svelte';
   import LanguageSwitcher from './components/LanguageSwitcher.svelte';
-  import WelcomeScreen from './components/WelcomeScreen.svelte';
   import OnboardingBanner from './components/OnboardingBanner.svelte';
   import {
     childStore,
@@ -38,7 +37,6 @@
   import { t } from './stores/i18n.js';
   import { calculateAgeInDays, formatAge } from './lib/zscore.js';
 
-  let showWelcome = false;
   let showShareModal = false;
   let toast = null;
   /** @type {null | 'signIn' | 'claimAccount' | 'setPassword'} */
@@ -80,8 +78,6 @@
       try {
         await signInAnonymously();
       } catch (_err) {
-        // Fall back to welcome screen if auto sign-in fails
-        showWelcome = true;
         return;
       }
     }
@@ -93,20 +89,7 @@
     checkForLiveShare();
   }
 
-  async function handleContinueAsGuest() {
-    showWelcome = false;
-    try {
-      await signInAnonymously();
-    } catch (err) {
-      console.error('Anonymous sign-in failed:', err);
-      return;
-    }
-    await loadAuthenticatedData();
-    checkForLiveShare();
-  }
-
   async function handleSignedIn() {
-    showWelcome = false;
     await loadAuthenticatedData();
     checkForLiveShare();
   }
@@ -120,7 +103,12 @@
     }
     resetStore();
     disableSync();
-    showWelcome = true;
+    try {
+      await signInAnonymously();
+      await loadAuthenticatedData();
+    } catch (_err) {
+      console.error('Auto sign-in after logout failed:', _err);
+    }
   }
 
   onMount(() => {
@@ -148,12 +136,6 @@
     URL.revokeObjectURL(url);
   }
 
-  function handleClear() {
-    if (confirm($t('app.clear.confirm'))) {
-      resetStore();
-    }
-  }
-
   function handleImport(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -173,12 +155,17 @@
   }
 
   $: canShare =
-    $isAuthenticated && !$isAnonymous && $activeChild && !$sharedChildIds.has($activeChild?.id);
+    $isAuthenticated &&
+    !$isAnonymous &&
+    $activeChild &&
+    $activeChild?.id !== $exampleChildId &&
+    !$sharedChildIds.has($activeChild?.id);
 
   $: shareDisabledReason = (() => {
     if (!$isAuthenticated) return $t('app.share.disabled.notSignedIn');
     if ($isAnonymous) return $t('app.share.disabled.guest');
     if (!$activeChild) return $t('app.share.disabled.noChild');
+    if ($activeChild?.id === $exampleChildId) return $t('app.share.disabled.example');
     if ($sharedChildIds.has($activeChild?.id)) return $t('app.share.disabled.alreadyShared');
     return '';
   })();
@@ -222,157 +209,146 @@
   }
 </script>
 
-{#if showWelcome}
-  <WelcomeScreen onContinueAsGuest={handleContinueAsGuest} onSignedIn={handleSignedIn} />
-{:else}
-  <div class="min-h-screen bg-gray-100">
-    <header class="bg-white shadow-sm print-hidden">
-      <div class="px-4 py-3 flex justify-between items-center gap-2">
-        <h1 class="text-xl font-bold text-gray-800 whitespace-nowrap">
-          {$t('app.title')}
-        </h1>
-        <div class="flex gap-2 items-center">
-          <LanguageSwitcher />
-          <OverflowMenu
-            onExport={handleExport}
-            onImport={handleImport}
-            onClear={handleClear}
-            onPrint={handlePrint}
-          />
-          <div class="border-l border-gray-200 pl-2 ml-1">
-            <UserMenu onSignOut={handleSignOut} onOpenAuth={(mode) => (authModalMode = mode)} />
-          </div>
+<div class="min-h-screen bg-gray-100">
+  <header class="bg-white shadow-sm print-hidden">
+    <div class="px-4 py-3 flex justify-between items-center gap-2">
+      <h1 class="text-xl font-bold text-gray-800 whitespace-nowrap">
+        {$t('app.title')}
+      </h1>
+      <div class="flex gap-2 items-center">
+        <LanguageSwitcher />
+        <OverflowMenu onExport={handleExport} onImport={handleImport} onPrint={handlePrint} />
+        <div class="border-l border-gray-200 pl-2 ml-1">
+          <UserMenu onSignOut={handleSignOut} onOpenAuth={(mode) => (authModalMode = mode)} />
         </div>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <main class="px-4 py-6">
-      {#if isLoading}
-        <div class="flex items-center justify-center py-12">
-          <div class="text-center">
-            <div
-              class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-r-transparent"
-            ></div>
-            <p class="mt-3 text-gray-600">
-              {$t('auth.loading')}
-            </p>
-          </div>
-        </div>
-      {:else}
-        {#if $dataError}
+  <main class="px-4 py-6">
+    {#if isLoading}
+      <div class="flex items-center justify-center py-12">
+        <div class="text-center">
           <div
-            class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 print-hidden"
-          >
-            {$t('auth.error')}: {$dataError}
-          </div>
-        {/if}
-
-        {#if $isAnonymous}
-          <div class="print-hidden">
-            <OnboardingBanner
-              hasRealChildren={!$exampleChildId}
-              onSaveAccount={() => (authModalMode = 'claimAccount')}
-            />
-          </div>
-        {/if}
-
-        <div class="print-hidden">
-          <ChildList onShare={handleShare} onPrint={handlePrint} />
+            class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-r-transparent"
+          ></div>
+          <p class="mt-3 text-gray-600">
+            {$t('auth.loading')}
+          </p>
         </div>
-
-        <!-- Print-only header with child info -->
-        {#if $activeChild}
-          <div class="print-only hidden mb-6">
-            <h1 class="text-2xl font-bold text-gray-900 mb-2">{$t('print.title')}</h1>
-            <div class="text-sm text-gray-700 space-y-1">
-              <p class="text-lg font-semibold">
-                {$activeChild?.profile?.name || $t('children.unnamed')}
-              </p>
-              {#if $activeChild?.profile?.birthDate}
-                <p>
-                  {$t('print.born')}: {$activeChild.profile.birthDate}
-                  {#if printSex}&middot; {$t('print.sex')}: {printSex}{/if}
-                  {#if printAge}&middot; {$t('profile.age.current')} {printAge}{/if}
-                </p>
-              {/if}
-              <p class="text-xs text-gray-500">
-                {$t('print.generated')}: {new Date().toLocaleDateString()}
-              </p>
-            </div>
-            <hr class="mt-3 border-gray-300" />
-          </div>
-        {/if}
-
-        <div class="lg:flex lg:gap-6 lg:items-start print-full-width">
-          <!-- Left panel: measurement entry (1/3) -->
-          <aside
-            class="lg:w-1/3 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto mb-4 lg:mb-0 print-hidden"
-          >
-            <MeasurementTable compact />
-          </aside>
-
-          <!-- Right panel: charts + z-scores (2/3) -->
-          <div class="flex-1 min-w-0">
-            <!-- Print order: table first, then charts -->
-            <div class="print-only hidden mb-4 print-table">
-              <ZScoreTable />
-            </div>
-
-            <ChartGrid />
-
-            <div class="print-hidden">
-              <ZScoreTable />
-            </div>
-
-            <section class="bg-white rounded-lg shadow p-6 mt-6 print-hidden">
-              <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
-              <p class="text-sm text-gray-600 mb-3">
-                {$t('explain.summary')}
-              </p>
-              <p class="text-sm text-gray-600 mb-4">
-                {$t('explain.meaning')}
-              </p>
-              <h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('explain.shortcuts')}</h3>
-              <dl class="text-sm text-gray-600 space-y-3">
-                <div>
-                  <dt class="font-medium text-gray-700">{$t('explain.waz.title')}</dt>
-                  <dd class="ml-0 mt-0.5">{$t('explain.waz.desc')}</dd>
-                </div>
-                <div>
-                  <dt class="font-medium text-gray-700">{$t('explain.lhaz.title')}</dt>
-                  <dd class="ml-0 mt-0.5">{$t('explain.lhaz.desc')}</dd>
-                </div>
-                <div>
-                  <dt class="font-medium text-gray-700">{$t('explain.headcz.title')}</dt>
-                  <dd class="ml-0 mt-0.5">{$t('explain.headcz.desc')}</dd>
-                </div>
-                <div>
-                  <dt class="font-medium text-gray-700">{$t('explain.wflz.title')}</dt>
-                  <dd class="ml-0 mt-0.5">{$t('explain.wflz.desc')}</dd>
-                </div>
-              </dl>
-            </section>
-          </div>
+      </div>
+    {:else}
+      {#if $dataError}
+        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 print-hidden">
+          {$t('auth.error')}: {$dataError}
         </div>
       {/if}
-    </main>
 
-    <footer class="text-center py-4 text-sm text-gray-500 print-hidden">
-      <p>
-        {$t('app.footer.source')}
-        <a
-          href="https://www.who.int/tools/child-growth-standards"
-          class="text-blue-600 hover:underline"
-          target="_blank"
+      {#if $isAnonymous}
+        <div class="print-hidden">
+          <OnboardingBanner
+            hasRealChildren={!$exampleChildId}
+            onSaveAccount={() => (authModalMode = 'claimAccount')}
+          />
+        </div>
+      {/if}
+
+      <div class="print-hidden">
+        <ChildList onShare={handleShare} onPrint={handlePrint} />
+      </div>
+
+      <!-- Print-only header with child info -->
+      {#if $activeChild}
+        <div class="print-only hidden mb-6">
+          <h1 class="text-2xl font-bold text-gray-900 mb-2">{$t('print.title')}</h1>
+          <div class="text-sm text-gray-700 space-y-1">
+            <p class="text-lg font-semibold">
+              {$activeChild?.profile?.name || $t('children.unnamed')}
+            </p>
+            {#if $activeChild?.profile?.birthDate}
+              <p>
+                {$t('print.born')}: {$activeChild.profile.birthDate}
+                {#if printSex}&middot; {$t('print.sex')}: {printSex}{/if}
+                {#if printAge}&middot; {$t('profile.age.current')} {printAge}{/if}
+              </p>
+            {/if}
+            <p class="text-xs text-gray-500">
+              {$t('print.generated')}: {new Date().toLocaleDateString()}
+            </p>
+          </div>
+          <hr class="mt-3 border-gray-300" />
+        </div>
+      {/if}
+
+      <div class="lg:flex lg:gap-6 lg:items-start print-full-width">
+        <!-- Left panel: measurement entry (1/3) -->
+        <aside
+          class="lg:w-1/3 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto mb-4 lg:mb-0 print-hidden"
         >
-          {$t('app.footer.source.link')}
-        </a>
-      </p>
-      <p class="mt-1">{footerStorageText}</p>
-      <p class="mt-1">{$t('app.footer.disclaimer')}</p>
-    </footer>
-  </div>
-{/if}
+          <MeasurementTable compact />
+        </aside>
+
+        <!-- Right panel: charts + z-scores (2/3) -->
+        <div class="flex-1 min-w-0">
+          <!-- Print order: table first, then charts -->
+          <div class="print-only hidden mb-4 print-table">
+            <ZScoreTable />
+          </div>
+
+          <ChartGrid />
+
+          <div class="print-hidden">
+            <ZScoreTable />
+          </div>
+
+          <section class="bg-white rounded-lg shadow p-6 mt-6 print-hidden">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
+            <p class="text-sm text-gray-600 mb-3">
+              {$t('explain.summary')}
+            </p>
+            <p class="text-sm text-gray-600 mb-4">
+              {$t('explain.meaning')}
+            </p>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('explain.shortcuts')}</h3>
+            <dl class="text-sm text-gray-600 space-y-3">
+              <div>
+                <dt class="font-medium text-gray-700">{$t('explain.waz.title')}</dt>
+                <dd class="ml-0 mt-0.5">{$t('explain.waz.desc')}</dd>
+              </div>
+              <div>
+                <dt class="font-medium text-gray-700">{$t('explain.lhaz.title')}</dt>
+                <dd class="ml-0 mt-0.5">{$t('explain.lhaz.desc')}</dd>
+              </div>
+              <div>
+                <dt class="font-medium text-gray-700">{$t('explain.headcz.title')}</dt>
+                <dd class="ml-0 mt-0.5">{$t('explain.headcz.desc')}</dd>
+              </div>
+              <div>
+                <dt class="font-medium text-gray-700">{$t('explain.wflz.title')}</dt>
+                <dd class="ml-0 mt-0.5">{$t('explain.wflz.desc')}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </div>
+    {/if}
+  </main>
+
+  <footer class="text-center py-4 text-sm text-gray-500 print-hidden">
+    <p>
+      {$t('app.footer.source')}
+      <a
+        href="https://www.who.int/tools/child-growth-standards"
+        class="text-blue-600 hover:underline"
+        target="_blank"
+      >
+        {$t('app.footer.source.link')}
+      </a>
+    </p>
+    <p class="mt-1">{footerStorageText}</p>
+    <p class="mt-1">{$t('app.footer.disclaimer')}</p>
+  </footer>
+</div>
 
 {#if authModalMode}
   <AuthModal

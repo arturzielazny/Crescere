@@ -4,7 +4,6 @@
 
   export let onExport = () => {};
   export let onImport = (_event) => {};
-  export let onClear = () => {};
   export let onPrint = () => {};
 
   let open = false;
@@ -82,16 +81,6 @@
           class="hidden"
         />
       </label>
-
-      <!-- Divider + Clear -->
-      <div class="border-t border-gray-100 mt-1 pt-1">
-        <button
-          on:click={() => handleAction(onClear)}
-          class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-        >
-          {$t('app.clear')}
-        </button>
-      </div>
     </div>
   {/if}
 </div>
