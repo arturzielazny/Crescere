@@ -191,54 +191,6 @@ export async function setActiveChildId(childId) {
 }
 
 // ============================================================================
-// Bulk Operations (for migration)
-// ============================================================================
-
-/**
- * Import a complete child with measurements
- * Used for localStorage migration
- * @param {Object} child - Full child object with measurements array
- * @returns {Promise<string>} Created child ID
- */
-export async function importChild(child) {
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  // Insert child
-  const { data: childData, error: childError } = await supabase
-    .from('children')
-    .insert({
-      user_id: user.id,
-      name: child.profile?.name || '',
-      birth_date: child.profile?.birthDate,
-      sex: child.profile?.sex
-    })
-    .select('id')
-    .single();
-
-  if (childError) throw childError;
-
-  // Insert measurements if any
-  if (child.measurements?.length > 0) {
-    const measurements = child.measurements.map((m) => ({
-      child_id: childData.id,
-      date: m.date,
-      weight: m.weight,
-      length: m.length,
-      head_circ: m.headCirc
-    }));
-
-    const { error: measurementError } = await supabase.from('measurements').insert(measurements);
-
-    if (measurementError) throw measurementError;
-  }
-
-  return childData.id;
-}
-
-// ============================================================================
 // Sharing
 // ============================================================================
 

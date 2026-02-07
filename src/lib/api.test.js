@@ -269,64 +269,6 @@ describe('API - User Preferences', () => {
   });
 });
 
-describe('API - Import (Migration)', () => {
-  beforeEach(() => {
-    resetMockData();
-    setMockUser({ id: 'user-123', email: 'test@example.com' });
-  });
-
-  describe('importChild', () => {
-    it('imports a complete child with measurements', async () => {
-      const child = {
-        id: 'old-id',
-        profile: {
-          name: 'Imported Child',
-          birthDate: '2024-01-01',
-          sex: 1
-        },
-        measurements: [
-          { id: 'm1', date: '2024-01-15', weight: 3500, length: 51, headCirc: 35 },
-          { id: 'm2', date: '2024-02-15', weight: 4200, length: 54, headCirc: 37 }
-        ]
-      };
-
-      const newId = await api.importChild(child);
-
-      expect(newId).toBeDefined();
-      expect(newId).not.toBe('old-id'); // Should get a new UUID
-
-      const children = getMockData('children');
-      expect(children).toHaveLength(1);
-      expect(children[0].name).toBe('Imported Child');
-
-      const measurements = getMockData('measurements');
-      expect(measurements).toHaveLength(2);
-      expect(measurements[0].child_id).toBe(newId);
-      expect(measurements[1].child_id).toBe(newId);
-    });
-
-    it('imports child without measurements', async () => {
-      const child = {
-        profile: {
-          name: 'New Baby',
-          birthDate: '2024-06-01',
-          sex: 2
-        },
-        measurements: []
-      };
-
-      const newId = await api.importChild(child);
-      expect(newId).toBeDefined();
-
-      const children = getMockData('children');
-      expect(children).toHaveLength(1);
-
-      const measurements = getMockData('measurements');
-      expect(measurements).toHaveLength(0);
-    });
-  });
-});
-
 describe('API - Sharing', () => {
   const owner = { id: 'owner-123', email: 'owner@example.com' };
   const recipient = { id: 'recipient-456', email: 'recipient@example.com' };
