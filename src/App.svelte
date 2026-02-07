@@ -193,11 +193,13 @@
     return '';
   })();
 
+  let shareInfoMessage = '';
+
   function handleShare() {
     if (canShare) {
       showShareModal = true;
     } else if (shareDisabledReason) {
-      toast = { message: shareDisabledReason, type: 'info' };
+      shareInfoMessage = shareDisabledReason;
     }
   }
 
@@ -413,6 +415,31 @@
     childName={$activeChild?.profile?.name || ''}
     onClose={() => (showShareModal = false)}
   />
+{/if}
+
+{#if shareInfoMessage}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    role="dialog"
+    aria-modal="true"
+    on:click={() => (shareInfoMessage = '')}
+    on:keydown={(e) => e.key === 'Escape' && (shareInfoMessage = '')}
+  >
+    <div
+      class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6 text-center"
+      on:click|stopPropagation
+    >
+      <p class="text-sm text-gray-700 mb-4">{shareInfoMessage}</p>
+      <button
+        on:click={() => (shareInfoMessage = '')}
+        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded"
+      >
+        {$t('share.close')}
+      </button>
+    </div>
+  </div>
 {/if}
 
 {#if toast}
