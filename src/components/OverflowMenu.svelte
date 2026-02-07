@@ -84,7 +84,7 @@
         {$t('app.import')}
         <input
           type="file"
-          accept=".json"
+          accept=".csv"
           on:change={(e) => {
             onImport(e);
             close();
