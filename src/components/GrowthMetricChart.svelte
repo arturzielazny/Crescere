@@ -186,6 +186,7 @@
     const measurementData = data.measurements.map((point) => ({
       x: point.x,
       y: point.y,
+      date: point.date,
       pointStyle: point.pointStyle,
       pointColor: point.pointColor
     }));
