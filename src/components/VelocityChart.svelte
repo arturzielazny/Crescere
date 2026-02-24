@@ -65,10 +65,18 @@
       const future = isFutureDate(midDate);
       return {
         ...point,
+        fromDate: ageToDate(child.profile.birthDate, point.fromAge),
+        toDate: ageToDate(child.profile.birthDate, point.toAge),
         pointStyle: future ? 'triangle' : 'circle',
         pointColor: future ? hexToRgba(config.color, 0.45) : config.color
       };
     });
+  }
+
+  function ageToDate(birthDate, ageInDays) {
+    return new Date(Date.parse(birthDate) + Math.round(ageInDays) * 86400000)
+      .toISOString()
+      .slice(0, 10);
   }
 
   function getMidpointDate(birthDate, fromAge, toAge) {
@@ -104,7 +112,9 @@
           fromAge: point.fromAge,
           toAge: point.toAge,
           fromValue: point.fromValue,
-          toValue: point.toValue
+          toValue: point.toValue,
+          fromDate: point.fromDate,
+          toDate: point.toDate
         })),
         borderColor: config.color,
         backgroundColor: config.color,
@@ -177,7 +187,10 @@
             title: (items) => {
               if (!items.length) return '';
               const raw = items[0].raw;
-              return `${$t('chart.axis.age')}: ${Math.round(raw.fromAge)}–${Math.round(raw.toAge)}`;
+              const ageLine = `${$t('chart.axis.age')}: ${Math.round(raw.fromAge)}–${Math.round(raw.toAge)}`;
+              return raw.fromDate && raw.toDate
+                ? [`${raw.fromDate} – ${raw.toDate}`, ageLine]
+                : ageLine;
             },
             label: (context) => {
               const raw = context.raw;

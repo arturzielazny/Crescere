@@ -213,7 +213,9 @@
             title: (items) => {
               if (!items.length) return '';
               const age = items[0].parsed.x;
-              return `${$t('chart.axis.age')}: ${Math.round(age)}`;
+              const date = items[0].raw?.date;
+              const ageLine = `${$t('chart.axis.age')}: ${Math.round(age)}`;
+              return date ? [date, ageLine] : ageLine;
             },
             label: (context) => {
               const label = context.dataset.label || '';
