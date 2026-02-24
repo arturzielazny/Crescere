@@ -2,7 +2,7 @@
  * Shared utility functions
  */
 
-import { getZScoreClass, zToPercentile, calculateAgeInDays } from './zscore.js';
+import { getZScoreClass, zToPercentile } from './zscore.js';
 
 /**
  * Check if a date string is in the future
@@ -88,7 +88,7 @@ export function formatPercentile(z, locale = 'en') {
 /**
  * Find the index of the data point closest to the child's current age.
  * Only considers past/current measurements (not future ones).
- * @param {Array} data - Array of data points with x (age in days) or ageInDays property
+ * @param {Array} data - Array of data points with x (age in days)
  * @param {number|null} nowAge - Current age in days
  * @returns {number} Index of closest point, or -1 if none found
  */
@@ -97,49 +97,41 @@ export function findClosestToNowIndex(data, nowAge) {
   let closest = 0;
   let minDist = Infinity;
   for (let i = 0; i < data.length; i++) {
-    const dist = Math.abs((data[i].x ?? data[i].ageInDays) - nowAge);
+    const dist = Math.abs(data[i].x - nowAge);
     if (dist < minDist) {
       minDist = dist;
       closest = i;
     }
   }
-  if (data[closest]?.date && isFutureDate(data[closest].date)) return -1;
+  const pointDate = data[closest]?.date ?? data[closest]?.toDate;
+  if (pointDate && isFutureDate(pointDate)) return -1;
   return closest;
 }
 
 /**
- * Compute growth velocity (daily rate of change) between consecutive measurements
- * @param {Array} measurements - Sorted array of measurement objects with date field
+ * Compute growth velocity pairs between consecutive measurements.
+ * Returns raw data only — x/y positioning is the visualization layer's concern.
+ * @param {Array} measurements - Array of measurement objects with date field
  * @param {string} key - Data key ('weight' or 'length')
- * @param {string} birthDate - ISO date string (YYYY-MM-DD) for age calculation
- * @returns {Array<{x: number, y: number, fromAge: number, toAge: number, fromValue: number, toValue: number}>}
+ * @returns {Array<{fromDate: string, toDate: string, fromValue: number, toValue: number}>}
  */
-export function computeVelocity(measurements, key, birthDate) {
-  if (!measurements || measurements.length < 2 || !birthDate) return [];
+export function computeVelocity(measurements, key) {
+  if (!measurements || measurements.length < 2) return [];
 
   const valid = measurements
-    .filter((m) => m[key] !== null && m[key] !== undefined && !isNaN(m[key]))
-    .map((m) => ({
-      age: calculateAgeInDays(birthDate, m.date),
-      value: m[key]
-    }))
-    .sort((a, b) => a.age - b.age);
+    .filter((m) => m[key] !== null && m[key] !== undefined && !isNaN(m[key]) && m.date)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   const result = [];
   for (let i = 1; i < valid.length; i++) {
     const prev = valid[i - 1];
     const curr = valid[i];
-    const daysDiff = curr.age - prev.age;
-    if (daysDiff <= 0) continue;
-
-    const dailyRate = (curr.value - prev.value) / daysDiff;
+    if (prev.date === curr.date) continue;
     result.push({
-      x: (prev.age + curr.age) / 2,
-      y: dailyRate,
-      fromAge: prev.age,
-      toAge: curr.age,
-      fromValue: prev.value,
-      toValue: curr.value
+      fromDate: prev.date,
+      toDate: curr.date,
+      fromValue: prev[key],
+      toValue: curr[key]
     });
   }
   return result;

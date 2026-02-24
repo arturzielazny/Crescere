@@ -77,21 +77,12 @@
     const m = metric;
     const measurementData = measurements
       .filter((d) => d.zscores?.[m] !== null && d.zscores?.[m] !== undefined)
-      .map((d) => {
-        const rawZ = d.zscores[m];
-        const percentile = zToPercentile(rawZ);
-        const future = isFutureDate(d.date);
-        const pointColor = future ? hexToRgba(colors[m].border, 0.45) : colors[m].border;
-        return {
-          x: d.ageInDays,
-          y: percentile,
-          rawZ,
-          date: d.date,
-          pointRadius: getPointRadius(rawZ),
-          pointStyle: future ? 'triangle' : 'circle',
-          pointColor
-        };
-      });
+      .map((d) => ({
+        x: d.ageInDays,
+        y: zToPercentile(d.zscores[m]),
+        rawZ: d.zscores[m],
+        date: d.date
+      }));
 
     const datasets = [
       {
@@ -100,11 +91,13 @@
         borderColor: colors[m].border,
         backgroundColor: colors[m].bg,
         borderWidth: 2,
-        pointRadius: (ctx) => ctx.raw?.pointRadius ?? 3.5,
-        pointHoverRadius: (ctx) => (ctx.raw?.pointRadius ?? 3.5) + 1.5,
-        pointStyle: (ctx) => ctx.raw?.pointStyle ?? 'circle',
-        pointBackgroundColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
-        pointBorderColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
+        pointRadius: (ctx) => getPointRadius(ctx.raw?.rawZ),
+        pointHoverRadius: (ctx) => getPointRadius(ctx.raw?.rawZ) + 1.5,
+        pointStyle: (ctx) => (isFutureDate(ctx.raw?.date) ? 'triangle' : 'circle'),
+        pointBackgroundColor: (ctx) =>
+          isFutureDate(ctx.raw?.date) ? hexToRgba(colors[m].border, 0.45) : colors[m].border,
+        pointBorderColor: (ctx) =>
+          isFutureDate(ctx.raw?.date) ? hexToRgba(colors[m].border, 0.45) : colors[m].border,
         tension: 0.1,
         fill: false
       }

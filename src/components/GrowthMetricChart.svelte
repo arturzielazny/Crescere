@@ -75,6 +75,7 @@
     return dataset?.[sexKey]?.[age] || null;
   }
 
+  // Returns clean data: measurements as {date, value} pairs, band as reference points.
   function getChartData() {
     const child = $activeChild;
     if (!child?.profile?.birthDate || !child?.profile?.sex) {
@@ -83,23 +84,14 @@
 
     const config = metricConfig[metric];
     const measurements = child.measurements
-      .map((m) => {
-        const ageInDays = calculateAgeInDays(child.profile.birthDate, m.date);
-        const future = isFutureDate(m.date);
-        const pointColor = future ? hexToRgba(config.color, 0.45) : config.color;
-        return {
-          x: ageInDays,
-          y: m[config.dataKey],
-          ageInDays,
-          date: m.date,
-          pointStyle: future ? 'triangle' : 'circle',
-          pointColor
-        };
-      })
-      .filter((m) => m.y !== null && m.y !== undefined && !isNaN(m.y))
-      .sort((a, b) => a.ageInDays - b.ageInDays);
+      .map((m) => ({ date: m.date, value: m[config.dataKey] }))
+      .filter((m) => m.value !== null && m.value !== undefined && !isNaN(m.value))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-    const maxMeasurementAge = measurements.at(-1)?.ageInDays ?? 0;
+    const maxMeasurementAge =
+      measurements.length > 0
+        ? calculateAgeInDays(child.profile.birthDate, measurements.at(-1).date)
+        : 0;
     const maxBandAge =
       maxAge && maxAge > 0 ? Math.ceil(maxAge * 1.1) : Math.max(0, maxMeasurementAge);
     const maxReferenceAge = (config.dataset?.[String(child.profile.sex)]?.length || 1) - 1;
@@ -111,16 +103,12 @@
       const ref = getReferenceForAge(config.dataset, child.profile.sex, age);
       if (!ref) continue;
       const [l, m_, s] = ref;
-      const sd1Low = valueAtZ(l, m_, s, -1);
-      const sd1High = valueAtZ(l, m_, s, 1);
-      const sd2Low = valueAtZ(l, m_, s, -2);
-      const sd2High = valueAtZ(l, m_, s, 2);
       band.push({
         x: age,
-        sd1Low: sd1Low * scale,
-        sd1High: sd1High * scale,
-        sd2Low: sd2Low * scale,
-        sd2High: sd2High * scale
+        sd1Low: valueAtZ(l, m_, s, -1) * scale,
+        sd1High: valueAtZ(l, m_, s, 1) * scale,
+        sd2Low: valueAtZ(l, m_, s, -2) * scale,
+        sd2High: valueAtZ(l, m_, s, 2) * scale
       });
     }
 
@@ -128,25 +116,22 @@
   }
 
   function getYRange(measurements, band) {
-    // Base Y range on the age span where measurements exist
-    const measurementAges = measurements.map((m) => m.x);
+    const birthDate = $activeChild?.profile?.birthDate;
+    const measurementAges = measurements.map((m) => calculateAgeInDays(birthDate, m.date));
     const minAge = Math.min(...measurementAges, 0);
-    const maxAge = Math.max(...measurementAges, 0);
+    const maxMeasAge = Math.max(...measurementAges, 0);
 
-    // Filter band to measurement age range (with small buffer)
-    const ageBuffer = Math.max(30, (maxAge - minAge) * 0.1);
+    const ageBuffer = Math.max(30, (maxMeasAge - minAge) * 0.1);
     const bandForRange = band.filter(
-      (point) => point.x >= Math.max(0, minAge - ageBuffer) && point.x <= maxAge + ageBuffer
+      (point) => point.x >= Math.max(0, minAge - ageBuffer) && point.x <= maxMeasAge + ageBuffer
     );
 
-    // Use ±2 SD band values for base range
     const bandValues = bandForRange
       .flatMap((point) => [point.sd2Low, point.sd2High])
       .filter((v) => v !== undefined && v !== null && !isNaN(v));
 
-    // Include measurement values to extend range if data is outside ±2 SD
     const measurementValues = measurements
-      .map((point) => point.y)
+      .map((m) => m.value)
       .filter((v) => v !== undefined && v !== null && !isNaN(v));
 
     const values = [...bandValues, ...measurementValues];
@@ -166,7 +151,6 @@
 
     let stepSize = candidates.find((step) => step >= target) || candidates.at(-1);
 
-    // Cap step size to prevent min from rounding to 0 when data is far from 0
     if (range.min > 0 && stepSize > range.min) {
       const smaller = candidates.filter((s) => s <= range.min);
       if (smaller.length > 0) {
@@ -177,18 +161,15 @@
     return stepSize;
   }
 
+  // Builds Chart.js datasets. Computes x from date; derives display from data via callbacks.
   function buildDatasets(data) {
+    const birthDate = $activeChild?.profile?.birthDate;
     const config = metricConfig[metric];
-    const band1Lower = data.band.map((point) => ({ x: point.x, y: point.sd1Low }));
-    const band1Upper = data.band.map((point) => ({ x: point.x, y: point.sd1High }));
-    const band2Lower = data.band.map((point) => ({ x: point.x, y: point.sd2Low }));
-    const band2Upper = data.band.map((point) => ({ x: point.x, y: point.sd2High }));
-    const measurementData = data.measurements.map((point) => ({
-      x: point.x,
-      y: point.y,
-      date: point.date,
-      pointStyle: point.pointStyle,
-      pointColor: point.pointColor
+
+    const measurementData = data.measurements.map((m) => ({
+      x: calculateAgeInDays(birthDate, m.date),
+      y: m.value,
+      date: m.date
     }));
 
     const bandColor = hexToRgba(config.color, 0.12);
@@ -196,13 +177,13 @@
     return [
       {
         label: '_sd2_lower',
-        data: band2Lower,
+        data: data.band.map((point) => ({ x: point.x, y: point.sd2Low })),
         borderWidth: 0,
         pointRadius: 0
       },
       {
         label: $t('chart.band.sd2'),
-        data: band2Upper,
+        data: data.band.map((point) => ({ x: point.x, y: point.sd2High })),
         borderWidth: 0,
         pointRadius: 0,
         fill: '-1',
@@ -210,13 +191,13 @@
       },
       {
         label: '_sd1_lower',
-        data: band1Lower,
+        data: data.band.map((point) => ({ x: point.x, y: point.sd1Low })),
         borderWidth: 0,
         pointRadius: 0
       },
       {
         label: $t('chart.band.sd1'),
-        data: band1Upper,
+        data: data.band.map((point) => ({ x: point.x, y: point.sd1High })),
         borderWidth: 0,
         pointRadius: 0,
         fill: '-1',
@@ -230,9 +211,11 @@
         borderWidth: 2,
         pointRadius: 3,
         pointHoverRadius: 4,
-        pointStyle: (ctx) => ctx.raw?.pointStyle ?? 'circle',
-        pointBackgroundColor: (ctx) => ctx.raw?.pointColor ?? config.color,
-        pointBorderColor: (ctx) => ctx.raw?.pointColor ?? config.color,
+        pointStyle: (ctx) => (isFutureDate(ctx.raw?.date) ? 'triangle' : 'circle'),
+        pointBackgroundColor: (ctx) =>
+          isFutureDate(ctx.raw?.date) ? hexToRgba(config.color, 0.45) : config.color,
+        pointBorderColor: (ctx) =>
+          isFutureDate(ctx.raw?.date) ? hexToRgba(config.color, 0.45) : config.color,
         tension: 0.1
       }
     ];
@@ -276,7 +259,6 @@
     const measurementDatasetIndex = datasets ? datasets.length - 1 : 4;
     const measurementData = datasets?.[measurementDatasetIndex]?.data || [];
     const closestIndex = findClosestToNowIndex(measurementData, nowAge);
-    // Round to nearest step; since range.min already has 10% padding, allow rounding up
     const min = Math.round(range.min / stepSize) * stepSize;
     const max = Math.ceil(range.max / stepSize) * stepSize;
     return {
@@ -295,7 +277,6 @@
         },
         tooltip: {
           filter: (item) => {
-            // Only show measurement dataset (last one), not bands
             const isLastDataset = item.datasetIndex === item.chart.data.datasets.length - 1;
             if (!isLastDataset) return false;
             const value = item.parsed?.y;

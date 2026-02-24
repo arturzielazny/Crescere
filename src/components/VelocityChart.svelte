@@ -47,49 +47,15 @@
     }
   };
 
+  // Returns clean data: {fromDate, toDate, fromValue, toValue} pairs.
   function getChartData() {
     const child = $activeChild;
-    if (!child?.profile?.birthDate || !child?.profile?.sex) {
-      return [];
-    }
-
-    const config = metricConfig[metric];
-    const velocityData = computeVelocity(
-      child.measurements,
-      config.dataKey,
-      child.profile.birthDate
-    );
-
-    return velocityData.map((point) => {
-      const midDate = getMidpointDate(child.profile.birthDate, point.fromAge, point.toAge);
-      const future = isFutureDate(midDate);
-      return {
-        ...point,
-        fromDate: ageToDate(child.profile.birthDate, point.fromAge),
-        toDate: ageToDate(child.profile.birthDate, point.toAge),
-        pointStyle: future ? 'triangle' : 'circle',
-        pointColor: future ? hexToRgba(config.color, 0.45) : config.color
-      };
-    });
-  }
-
-  function ageToDate(birthDate, ageInDays) {
-    return new Date(Date.parse(birthDate) + Math.round(ageInDays) * 86400000)
-      .toISOString()
-      .slice(0, 10);
-  }
-
-  function getMidpointDate(birthDate, fromAge, toAge) {
-    const midAge = (fromAge + toAge) / 2;
-    const birthMs = Date.parse(birthDate);
-    const midMs = birthMs + Math.round(midAge) * 86400000;
-    return new Date(midMs).toISOString().slice(0, 10);
+    if (!child?.profile?.birthDate || !child?.profile?.sex) return [];
+    return computeVelocity(child.measurements, metricConfig[metric].dataKey);
   }
 
   function getYRange(data) {
     if (data.length === 0) return { min: 0, max: 1 };
-    // Exclude first-week data from range calculation to avoid the dramatic
-    // post-birth drop from dominating the Y axis scale
     const afterFirstWeek = data.filter((d) => d.x >= 7);
     const rangeData = afterFirstWeek.length > 0 ? afterFirstWeek : data;
     const values = rangeData.map((d) => d.y);
@@ -99,31 +65,44 @@
     return { min: min - padding, max: max + padding };
   }
 
+  // Builds Chart.js datasets. Computes x/y from dates/values; derives display via callbacks.
   function buildDatasets(data) {
+    const birthDate = $activeChild?.profile?.birthDate;
     const config = metricConfig[metric];
+
+    const measurementData = data
+      .map((point) => {
+        const fromAge = calculateAgeInDays(birthDate, point.fromDate);
+        const toAge = calculateAgeInDays(birthDate, point.toDate);
+        const daysDiff = toAge - fromAge;
+        if (daysDiff <= 0) return null;
+        return {
+          x: (fromAge + toAge) / 2,
+          y: (point.toValue - point.fromValue) / daysDiff,
+          fromDate: point.fromDate,
+          toDate: point.toDate,
+          fromValue: point.fromValue,
+          toValue: point.toValue,
+          fromAge,
+          toAge
+        };
+      })
+      .filter(Boolean);
+
     return [
       {
         label: title || $t('chart.measurement.label'),
-        data: data.map((point) => ({
-          x: point.x,
-          y: point.y,
-          pointStyle: point.pointStyle,
-          pointColor: point.pointColor,
-          fromAge: point.fromAge,
-          toAge: point.toAge,
-          fromValue: point.fromValue,
-          toValue: point.toValue,
-          fromDate: point.fromDate,
-          toDate: point.toDate
-        })),
+        data: measurementData,
         borderColor: config.color,
         backgroundColor: config.color,
         borderWidth: 2,
         pointRadius: 4,
         pointHoverRadius: 6,
-        pointStyle: (ctx) => ctx.raw?.pointStyle ?? 'circle',
-        pointBackgroundColor: (ctx) => ctx.raw?.pointColor ?? config.color,
-        pointBorderColor: (ctx) => ctx.raw?.pointColor ?? config.color,
+        pointStyle: (ctx) => (isFutureDate(ctx.raw?.toDate) ? 'triangle' : 'circle'),
+        pointBackgroundColor: (ctx) =>
+          isFutureDate(ctx.raw?.toDate) ? hexToRgba(config.color, 0.45) : config.color,
+        pointBorderColor: (ctx) =>
+          isFutureDate(ctx.raw?.toDate) ? hexToRgba(config.color, 0.45) : config.color,
         tension: 0.1
       }
     ];
@@ -252,24 +231,20 @@
   function createChart() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const data = getChartData();
-    const range = getYRange(data);
+    const datasets = buildDatasets(getChartData());
 
     chart = new Chart(ctx, {
       type: 'line',
-      data: {
-        datasets: buildDatasets(data)
-      },
-      options: getChartOptions(range)
+      data: { datasets },
+      options: getChartOptions(getYRange(datasets[0]?.data ?? []))
     });
   }
 
   function updateChart() {
     if (!chart) return;
-    const data = getChartData();
-    const range = getYRange(data);
-    chart.data.datasets = buildDatasets(data);
-    chart.options = getChartOptions(range);
+    const datasets = buildDatasets(getChartData());
+    chart.data.datasets = datasets;
+    chart.options = getChartOptions(getYRange(datasets[0]?.data ?? []));
     chart.update();
   }
 

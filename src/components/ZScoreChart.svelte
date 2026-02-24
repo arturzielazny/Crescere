@@ -97,28 +97,22 @@
       label: labels[m],
       data: measurements
         .filter((d) => d.zscores?.[m] !== null && d.zscores?.[m] !== undefined)
-        .map((d) => {
-          const rawValue = d.zscores[m];
-          const future = isFutureDate(d.date);
-          const pointColor = future ? hexToRgba(colors[m].border, 0.45) : colors[m].border;
-          return {
-            x: d.ageInDays,
-            y: clampZScore(rawValue),
-            rawValue,
-            date: d.date,
-            pointRadius: getPointRadius(rawValue),
-            pointStyle: future ? 'triangle' : 'circle',
-            pointColor
-          };
-        }),
+        .map((d) => ({
+          x: d.ageInDays,
+          y: clampZScore(d.zscores[m]),
+          rawValue: d.zscores[m],
+          date: d.date
+        })),
       borderColor: colors[m].border,
       backgroundColor: colors[m].bg,
       borderWidth: 2,
-      pointRadius: (ctx) => ctx.raw?.pointRadius ?? 3.5,
-      pointHoverRadius: (ctx) => (ctx.raw?.pointRadius ?? 3.5) + 1.5,
-      pointStyle: (ctx) => ctx.raw?.pointStyle ?? 'circle',
-      pointBackgroundColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
-      pointBorderColor: (ctx) => ctx.raw?.pointColor ?? colors[m].border,
+      pointRadius: (ctx) => getPointRadius(ctx.raw?.rawValue),
+      pointHoverRadius: (ctx) => getPointRadius(ctx.raw?.rawValue) + 1.5,
+      pointStyle: (ctx) => (isFutureDate(ctx.raw?.date) ? 'triangle' : 'circle'),
+      pointBackgroundColor: (ctx) =>
+        isFutureDate(ctx.raw?.date) ? hexToRgba(colors[m].border, 0.45) : colors[m].border,
+      pointBorderColor: (ctx) =>
+        isFutureDate(ctx.raw?.date) ? hexToRgba(colors[m].border, 0.45) : colors[m].border,
       tension: 0.1,
       fill: false
     }));
