@@ -13,8 +13,14 @@
   import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { activeChild } from '../stores/childStore.js';
   import { calculateAgeInDays } from '../lib/zscore.js';
-  import { computeVelocity, isFutureDate, hexToRgba, findClosestToNowIndex } from '../lib/utils.js';
-  import { t } from '../stores/i18n.js';
+  import {
+    computeVelocity,
+    isFutureDate,
+    hexToRgba,
+    findClosestToNowIndex,
+    formatDate
+  } from '../lib/utils.js';
+  import { t, language } from '../stores/i18n.js';
 
   Chart.register(
     LineController,
@@ -168,7 +174,10 @@
               const raw = items[0].raw;
               const ageLine = `${$t('chart.axis.age')}: ${Math.round(raw.fromAge)}–${Math.round(raw.toAge)}`;
               return raw.fromDate && raw.toDate
-                ? [`${raw.fromDate} – ${raw.toDate}`, ageLine]
+                ? [
+                    `${formatDate(raw.fromDate, $language)} – ${formatDate(raw.toDate, $language)}`,
+                    ageLine
+                  ]
                 : ageLine;
             },
             label: (context) => {

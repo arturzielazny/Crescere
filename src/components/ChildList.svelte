@@ -12,6 +12,7 @@
   import { calculateAgeInDays, formatAge } from '../lib/zscore.js';
   import { t } from '../stores/i18n.js';
   import ConfirmModal from './ConfirmModal.svelte';
+  import DateInput from './DateInput.svelte';
 
   export let onShare = () => {};
   export let onPrint = () => {};
@@ -45,7 +46,7 @@
 
   function handleBirthDateChange(child, e) {
     if ($activeChild?.id !== child.id) setActiveChild(child.id);
-    updateProfile({ birthDate: e.target.value });
+    updateProfile({ birthDate: e.detail.value });
   }
 
   function handleSexChange(child, value) {
@@ -107,12 +108,11 @@
       />
 
       <!-- Birth date -->
-      <input
-        type="date"
+      <DateInput
         value={child.profile?.birthDate ?? ''}
         on:change={(e) => handleBirthDateChange(child, e)}
         disabled={isReadOnly}
-        class="text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
+        cssClass="text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
       />
 
       <!-- Sex -->

@@ -59,6 +59,7 @@
     "@supabase/supabase-js": "^2.93.3",
     "chart.js": "^4.5.1",
     "chartjs-plugin-annotation": "^3.1.0",
-    "chartjs-plugin-datalabels": "^2.2.0"
+    "chartjs-plugin-datalabels": "^2.2.0",
+    "flatpickr": "^4.6.13"
   }
 }

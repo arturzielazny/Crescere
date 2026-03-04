@@ -5,7 +5,8 @@
     isFutureDate,
     formatZScore,
     getZScoreColorClass,
-    formatPercentile
+    formatPercentile,
+    formatDate
   } from '../lib/utils.js';
   import { t, language } from '../stores/i18n.js';
 </script>
@@ -44,7 +45,7 @@
         <tbody>
           {#each $measurementsWithZScores as m (m.id)}
             <tr class="border-b border-gray-100" class:bg-green-50={isFutureDate(m.date)}>
-              <td class="py-2 px-2 text-gray-700">{m.date}</td>
+              <td class="py-2 px-2 text-gray-700">{formatDate(m.date, $language)}</td>
               <td class="py-2 px-2 text-gray-500">
                 {m.ageInDays !== null
                   ? formatAge(m.ageInDays, {

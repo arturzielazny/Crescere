@@ -34,8 +34,9 @@
   } from './stores/authStore.js';
   import { exportToCsv, importFromCsv } from './lib/csv.js';
   import { parseLiveShareUrl, clearShareHash } from './lib/share.js';
-  import { t } from './stores/i18n.js';
+  import { t, language } from './stores/i18n.js';
   import { calculateAgeInDays, formatAge } from './lib/zscore.js';
+  import { formatDate } from './lib/utils.js';
 
   let showShareModal = false;
   let toast = null;
@@ -267,13 +268,16 @@
             </p>
             {#if $activeChild?.profile?.birthDate}
               <p>
-                {$t('print.born')}: {$activeChild.profile.birthDate}
+                {$t('print.born')}: {formatDate($activeChild.profile.birthDate, $language)}
                 {#if printSex}&middot; {$t('print.sex')}: {printSex}{/if}
                 {#if printAge}&middot; {$t('profile.age.current')} {printAge}{/if}
               </p>
             {/if}
             <p class="text-xs text-gray-500">
-              {$t('print.generated')}: {new Date().toLocaleDateString()}
+              {$t('print.generated')}: {formatDate(
+                new Date().toISOString().slice(0, 10),
+                $language
+              )}
             </p>
           </div>
           <hr class="mt-3 border-gray-300" />

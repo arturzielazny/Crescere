@@ -12,10 +12,12 @@
     isFutureDate,
     formatZScore,
     getZScoreColorClass,
-    formatPercentile
+    formatPercentile,
+    formatDate
   } from '../lib/utils.js';
   import { t, language } from '../stores/i18n.js';
   import ConfirmModal from './ConfirmModal.svelte';
+  import DateInput from './DateInput.svelte';
 
   export let compact = false;
 
@@ -136,15 +138,14 @@
             >
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 {#if $isActiveChildReadOnly}
-                  <span class="text-xs">{m.date}</span>
+                  <span class="text-xs">{formatDate(m.date, $language)}</span>
                 {:else}
-                  <input
-                    type="date"
+                  <DateInput
                     value={m.date}
-                    on:change={(e) => handleUpdate(m.id, 'date', e.target.value)}
-                    class="{compact
+                    on:change={(e) => handleUpdate(m.id, 'date', e.detail.value)}
+                    cssClass="{compact
                       ? 'w-28 text-xs'
-                      : 'w-32 text-sm'} px-1 py-0.5 border border-gray-200 rounded"
+                      : 'w-32 text-sm'} px-1 py-0.5 border border-transparent hover:border-gray-300 focus:border-blue-400 focus:outline-none rounded cursor-pointer bg-transparent"
                   />
                 {/if}
               </td>
@@ -165,7 +166,7 @@
                 {:else}
                   <input
                     type="number"
-                    step="25"
+                    step="1"
                     value={m.weight || ''}
                     on:change={(e) => handleUpdate(m.id, 'weight', e.target.value)}
                     placeholder="—"
@@ -181,7 +182,7 @@
                 {:else}
                   <input
                     type="number"
-                    step="0.5"
+                    step="0.1"
                     value={m.length || ''}
                     on:change={(e) => handleUpdate(m.id, 'length', e.target.value)}
                     placeholder="—"
@@ -197,7 +198,7 @@
                 {:else}
                   <input
                     type="number"
-                    step="0.5"
+                    step="0.1"
                     value={m.headCirc || ''}
                     on:change={(e) => handleUpdate(m.id, 'headCirc', e.target.value)}
                     placeholder="—"
@@ -251,11 +252,12 @@
           {#if !$isActiveChildReadOnly}
             <tr class="bg-blue-50">
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                <input
-                  type="date"
-                  bind:value={newDate}
-                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
-                  class="{compact
+                <DateInput
+                  value={newDate}
+                  on:change={(e) => {
+                    newDate = e.detail.value;
+                  }}
+                  cssClass="{compact
                     ? 'w-28 text-xs'
                     : 'w-32 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
                 />
@@ -266,7 +268,7 @@
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <input
                   type="number"
-                  step="25"
+                  step="1"
                   bind:value={newWeight}
                   on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                   placeholder="g"
@@ -278,7 +280,7 @@
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <input
                   type="number"
-                  step="0.5"
+                  step="0.1"
                   bind:value={newLength}
                   on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                   placeholder="cm"
@@ -290,7 +292,7 @@
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <input
                   type="number"
-                  step="0.5"
+                  step="0.1"
                   bind:value={newHeadCirc}
                   on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                   placeholder="cm"

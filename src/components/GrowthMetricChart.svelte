@@ -14,11 +14,11 @@
   import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { activeChild } from '../stores/childStore.js';
   import { calculateAgeInDays } from '../lib/zscore.js';
-  import { isFutureDate, hexToRgba, findClosestToNowIndex } from '../lib/utils.js';
+  import { isFutureDate, hexToRgba, findClosestToNowIndex, formatDate } from '../lib/utils.js';
   import { WHO_WEIGHT } from '../data/who-weight.js';
   import { WHO_LENGTH } from '../data/who-length.js';
   import { WHO_HEADC } from '../data/who-headc.js';
-  import { t } from '../stores/i18n.js';
+  import { t, language } from '../stores/i18n.js';
 
   Chart.register(
     LineController,
@@ -288,7 +288,7 @@
               const age = items[0].parsed.x;
               const date = items[0].raw?.date;
               const ageLine = `${$t('chart.axis.age')}: ${Math.round(age)}`;
-              return date ? [date, ageLine] : ageLine;
+              return date ? [formatDate(date, $language), ageLine] : ageLine;
             },
             label: (context) => {
               const label = context.dataset.label || '';

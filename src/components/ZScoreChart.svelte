@@ -18,7 +18,8 @@
     isFutureDate,
     hexToRgba,
     formatPercentile,
-    findClosestToNowIndex
+    findClosestToNowIndex,
+    formatDate
   } from '../lib/utils.js';
   import { t, language } from '../stores/i18n.js';
 
@@ -223,7 +224,7 @@
               const age = items[0].parsed.x;
               const date = items[0].raw?.date;
               const ageLine = `${$t('chart.axis.age')}: ${Math.round(age)}`;
-              return date ? [date, ageLine] : ageLine;
+              return date ? [formatDate(date, $language), ageLine] : ageLine;
             },
             label: (context) => {
               const label = context.dataset.label || '';

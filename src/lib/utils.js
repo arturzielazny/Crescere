@@ -5,6 +5,22 @@
 import { getZScoreClass, zToPercentile } from './zscore.js';
 
 /**
+ * Format a YYYY-MM-DD date string for display using the given locale.
+ * @param {string} dateStr - ISO date string (YYYY-MM-DD)
+ * @param {string} [lang='en'] - Locale ('en' or 'pl')
+ * @returns {string}
+ */
+export function formatDate(dateStr, lang = 'en') {
+  if (!dateStr) return '—';
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return dateStr;
+  const [y, m, d] = parts;
+  return new Intl.DateTimeFormat(lang, { year: 'numeric', month: 'short', day: 'numeric' }).format(
+    new Date(y, m - 1, d)
+  );
+}
+
+/**
  * Check if a date string is in the future
  * @param {string} dateStr - ISO date string (YYYY-MM-DD)
  * @returns {boolean}
