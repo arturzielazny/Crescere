@@ -29,8 +29,6 @@
 
   // Soft-deleted rows: id → measurement snapshot (ephemeral, resets on page refresh)
   let softDeleted = new SvelteMap();
-  // Row currently showing inline Undo/Confirm buttons
-  let pendingDeleteId = null;
 
   $: displayRows = (() => {
     const live = $measurementsWithZScores.map((m) => ({ ...m, _softDeleted: false }));
@@ -66,19 +64,10 @@
   }
 
   function handleDelete(id) {
-    pendingDeleteId = id;
-  }
-
-  function handleConfirmDelete(id) {
     const m = $measurementsWithZScores.find((x) => x.id === id);
     if (!m) return;
     softDeleted.set(id, m);
     deleteMeasurement(id);
-    pendingDeleteId = null;
-  }
-
-  function handleCancelDelete() {
-    pendingDeleteId = null;
   }
 
   function handleRestore(id) {
@@ -280,31 +269,18 @@
                 {#if m._softDeleted}
                   <button
                     on:click={() => handleRestore(m.id)}
-                    class="text-green-600 hover:text-green-800 text-xs whitespace-nowrap"
+                    class="text-blue-500 hover:text-blue-700 text-xs whitespace-nowrap"
+                    aria-label={$t('measurements.restore')}
                   >
                     ↩ {$t('measurements.restore')}
                   </button>
-                {:else if pendingDeleteId === m.id}
-                  <span class="flex gap-2 items-center whitespace-nowrap">
-                    <button
-                      on:click={handleCancelDelete}
-                      class="text-green-600 hover:text-green-800 text-xs"
-                    >
-                      {$t('measurements.restore')}
-                    </button>
-                    <button
-                      on:click={() => handleConfirmDelete(m.id)}
-                      class="text-red-500 hover:text-red-700 text-xs font-medium"
-                    >
-                      {$t('measurements.delete.confirmBtn')}
-                    </button>
-                  </span>
                 {:else if !$isActiveChildReadOnly}
                   <button
                     on:click={() => handleDelete(m.id)}
                     class="text-red-500 hover:text-red-700 text-xs"
+                    aria-label={$t('measurements.delete.title')}
                   >
-                    {$t('measurements.delete.title')}
+                    ✕
                   </button>
                 {/if}
               </td>
