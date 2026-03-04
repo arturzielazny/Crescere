@@ -16,8 +16,8 @@
     formatDate
   } from '../lib/utils.js';
   import { t, language } from '../stores/i18n.js';
-  import ConfirmModal from './ConfirmModal.svelte';
   import DateInput from './DateInput.svelte';
+  import { SvelteMap } from 'svelte/reactivity';
 
   export let compact = false;
 
@@ -27,9 +27,14 @@
   let newLength = '';
   let newHeadCirc = '';
 
-  // Delete confirmation
-  let deleteModalOpen = false;
-  let deleteTargetId = null;
+  // Soft-deleted rows: id → measurement snapshot (ephemeral, resets on page refresh)
+  let softDeleted = new SvelteMap();
+
+  $: displayRows = (() => {
+    const live = $measurementsWithZScores.map((m) => ({ ...m, _softDeleted: false }));
+    const deleted = [...softDeleted.values()].map((m) => ({ ...m, _softDeleted: true }));
+    return [...live, ...deleted].sort((a, b) => a.date.localeCompare(b.date));
+  })();
 
   function toNumberOrNull(value) {
     if (value === '' || value === null || value === undefined) return null;
@@ -59,21 +64,17 @@
   }
 
   function handleDelete(id) {
-    deleteTargetId = id;
-    deleteModalOpen = true;
+    const m = $measurementsWithZScores.find((x) => x.id === id);
+    if (!m) return;
+    softDeleted.set(id, m);
+    deleteMeasurement(id);
   }
 
-  function confirmDelete() {
-    if (deleteTargetId) {
-      deleteMeasurement(deleteTargetId);
-    }
-    deleteModalOpen = false;
-    deleteTargetId = null;
-  }
-
-  function cancelDelete() {
-    deleteModalOpen = false;
-    deleteTargetId = null;
+  function handleRestore(id) {
+    const m = softDeleted.get(id);
+    if (!m) return;
+    addMeasurement({ date: m.date, weight: m.weight, length: m.length, headCirc: m.headCirc });
+    softDeleted.delete(id);
   }
 </script>
 
@@ -131,14 +132,20 @@
           </tr>
         </thead>
         <tbody>
-          {#each $measurementsWithZScores as m (m.id)}
+          {#each displayRows as m (m.id)}
             <tr
-              class="border-b border-gray-100 hover:bg-gray-50"
-              class:bg-green-50={isFutureDate(m.date)}
+              class="border-b border-gray-100"
+              class:hover:bg-gray-50={!m._softDeleted}
+              class:bg-green-50={!m._softDeleted && isFutureDate(m.date)}
+              class:opacity-40={m._softDeleted}
             >
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                {#if $isActiveChildReadOnly}
-                  <span class="text-xs">{formatDate(m.date, $language)}</span>
+                {#if $isActiveChildReadOnly || m._softDeleted}
+                  <span
+                    class="{compact ? 'text-xs' : 'text-sm'} {m._softDeleted
+                      ? 'line-through text-gray-400'
+                      : ''}">{formatDate(m.date, $language)}</span
+                  >
                 {:else}
                   <DateInput
                     value={m.date}
@@ -161,7 +168,7 @@
                 </td>
               {/if}
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                {#if $isActiveChildReadOnly}
+                {#if $isActiveChildReadOnly || m._softDeleted}
                   <span class="text-xs">{m.weight || '—'}</span>
                 {:else}
                   <input
@@ -177,7 +184,7 @@
                 {/if}
               </td>
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                {#if $isActiveChildReadOnly}
+                {#if $isActiveChildReadOnly || m._softDeleted}
                   <span class="text-xs">{m.length || '—'}</span>
                 {:else}
                   <input
@@ -193,7 +200,7 @@
                 {/if}
               </td>
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                {#if $isActiveChildReadOnly}
+                {#if $isActiveChildReadOnly || m._softDeleted}
                   <span class="text-xs">{m.headCirc || '—'}</span>
                 {:else}
                   <input
@@ -209,33 +216,65 @@
                 {/if}
               </td>
               {#if !compact}
-                <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.waz)}">
+                <td
+                  class="py-2 px-2 text-center {m._softDeleted
+                    ? 'text-gray-300'
+                    : getZScoreColorClass(m.zscores?.waz)}"
+                >
                   {formatZScore(m.zscores?.waz)}
-                  <div class="text-xs text-gray-500">
-                    {formatPercentile(m.zscores?.waz, $language)}
-                  </div>
+                  {#if !m._softDeleted}
+                    <div class="text-xs text-gray-500">
+                      {formatPercentile(m.zscores?.waz, $language)}
+                    </div>
+                  {/if}
                 </td>
-                <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.lhaz)}">
+                <td
+                  class="py-2 px-2 text-center {m._softDeleted
+                    ? 'text-gray-300'
+                    : getZScoreColorClass(m.zscores?.lhaz)}"
+                >
                   {formatZScore(m.zscores?.lhaz)}
-                  <div class="text-xs text-gray-500">
-                    {formatPercentile(m.zscores?.lhaz, $language)}
-                  </div>
+                  {#if !m._softDeleted}
+                    <div class="text-xs text-gray-500">
+                      {formatPercentile(m.zscores?.lhaz, $language)}
+                    </div>
+                  {/if}
                 </td>
-                <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.headcz)}">
+                <td
+                  class="py-2 px-2 text-center {m._softDeleted
+                    ? 'text-gray-300'
+                    : getZScoreColorClass(m.zscores?.headcz)}"
+                >
                   {formatZScore(m.zscores?.headcz)}
-                  <div class="text-xs text-gray-500">
-                    {formatPercentile(m.zscores?.headcz, $language)}
-                  </div>
+                  {#if !m._softDeleted}
+                    <div class="text-xs text-gray-500">
+                      {formatPercentile(m.zscores?.headcz, $language)}
+                    </div>
+                  {/if}
                 </td>
-                <td class="py-2 px-2 text-center {getZScoreColorClass(m.zscores?.wflz)}">
+                <td
+                  class="py-2 px-2 text-center {m._softDeleted
+                    ? 'text-gray-300'
+                    : getZScoreColorClass(m.zscores?.wflz)}"
+                >
                   {formatZScore(m.zscores?.wflz)}
-                  <div class="text-xs text-gray-500">
-                    {formatPercentile(m.zscores?.wflz, $language)}
-                  </div>
+                  {#if !m._softDeleted}
+                    <div class="text-xs text-gray-500">
+                      {formatPercentile(m.zscores?.wflz, $language)}
+                    </div>
+                  {/if}
                 </td>
               {/if}
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                {#if !$isActiveChildReadOnly}
+                {#if m._softDeleted}
+                  <button
+                    on:click={() => handleRestore(m.id)}
+                    class="text-blue-500 hover:text-blue-700 text-xs whitespace-nowrap"
+                    aria-label={$t('measurements.restore')}
+                  >
+                    ↩ {$t('measurements.restore')}
+                  </button>
+                {:else if !$isActiveChildReadOnly}
                   <button
                     on:click={() => handleDelete(m.id)}
                     class="text-red-500 hover:text-red-700 text-xs"
@@ -325,13 +364,3 @@
     {/if}
   {/if}
 </div>
-
-{#if deleteModalOpen}
-  <ConfirmModal
-    title={$t('confirm.measurement.title')}
-    message={$t('confirm.measurement.message')}
-    confirmLabel={$t('measurements.delete.title')}
-    onConfirm={confirmDelete}
-    onCancel={cancelDelete}
-  />
-{/if}
