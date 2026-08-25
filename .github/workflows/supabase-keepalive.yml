@@ -1,0 +1,21 @@
+name: Supabase Keepalive
+
+# Free-tier Supabase projects pause after 7 days with no API activity.
+# This pings the REST API on a schedule so the project never goes idle
+# long enough to trigger that.
+
+on:
+  schedule:
+    - cron: "0 8 * * 1,4" # Monday and Thursday, 08:00 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          curl -sS -f -o /dev/null \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/user_preferences?select=user_id&limit=1"
