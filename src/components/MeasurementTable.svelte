@@ -85,9 +85,9 @@
   {#if !$activeChild}
     <p class="text-sm text-gray-600">{$t('measurements.missingChild')}</p>
   {:else}
-    <div class="overflow-x-auto">
+    <div class="overflow-auto max-h-96 lg:max-h-screen">
       <table class="w-full text-sm">
-        <thead>
+        <thead class="sticky top-0 z-10 {compact ? 'bg-gray-100' : 'bg-white'}">
           <tr class="border-b border-gray-200">
             <th
               class="text-left {compact
@@ -129,6 +129,73 @@
             {/if}
             <th class={compact ? 'py-1 px-1' : 'py-2 px-2'}></th>
           </tr>
+
+          <!-- Add new row (hidden for read-only), pinned under the header -->
+          {#if !$isActiveChildReadOnly}
+            <tr class="bg-blue-50 border-b border-gray-200">
+              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
+                <DateInput
+                  value={newDate}
+                  on:change={(e) => {
+                    newDate = e.detail.value;
+                  }}
+                  cssClass="{compact
+                    ? 'w-28 text-xs'
+                    : 'w-32 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
+                />
+              </td>
+              {#if !compact}
+                <td class="py-2 px-2 text-gray-400">—</td>
+              {/if}
+              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
+                <input
+                  type="number"
+                  step="1"
+                  bind:value={newWeight}
+                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
+                  placeholder="g"
+                  class="{compact
+                    ? 'w-14 text-xs'
+                    : 'w-20 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
+                />
+              </td>
+              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
+                <input
+                  type="number"
+                  step="0.1"
+                  bind:value={newLength}
+                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
+                  placeholder="cm"
+                  class="{compact
+                    ? 'w-14 text-xs'
+                    : 'w-20 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
+                />
+              </td>
+              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
+                <input
+                  type="number"
+                  step="0.1"
+                  bind:value={newHeadCirc}
+                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
+                  placeholder="cm"
+                  class="{compact
+                    ? 'w-14 text-xs'
+                    : 'w-20 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
+                />
+              </td>
+              {#if !compact}
+                <td colspan="4" class="py-2 px-2"></td>
+              {/if}
+              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
+                <button
+                  on:click={handleAddMeasurement}
+                  class="bg-blue-500 text-white px-2 py-0.5 rounded text-xs hover:bg-blue-600"
+                >
+                  {compact ? '+' : $t('measurements.add')}
+                </button>
+              </td>
+            </tr>
+          {/if}
         </thead>
         <tbody>
           {#each $measurementsWithZScores as m (m.id)}
@@ -247,73 +314,6 @@
               </td>
             </tr>
           {/each}
-
-          <!-- Add new row (hidden for read-only) -->
-          {#if !$isActiveChildReadOnly}
-            <tr class="bg-blue-50">
-              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                <DateInput
-                  value={newDate}
-                  on:change={(e) => {
-                    newDate = e.detail.value;
-                  }}
-                  cssClass="{compact
-                    ? 'w-28 text-xs'
-                    : 'w-32 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
-                />
-              </td>
-              {#if !compact}
-                <td class="py-2 px-2 text-gray-400">—</td>
-              {/if}
-              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                <input
-                  type="number"
-                  step="1"
-                  bind:value={newWeight}
-                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
-                  placeholder="g"
-                  class="{compact
-                    ? 'w-14 text-xs'
-                    : 'w-20 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
-                />
-              </td>
-              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                <input
-                  type="number"
-                  step="0.1"
-                  bind:value={newLength}
-                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
-                  placeholder="cm"
-                  class="{compact
-                    ? 'w-14 text-xs'
-                    : 'w-20 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
-                />
-              </td>
-              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                <input
-                  type="number"
-                  step="0.1"
-                  bind:value={newHeadCirc}
-                  on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
-                  placeholder="cm"
-                  class="{compact
-                    ? 'w-14 text-xs'
-                    : 'w-20 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
-                />
-              </td>
-              {#if !compact}
-                <td colspan="4" class="py-2 px-2"></td>
-              {/if}
-              <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
-                <button
-                  on:click={handleAddMeasurement}
-                  class="bg-blue-500 text-white px-2 py-0.5 rounded text-xs hover:bg-blue-600"
-                >
-                  {compact ? '+' : $t('measurements.add')}
-                </button>
-              </td>
-            </tr>
-          {/if}
         </tbody>
       </table>
     </div>

@@ -14,9 +14,9 @@
 {#if $activeChild && $measurementsWithZScores.length > 0}
   <div class="bg-white rounded-lg shadow p-6 mb-6">
     <h2 class="text-lg font-semibold text-gray-800 mb-4">{$t('measurements.zscores')}</h2>
-    <div class="overflow-x-auto">
+    <div class="overflow-auto max-h-[32rem]">
       <table class="w-full text-sm">
-        <thead>
+        <thead class="sticky top-0 z-10 bg-white">
           <tr class="border-b border-gray-200">
             <th class="text-left py-2 px-2 font-medium text-gray-600">{$t('measurements.date')}</th>
             <th class="text-left py-2 px-2 font-medium text-gray-600">{$t('measurements.age')}</th>
