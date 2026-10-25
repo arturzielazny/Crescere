@@ -8,6 +8,7 @@
     changePassword
   } from '../stores/authStore.js';
   import { t } from '../stores/i18n.js';
+  import { dialog } from '../lib/dialog.js';
 
   /** @type {'signIn' | 'claimAccount' | 'changePassword'} */
   export let mode = 'signIn';
@@ -22,6 +23,7 @@
   let confirmPassword = '';
   let done = false;
   let localError = '';
+  let showPassword = false;
 
   function reset() {
     email = '';
@@ -30,6 +32,7 @@
     confirmPassword = '';
     done = false;
     localError = '';
+    showPassword = false;
     clearError();
   }
 
@@ -82,10 +85,6 @@
     }
   }
 
-  function submitOnEnter(e) {
-    if (e.key === 'Enter') handleSubmit();
-  }
-
   $: title =
     mode === 'changePassword'
       ? $t('auth.changePassword.modalTitle')
@@ -105,8 +104,11 @@
   $: doneMessage =
     mode === 'changePassword' ? $t('auth.changePassword.updated') : $t('auth.claimAccount.saved');
 
+  $: passwordType = showPassword ? 'text' : 'password';
+
+  const labelClass = 'block text-xs font-medium text-gray-600 mb-1';
   const inputClass =
-    'w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500';
+    'w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500';
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -118,7 +120,7 @@
   aria-labelledby="auth-modal-title"
   tabindex="-1"
   on:click={handleClose}
-  on:keydown={(e) => e.key === 'Escape' && handleClose()}
+  use:dialog={{ onClose: handleClose }}
 >
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -128,8 +130,9 @@
         {title}
       </h2>
       <button
+        type="button"
         on:click={handleClose}
-        class="p-1 text-gray-400 hover:text-gray-600 rounded"
+        class="p-2 -m-1 text-gray-400 hover:text-gray-600 rounded"
         aria-label={$t('share.close')}
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,71 +151,94 @@
     {/if}
 
     {#if done}
-      <p class="text-sm text-green-600 mb-4">{doneMessage}</p>
+      <p class="text-sm text-green-700 mb-4">{doneMessage}</p>
       <div class="flex justify-end">
         <button
+          type="button"
           on:click={handleClose}
+          data-autofocus
           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded"
         >
           {$t('share.close')}
         </button>
       </div>
     {:else}
-      <div class="space-y-3">
+      <form class="space-y-3" on:submit|preventDefault={handleSubmit}>
         {#if needsEmail}
-          <input
-            type="email"
-            autocomplete="username"
-            bind:value={email}
-            placeholder={$t('auth.emailPlaceholder')}
-            class={inputClass}
-            on:keydown={submitOnEnter}
-          />
+          <div>
+            <label for="auth-email" class={labelClass}>{$t('auth.email')}</label>
+            <input
+              id="auth-email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              bind:value={email}
+              placeholder={$t('auth.emailPlaceholder')}
+              class={inputClass}
+            />
+          </div>
         {/if}
         {#if mode === 'changePassword'}
-          <input
-            type="password"
-            autocomplete="current-password"
-            bind:value={currentPassword}
-            placeholder={$t('auth.changePassword.currentPlaceholder')}
-            class={inputClass}
-            on:keydown={submitOnEnter}
-          />
+          <div>
+            <label for="auth-current" class={labelClass}
+              >{$t('auth.changePassword.currentPlaceholder')}</label
+            >
+            <input
+              id="auth-current"
+              name="current-password"
+              type={passwordType}
+              autocomplete="current-password"
+              bind:value={currentPassword}
+              class={inputClass}
+            />
+          </div>
         {/if}
-        <input
-          type="password"
-          autocomplete={mode === 'signIn' ? 'current-password' : 'new-password'}
-          bind:value={password}
-          placeholder={mode === 'signIn'
-            ? $t('auth.passwordPlaceholder')
-            : $t('auth.setPassword.newPlaceholder')}
-          class={inputClass}
-          on:keydown={submitOnEnter}
-        />
+        <div>
+          <label for="auth-password" class={labelClass}>
+            {mode === 'signIn' ? $t('auth.password') : $t('auth.setPassword.newPlaceholder')}
+          </label>
+          <input
+            id="auth-password"
+            name="password"
+            type={passwordType}
+            autocomplete={mode === 'signIn' ? 'current-password' : 'new-password'}
+            bind:value={password}
+            class={inputClass}
+          />
+        </div>
         {#if needsConfirm}
-          <input
-            type="password"
-            autocomplete="new-password"
-            bind:value={confirmPassword}
-            placeholder={$t('auth.setPassword.confirmPlaceholder')}
-            class={inputClass}
-            on:keydown={submitOnEnter}
-          />
+          <div>
+            <label for="auth-confirm" class={labelClass}
+              >{$t('auth.setPassword.confirmPlaceholder')}</label
+            >
+            <input
+              id="auth-confirm"
+              name="confirm-password"
+              type={passwordType}
+              autocomplete="new-password"
+              bind:value={confirmPassword}
+              class={inputClass}
+            />
+          </div>
         {/if}
+        <label class="flex items-center gap-2 text-xs text-gray-600 select-none">
+          <input type="checkbox" bind:checked={showPassword} class="rounded" />
+          {$t('auth.showPassword')}
+        </label>
         {#if localError}
-          <p class="text-xs text-red-600">{localError}</p>
+          <p class="text-xs text-red-600" role="alert">{localError}</p>
         {/if}
         {#if $authError}
-          <p class="text-xs text-red-600">{$authError}</p>
+          <p class="text-xs text-red-600" role="alert">{$authError}</p>
         {/if}
         <button
-          on:click={handleSubmit}
+          type="submit"
           disabled={!canSubmit}
           class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitLabel}
         </button>
-      </div>
+      </form>
     {/if}
   </div>
 </div>

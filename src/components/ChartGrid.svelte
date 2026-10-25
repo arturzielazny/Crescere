@@ -11,6 +11,7 @@
   import ZScoreChart from './ZScoreChart.svelte';
   import PercentileChart from './PercentileChart.svelte';
   import VelocityChart from './VelocityChart.svelte';
+  import { dialog } from '../lib/dialog.js';
 
   let draggedIndex = null;
   let dragOverIndex = null;
@@ -76,12 +77,6 @@
     maximizedChart.update((current) => (current === chartId ? null : chartId));
   }
 
-  function handleKeydown(event) {
-    if (event.key === 'Escape' && $maximizedChart) {
-      closeMaximize();
-    }
-  }
-
   function getChartUnit(chart) {
     if (chart.type === 'growth') {
       return chart.id === 'weight' ? 'g' : 'cm';
@@ -96,8 +91,6 @@
     return chartId === 'weightVelocity' ? 'weight' : 'length';
   }
 </script>
-
-<svelte:window on:keydown={handleKeydown} />
 
 <div class="flex flex-col gap-6 mt-6">
   {#each $chartOrder as group, groupIndex (group.groupId)}
@@ -120,7 +113,7 @@
           {groupTitles[group.groupId] || group.groupId}
         </h3>
         <div
-          class="p-1.5 text-gray-400 opacity-0 group-hover/card:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded hover:bg-gray-100 hover:text-gray-600 print-hidden"
+          class="p-1.5 text-gray-400 opacity-0 group-hover/card:opacity-100 pointer-coarse:hidden transition-opacity cursor-grab active:cursor-grabbing rounded hover:bg-gray-100 hover:text-gray-600 print-hidden"
           title={$t('chart.drag')}
           aria-label={$t('chart.drag')}
         >
@@ -140,7 +133,7 @@
           <div class="relative group/chart">
             <button
               on:click={() => handleMaximize(chart.id)}
-              class="absolute top-2 right-2 z-10 p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800 opacity-0 group-hover/chart:opacity-100 transition-opacity print-hidden"
+              class="absolute top-2 right-2 z-10 p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800 opacity-0 group-hover/chart:opacity-100 focus:opacity-100 pointer-coarse:opacity-100 transition-opacity print-hidden"
               title={$t('chart.maximize')}
               aria-label={$t('chart.maximize')}
             >
@@ -201,7 +194,7 @@
     class="fixed inset-0 bg-black/50 z-40 flex items-center justify-center print-hidden"
     style="padding: 5vh 5vw;"
     on:click={closeMaximize}
-    on:keydown={(e) => e.key === 'Escape' && closeMaximize()}
+    use:dialog={{ onClose: closeMaximize }}
     role="dialog"
     aria-modal="true"
     tabindex="-1"
@@ -210,7 +203,6 @@
     <div
       class="bg-white rounded-lg shadow-xl w-full h-full overflow-auto relative"
       on:click|stopPropagation
-      on:keydown|stopPropagation
       role="document"
     >
       <button

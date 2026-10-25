@@ -56,7 +56,7 @@ export function getZScoreColorClass(z) {
   if (cls === 'unknown') return 'text-gray-400';
   if (cls === 'severe') return 'text-red-600 font-semibold';
   if (cls === 'moderate') return 'text-red-600';
-  if (cls === 'mild') return 'text-yellow-600';
+  if (cls === 'mild') return 'text-amber-700';
   return 'text-green-600 font-semibold';
 }
 
@@ -151,4 +151,24 @@ export function computeVelocity(measurements, key) {
     });
   }
   return result;
+}
+
+/**
+ * Round an axis range out to "nice" tick values (steps of 1, 2 or 5 × 10^n).
+ * @param {number} min
+ * @param {number} max
+ * @param {number} [targetTicks=6] - Roughly how many intervals to aim for
+ * @returns {{min: number, max: number, step: number, decimals: number}}
+ */
+export function niceRange(min, max, targetTicks = 6) {
+  const span = max > min ? max - min : Math.abs(min) || 1;
+  const rough = span / targetTicks;
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  const step = [1, 2, 5, 10].map((f) => f * magnitude).find((s) => s >= rough);
+  const decimals = Math.max(0, Math.ceil(-Math.log10(step) - 1e-9));
+  const round = (v) => Number(v.toFixed(decimals));
+  const niceMin = round(Math.floor(min / step) * step);
+  let niceMax = round(Math.ceil(max / step) * step);
+  if (niceMax <= niceMin) niceMax = round(niceMin + step);
+  return { min: niceMin, max: niceMax, step, decimals };
 }

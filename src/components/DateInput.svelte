@@ -8,6 +8,7 @@
   export let value = '';
   export let cssClass = '';
   export let disabled = false;
+  export let ariaLabel = '';
 
   const dispatch = createEventDispatcher();
 
@@ -41,6 +42,9 @@
     });
     if (disabled && fp.altInput) {
       fp.altInput.disabled = true;
+    }
+    if (ariaLabel && fp.altInput) {
+      fp.altInput.setAttribute('aria-label', ariaLabel);
     }
   });
 

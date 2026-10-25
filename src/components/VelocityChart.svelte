@@ -18,7 +18,8 @@
     isFutureDate,
     hexToRgba,
     findClosestToNowIndex,
-    formatDate
+    formatDate,
+    niceRange
   } from '../lib/utils.js';
   import { t, language } from '../stores/i18n.js';
 
@@ -61,14 +62,15 @@
   }
 
   function getYRange(data) {
-    if (data.length === 0) return { min: 0, max: 1 };
+    if (data.length === 0) return niceRange(0, 1);
     const afterFirstWeek = data.filter((d) => d.x >= 7);
     const rangeData = afterFirstWeek.length > 0 ? afterFirstWeek : data;
     const values = rangeData.map((d) => d.y);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const padding = (max - min) * 0.15 || 0.5;
-    return { min: min - padding, max: max + padding };
+    // Round to nice steps so tick labels are evenly spaced and never repeat
+    return niceRange(min - padding, max + padding);
   }
 
   // Builds Chart.js datasets. Computes x/y from dates/values; derives display via callbacks.
@@ -230,7 +232,8 @@
           min: range.min,
           max: range.max,
           ticks: {
-            callback: (value) => Number(value).toFixed(decimals)
+            stepSize: range.step,
+            callback: (value) => Number(value).toFixed(range.decimals)
           }
         }
       }

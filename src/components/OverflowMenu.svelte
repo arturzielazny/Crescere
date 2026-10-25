@@ -1,6 +1,7 @@
 <script>
   import { t } from '../stores/i18n.js';
   import { chartDisplayMode, toggleChartMode } from '../stores/chartStore.js';
+  import LanguageSwitcher from './LanguageSwitcher.svelte';
 
   export let onExport = () => {};
   export let onImport = (_event) => {};
@@ -25,8 +26,9 @@
 <div class="relative">
   <button
     on:click={toggle}
-    class="p-1.5 rounded hover:bg-gray-100"
+    class="p-1.5 pointer-coarse:p-2.5 rounded hover:bg-gray-100"
     aria-label={$t('menu.overflow')}
+    aria-expanded={open}
   >
     <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
       <path
@@ -45,7 +47,7 @@
       <!-- Z-Score / Percentile toggle -->
       <button
         on:click={() => handleAction(toggleChartMode)}
-        class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        class="w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-gray-700 hover:bg-gray-50"
       >
         {$chartDisplayMode === 'percentile' ? $t('menu.showZScores') : $t('menu.showPercentiles')}
       </button>
@@ -53,7 +55,7 @@
       <!-- Print (mobile only) -->
       <button
         on:click={() => handleAction(onPrint)}
-        class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 sm:hidden"
+        class="w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-gray-700 hover:bg-gray-50 sm:hidden"
       >
         {$t('app.print')}
       </button>
@@ -61,14 +63,14 @@
       <!-- Export -->
       <button
         on:click={() => handleAction(onExport)}
-        class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        class="w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-gray-700 hover:bg-gray-50"
       >
         {$t('app.export')}
       </button>
 
       <!-- Import -->
       <label
-        class="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+        class="block w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
       >
         {$t('app.import')}
         <input
@@ -81,6 +83,11 @@
           class="hidden"
         />
       </label>
+
+      <!-- Language (mobile only; the header shows it from sm: up) -->
+      <div class="sm:hidden border-t border-gray-100 mt-1 px-3 pt-2 pb-1">
+        <LanguageSwitcher />
+      </div>
     </div>
   {/if}
 </div>

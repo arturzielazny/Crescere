@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { t } from '../stores/i18n.js';
 
   export let message = '';
   export let type = 'success'; // 'success' or 'error'
@@ -69,7 +70,7 @@
       class="ml-auto p-1 rounded hover:bg-black/5"
       class:text-green-600={type === 'success'}
       class:text-red-600={type === 'error'}
-      aria-label="Close"
+      aria-label={$t('share.close')}
     >
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path

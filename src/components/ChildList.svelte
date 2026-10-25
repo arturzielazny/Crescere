@@ -101,7 +101,7 @@
       <input
         type="text"
         value={child.profile?.name ?? ''}
-        on:input={(e) => handleNameChange(child, e)}
+        on:change={(e) => handleNameChange(child, e)}
         disabled={isReadOnly}
         placeholder={$t('profile.name.placeholder')}
         class="text-sm font-medium px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-gray-50 disabled:cursor-not-allowed"

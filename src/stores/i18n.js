@@ -4,7 +4,6 @@ const STORAGE_KEY = 'crescere-lang';
 
 const translations = {
   en: {
-    'app.title': 'Crescere - Growth Tracker',
     'app.share': 'Share',
     'app.share.disabled.notSignedIn': 'Sign in to share',
     'app.share.disabled.guest': 'Save your account to share',
@@ -165,10 +164,16 @@ const translations = {
     'print.title': 'Growth Report',
     'print.generated': 'Generated',
     'print.born': 'Born',
-    'print.sex': 'Sex'
+    'print.sex': 'Sex',
+    'app.tagline': 'Growth Tracker',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.showPassword': 'Show password',
+    'common.dismiss': 'Dismiss',
+    'chart.band.p16p84': 'P16–P84 band',
+    'chart.band.p2p98': 'P2–P98 band'
   },
   pl: {
-    'app.title': 'Crescere - Monitorowanie wzrostu',
     'app.share': 'Udostępnij',
     'app.share.disabled.notSignedIn': 'Zaloguj się, aby udostępnić',
     'app.share.disabled.guest': 'Zapisz konto, aby udostępnić',
@@ -329,7 +334,14 @@ const translations = {
     'print.title': 'Raport wzrostu',
     'print.generated': 'Wygenerowano',
     'print.born': 'Data urodzenia',
-    'print.sex': 'Płeć'
+    'print.sex': 'Płeć',
+    'app.tagline': 'Monitorowanie wzrostu',
+    'auth.email': 'Email',
+    'auth.password': 'Hasło',
+    'auth.showPassword': 'Pokaż hasło',
+    'common.dismiss': 'Zamknij',
+    'chart.band.p16p84': 'Pasmo P16–P84',
+    'chart.band.p2p98': 'Pasmo P2–P98'
   }
 };
 

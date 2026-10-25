@@ -37,6 +37,7 @@
   import { t, language } from './stores/i18n.js';
   import { calculateAgeInDays, formatAge } from './lib/zscore.js';
   import { formatDate } from './lib/utils.js';
+  import { dialog } from './lib/dialog.js';
 
   let showShareModal = false;
   let toast = null;
@@ -217,10 +218,12 @@
   <header class="bg-white shadow-sm print-hidden">
     <div class="px-4 py-3 flex justify-between items-center gap-2">
       <h1 class="text-xl font-bold text-gray-800 whitespace-nowrap">
-        {$t('app.title')}
+        Crescere<span class="hidden md:inline">{` - ${$t('app.tagline')}`}</span>
       </h1>
       <div class="flex gap-2 items-center">
-        <LanguageSwitcher />
+        <div class="hidden sm:block">
+          <LanguageSwitcher />
+        </div>
         <OverflowMenu onExport={handleExport} onImport={handleImport} onPrint={handlePrint} />
         <div class="border-l border-gray-200 pl-2 ml-1">
           <UserMenu onSignOut={handleSignOut} onOpenAuth={(mode) => (authModalMode = mode)} />
@@ -385,8 +388,9 @@
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
     role="dialog"
     aria-modal="true"
+    tabindex="-1"
     on:click={() => (shareInfoMessage = '')}
-    on:keydown={(e) => e.key === 'Escape' && (shareInfoMessage = '')}
+    use:dialog={{ onClose: () => (shareInfoMessage = '') }}
   >
     <div
       class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6 text-center"

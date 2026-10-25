@@ -1,6 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../stores/i18n.js';
+  import { dialog } from '../lib/dialog.js';
 
   export let title = '';
   export let message = '';
@@ -34,7 +35,7 @@
   aria-labelledby="confirm-modal-title"
   tabindex="-1"
   on:click={onCancel}
-  on:keydown={(e) => e.key === 'Escape' && onCancel()}
+  use:dialog={{ onClose: onCancel }}
 >
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->

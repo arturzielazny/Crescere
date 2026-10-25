@@ -41,20 +41,20 @@
     {#if $isAnonymous}
       <button
         on:click={() => onOpenAuth('claimAccount')}
-        class="hidden sm:block px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 transition-colors"
+        class="hidden sm:block whitespace-nowrap px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 transition-colors"
       >
         {$t('auth.claimAccount')}
       </button>
       <button
         on:click={() => onOpenAuth('signIn')}
-        class="hidden sm:block px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
+        class="hidden sm:block whitespace-nowrap px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
       >
         {$t('auth.signIn')}
       </button>
     {/if}
     <button
       on:click={toggle}
-      class="relative flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+      class="relative flex items-center justify-center w-7 h-7 pointer-coarse:w-9 pointer-coarse:h-9 rounded-full text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
         {$isAnonymous ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white'}"
       aria-label={displayName || $t('auth.anonymous')}
     >
@@ -89,13 +89,13 @@
           </div>
           <button
             on:click={() => handleAction(() => onOpenAuth('claimAccount'))}
-            class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            class="w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-gray-700 hover:bg-gray-50"
           >
             {$t('auth.claimAccount')}
           </button>
           <button
             on:click={() => handleAction(() => onOpenAuth('signIn'))}
-            class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            class="w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-gray-700 hover:bg-gray-50"
           >
             {$t('auth.signIn')}
           </button>
@@ -108,14 +108,14 @@
           </div>
           <button
             on:click={() => handleAction(() => onOpenAuth('changePassword'))}
-            class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            class="w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-gray-700 hover:bg-gray-50"
           >
             {$t('menu.password.change')}
           </button>
           <div class="border-t border-gray-100 mt-1 pt-1">
             <button
               on:click={() => handleAction(onSignOut)}
-              class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              class="w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-red-600 hover:bg-red-50"
             >
               {$t('auth.signOut')}
             </button>

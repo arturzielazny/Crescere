@@ -120,7 +120,7 @@
           pointRadius: 0
         },
         {
-          label: $t('chart.band.sd2'),
+          label: $t('chart.band.p2p98'),
           data: refPoints.map((x) => ({ x, y: BAND_SD2_HIGH })),
           borderWidth: 0,
           pointRadius: 0,
@@ -134,7 +134,7 @@
           pointRadius: 0
         },
         {
-          label: $t('chart.band.sd1'),
+          label: $t('chart.band.p16p84'),
           data: refPoints.map((x) => ({ x, y: BAND_SD1_HIGH })),
           borderWidth: 0,
           pointRadius: 0,

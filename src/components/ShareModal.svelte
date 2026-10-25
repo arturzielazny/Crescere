@@ -4,6 +4,7 @@
   import { createShare, fetchShares, revokeShare } from '../lib/api.js';
   import { generateLiveShareUrl } from '../lib/share.js';
   import ConfirmModal from './ConfirmModal.svelte';
+  import { dialog } from '../lib/dialog.js';
 
   export let onClose = () => {};
   export let childId = '';
@@ -102,7 +103,7 @@
   aria-labelledby="share-modal-title"
   tabindex="-1"
   on:click={onClose}
-  on:keydown={(e) => e.key === 'Escape' && onClose()}
+  use:dialog={{ onClose }}
 >
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->

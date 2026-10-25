@@ -4,7 +4,8 @@ import {
   formatZScore,
   getZScoreColorClass,
   formatPercentile,
-  computeVelocity
+  computeVelocity,
+  niceRange
 } from './utils.js';
 
 describe('utils helpers', () => {
@@ -22,7 +23,7 @@ describe('utils helpers', () => {
 
   it('maps z-scores to color classes', () => {
     expect(getZScoreColorClass(0)).toContain('green');
-    expect(getZScoreColorClass(1.1)).toContain('yellow');
+    expect(getZScoreColorClass(1.1)).toContain('amber');
     expect(getZScoreColorClass(2.2)).toContain('red');
     expect(getZScoreColorClass(3.5)).toContain('red');
     expect(getZScoreColorClass(null)).toContain('gray');
@@ -131,5 +132,26 @@ describe('computeVelocity', () => {
     expect(result).toHaveLength(1);
     expect(result[0].fromDate).toBe('2024-01-31');
     expect(result[0].toDate).toBe('2024-03-01');
+  });
+});
+
+describe('niceRange', () => {
+  it('rounds out to steps of 1, 2 or 5', () => {
+    expect(niceRange(0.093, 0.147)).toEqual({ min: 0.09, max: 0.15, step: 0.01, decimals: 2 });
+    expect(niceRange(12.3, 47.9)).toEqual({ min: 10, max: 50, step: 10, decimals: 0 });
+    expect(niceRange(2.1, 4.4)).toEqual({ min: 2, max: 4.5, step: 0.5, decimals: 1 });
+  });
+
+  it('never produces duplicate tick labels', () => {
+    const { min, max, step, decimals } = niceRange(0.1312, 0.1427);
+    const labels = [];
+    for (let v = min; v <= max + step / 2; v += step) labels.push(v.toFixed(decimals));
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it('handles a flat range', () => {
+    const range = niceRange(5, 5);
+    expect(range.max).toBeGreaterThan(range.min);
+    expect(range.min).toBeLessThanOrEqual(5);
   });
 });

@@ -135,13 +135,14 @@
             <tr class="bg-blue-50 border-b border-gray-200">
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <DateInput
+                  ariaLabel={$t('measurements.date')}
                   value={newDate}
                   on:change={(e) => {
                     newDate = e.detail.value;
                   }}
                   cssClass="{compact
                     ? 'w-28 text-xs'
-                    : 'w-32 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
+                    : 'w-32 text-sm'} px-1 py-0.5 pointer-coarse:py-1.5 border border-blue-200 rounded"
                 />
               </td>
               {#if !compact}
@@ -151,36 +152,42 @@
                 <input
                   type="number"
                   step="1"
+                  inputmode="numeric"
+                  aria-label={$t('measurements.weight')}
                   bind:value={newWeight}
                   on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                   placeholder="g"
                   class="{compact
                     ? 'w-14 text-xs'
-                    : 'w-20 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
+                    : 'w-20 text-sm'} px-1 py-0.5 pointer-coarse:py-1.5 border border-blue-200 rounded"
                 />
               </td>
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <input
                   type="number"
                   step="0.1"
+                  inputmode="decimal"
+                  aria-label={$t('measurements.length')}
                   bind:value={newLength}
                   on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                   placeholder="cm"
                   class="{compact
                     ? 'w-14 text-xs'
-                    : 'w-20 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
+                    : 'w-20 text-sm'} px-1 py-0.5 pointer-coarse:py-1.5 border border-blue-200 rounded"
                 />
               </td>
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <input
                   type="number"
                   step="0.1"
+                  inputmode="decimal"
+                  aria-label={$t('measurements.head')}
                   bind:value={newHeadCirc}
                   on:keydown={(e) => e.key === 'Enter' && handleAddMeasurement()}
                   placeholder="cm"
                   class="{compact
                     ? 'w-14 text-xs'
-                    : 'w-20 text-sm'} px-1 py-0.5 border border-blue-200 rounded"
+                    : 'w-20 text-sm'} px-1 py-0.5 pointer-coarse:py-1.5 border border-blue-200 rounded"
                 />
               </td>
               {#if !compact}
@@ -189,7 +196,8 @@
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <button
                   on:click={handleAddMeasurement}
-                  class="bg-blue-500 text-white px-2 py-0.5 rounded text-xs hover:bg-blue-600"
+                  class="bg-blue-500 text-white px-2 py-0.5 pointer-coarse:px-3 pointer-coarse:py-2 rounded text-xs hover:bg-blue-600"
+                  aria-label={$t('measurements.add')}
                 >
                   {compact ? '+' : $t('measurements.add')}
                 </button>
@@ -208,11 +216,12 @@
                   <span class="text-xs">{formatDate(m.date, $language)}</span>
                 {:else}
                   <DateInput
+                    ariaLabel={$t('measurements.date')}
                     value={m.date}
                     on:change={(e) => handleUpdate(m.id, 'date', e.detail.value)}
                     cssClass="{compact
                       ? 'w-28 text-xs'
-                      : 'w-32 text-sm'} px-1 py-0.5 border border-transparent hover:border-gray-300 focus:border-blue-400 focus:outline-none rounded cursor-pointer bg-transparent"
+                      : 'w-32 text-sm'} px-1 py-0.5 pointer-coarse:py-1.5 border border-transparent hover:border-gray-300 focus:border-blue-400 focus:outline-none rounded cursor-pointer bg-transparent"
                   />
                 {/if}
               </td>
@@ -234,12 +243,14 @@
                   <input
                     type="number"
                     step="1"
+                    inputmode="numeric"
+                    aria-label={$t('measurements.weight')}
                     value={m.weight || ''}
                     on:change={(e) => handleUpdate(m.id, 'weight', e.target.value)}
                     placeholder="—"
                     class="{compact
                       ? 'w-14 text-xs'
-                      : 'w-20 text-sm'} px-1 py-0.5 border border-gray-200 rounded"
+                      : 'w-20 text-sm'} px-1 py-0.5 pointer-coarse:py-1.5 border border-gray-200 rounded"
                   />
                 {/if}
               </td>
@@ -250,12 +261,14 @@
                   <input
                     type="number"
                     step="0.1"
+                    inputmode="decimal"
+                    aria-label={$t('measurements.length')}
                     value={m.length || ''}
                     on:change={(e) => handleUpdate(m.id, 'length', e.target.value)}
                     placeholder="—"
                     class="{compact
                       ? 'w-14 text-xs'
-                      : 'w-20 text-sm'} px-1 py-0.5 border border-gray-200 rounded"
+                      : 'w-20 text-sm'} px-1 py-0.5 pointer-coarse:py-1.5 border border-gray-200 rounded"
                   />
                 {/if}
               </td>
@@ -266,12 +279,14 @@
                   <input
                     type="number"
                     step="0.1"
+                    inputmode="decimal"
+                    aria-label={$t('measurements.head')}
                     value={m.headCirc || ''}
                     on:change={(e) => handleUpdate(m.id, 'headCirc', e.target.value)}
                     placeholder="—"
                     class="{compact
                       ? 'w-14 text-xs'
-                      : 'w-20 text-sm'} px-1 py-0.5 border border-gray-200 rounded"
+                      : 'w-20 text-sm'} px-1 py-0.5 pointer-coarse:py-1.5 border border-gray-200 rounded"
                   />
                 {/if}
               </td>
@@ -305,10 +320,17 @@
                 {#if !$isActiveChildReadOnly}
                   <button
                     on:click={() => handleDelete(m.id)}
-                    class="text-red-500 hover:text-red-700 text-xs"
+                    class="inline-flex items-center justify-center w-6 h-6 pointer-coarse:w-10 pointer-coarse:h-10 rounded text-red-500 hover:text-red-700 hover:bg-red-50"
                     aria-label={$t('measurements.delete.title')}
                   >
-                    ✕
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
                   </button>
                 {/if}
               </td>
