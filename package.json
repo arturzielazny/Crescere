@@ -10,6 +10,8 @@
     "deploy": "npm run build && npm run db:migrate:remote && wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply crescere --local",
     "db:migrate:remote": "wrangler d1 migrations apply crescere --remote",
+    "db:backup": "mkdir -p backups && wrangler d1 export crescere --remote --output backups/crescere-$(date +%Y-%m-%d).sql",
+    "logs": "wrangler tail crescere",
     "test": "vitest run --exclude 'worker/**' && npm run test:worker",
     "test:watch": "vitest --exclude 'worker/**'",
     "test:worker": "vitest run --config vitest.worker.config.js",

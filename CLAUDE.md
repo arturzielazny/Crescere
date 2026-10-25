@@ -16,6 +16,8 @@ npm run test         # Front-end unit tests, then Worker tests
 npm run test:watch   # Front-end unit tests in watch mode
 npm run test:worker  # Worker tests only (run in workerd against real local D1)
 npm run db:migrate:local   # Apply D1 migrations to the local database
+npm run db:backup    # Export the production database to backups/ (git-ignored)
+npm run logs         # Tail production Worker logs
 npm run lint         # Check code with ESLint (src/, worker/, scripts/)
 npm run lint:fix     # Auto-fix ESLint issues
 npm run format       # Format code with Prettier
@@ -24,7 +26,7 @@ npm run format:check # Check formatting without changes
 
 **Pre-commit hooks:** Husky + lint-staged automatically runs ESLint, Prettier, and unit tests on every commit.
 
-**Deployment:** Push to `master` triggers GitHub Actions: tests, D1 migrations, `wrangler deploy` to Cloudflare Workers (needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets).
+**Deployment:** Manual only — `npm run deploy` from a logged-in machine (`npx wrangler login`). There is no CI and pushing to GitHub deploys nothing. Production: https://crescere.arturedward.workers.dev (Worker `crescere`, D1 database `crescere`). Ops commands (logs, backups, rollback, Time Travel) are in `docs/DEVELOPMENT.md` → Production Operations. Don't deploy or run `--remote` database commands unless the user asks.
 
 ## Architecture Overview
 
@@ -109,10 +111,10 @@ Chart configuration is persisted in localStorage via `src/stores/chartStore.js` 
 
 ## Ideas & Backlog
 
-`ideas.md` tracks improvement ideas, bugs, and feature requests. When working on items from this file:
+`docs/ideas.md` tracks improvement ideas, bugs, and feature requests. When working on items from this file:
 
 1. Mark completed items by changing `☐` to `☑` and adding a short summary of what was done
-2. When implementing a new feature or fix that corresponds to an ideas.md item, update it in the same commit
+2. When implementing a new feature or fix that corresponds to a `docs/ideas.md` item, update it in the same commit
 3. New ideas discovered during development can be added to the appropriate section
 
 ## Build Optimizations

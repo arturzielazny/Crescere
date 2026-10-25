@@ -29,7 +29,7 @@
 - ☐ **No self-service password reset.** There is no email, so a forgotten password can only be reset by the operator (`node scripts/set-password.js <email> --remote`). A recovery code shown when saving the account would let users do it themselves.
 - ☐ **No data backup/recovery for anonymous users.** If an anonymous user's session expires or they clear cookies, their data becomes unreachable (the daily cleanup cron then deletes guests with no sessions left). Could offer a recovery code or QR code as backup.
 - ☐ **Bundle size (553 KB).** Chart.js is the biggest contributor. Code splitting the chart components behind a dynamic import would improve initial load.
-- ☑ **Supabase free tier kept pausing the project.** Fixed — moved the backend to Cloudflare Workers + D1 (`worker/`, `migrations/`), which doesn't pause idle projects. Dropped magic links and email verification.
+- ☑ **Backend hosting kept pausing the free-tier project.** Fixed — the backend runs on Cloudflare Workers + D1 (`worker/`, `migrations/`), which doesn't pause idle projects. Magic links and email verification were dropped in the move.
 - ☑ **No rate limiting on auth actions.** Fixed — added client-side rate limiting in `withAuthLoading()`. 2s cooldown for password/anonymous actions, Only successful calls consume the cooldown so users can retry after errors. The Worker also rate limits auth endpoints per IP (`AUTH_LIMITER` binding, 10/min per action), so this client-side layer is primarily a UX guard against accidental double-submits.
 
 ## Polish & Quality of Life

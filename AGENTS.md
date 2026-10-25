@@ -14,7 +14,8 @@
 - `npm install` — install dependencies.
 - `npm run dev` — start Vite dev server with HMR, the Worker API and a local D1 database.
 - `npm run build` — production build into `dist/`.
-- `npm run preview` — serve the built app locally.
+- `npm run preview` — build and serve the production build locally.
+- `npm run deploy` — deploy to Cloudflare (manual only; there is no CI). Only when asked.
 - `npm run test` — run front-end unit tests and Worker tests; `npm run test:watch` for watch mode.
 - `npm run lint` / `npm run lint:fix` — ESLint checks and fixes.
 - `npm run format` / `npm run format:check` — Prettier formatting.

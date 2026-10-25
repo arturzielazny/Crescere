@@ -78,7 +78,10 @@
       // First visit — auto sign in anonymously so user lands right in the app
       try {
         await signInAnonymously();
-      } catch (_err) {
+      } catch (err) {
+        // Show the error instead of an endless spinner; the Sign in button still works
+        dataError.set(err.message);
+        dataLoading.set(false);
         return;
       }
     }

@@ -22,7 +22,7 @@ const ROOT = resolve(import.meta.dirname, '..');
 const REPORTS = resolve(ROOT, 'reports');
 const REPORT_PATH = resolve(REPORTS, 'lighthouse.html');
 const PORT = 4173;
-const URL = `http://localhost:${PORT}/Crescere/`;
+const URL = `http://localhost:${PORT}/`;
 const openReport = process.argv.includes('--open');
 
 if (!existsSync(REPORTS)) mkdirSync(REPORTS, { recursive: true });

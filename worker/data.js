@@ -1,8 +1,8 @@
 /**
  * Data routes: children, measurements, preferences and sharing.
  *
- * Every query is scoped to the signed-in user here — this replaces the
- * row-level security policies the Supabase schema used to have.
+ * D1 has no row-level security, so every query here is scoped to the
+ * signed-in user. Keep it that way when adding routes.
  */
 
 import {

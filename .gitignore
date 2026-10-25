@@ -36,5 +36,6 @@ reports/
 .wrangler/
 .dev.vars*
 
-# Data exported by scripts/migrate-from-supabase.js
-supabase-export.sql
+
+# Database backups (personal data)
+backups/

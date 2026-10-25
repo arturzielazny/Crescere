@@ -1,6 +1,8 @@
 # Developer Onboarding Guide
 
-Welcome to **Crescere** — a pediatric growth tracker built with Svelte 5 on Cloudflare Workers + D1. This guide covers everything you need to get the project running locally, understand the architecture, and start contributing.
+Welcome to **Crescere** — a pediatric growth tracker built with Svelte 5 on Cloudflare Workers + D1. This guide covers everything you need to get the project running locally, understand the architecture, and deploy.
+
+**Production:** https://crescere.arturedward.workers.dev — Cloudflare Worker `crescere` with D1 database `crescere`. There is no CI: you deploy from your machine with `npm run deploy`. GitHub only hosts the code.
 
 ## Table of Contents
 
@@ -17,6 +19,7 @@ Welcome to **Crescere** — a pediatric growth tracker built with Svelte 5 on Cl
 - [Testing](#testing)
 - [Code Style & Linting](#code-style--linting)
 - [Deployment](#deployment)
+- [Production Operations](#production-operations)
 - [Common Tasks](#common-tasks)
 - [Troubleshooting](#troubleshooting)
 
@@ -84,14 +87,11 @@ crescere/
 │   ├── password.js             # PBKDF2 password hashing (WebCrypto)
 │   ├── http.js                 # JSON responses and input validation
 │   └── test/                   # Worker tests (run inside workerd with real D1)
-├── .github/workflows/
-│   └── deploy.yml              # Cloudflare deployment (master → production)
 ├── .husky/
 │   └── pre-commit              # Runs lint-staged + tests before each commit
 ├── scripts/
 │   ├── compress-who-data.js    # Recompress WHO reference data
 │   ├── set-password.js         # Reset a user's password in D1 (no email reset exists)
-│   ├── migrate-from-supabase.js  # One-off export of a Supabase account to D1 SQL
 │   ├── analyze.js              # Runs all code analysis tools
 │   └── lighthouse.js           # Lighthouse audit
 ├── src/
@@ -144,7 +144,7 @@ crescere/
 | Testing    | Vitest 4 + `@cloudflare/vitest-plugin`               |
 | Linting    | ESLint 9 + eslint-plugin-svelte                      |
 | Formatting | Prettier 3 + prettier-plugin-svelte                  |
-| Deployment | `wrangler deploy` via GitHub Actions                 |
+| Deployment | `npm run deploy` (Wrangler) from a developer machine |
 
 The Worker serves both the API (`/api/*`) and the built SPA (static assets), so the app and API share one origin — no CORS, and the session is an `HttpOnly` cookie.
 
@@ -157,6 +157,8 @@ The Worker serves both the API (`/api/*`) and the built SPA (static assets), so 
 - **No email**: Nothing in the app sends email. There are no magic links, no email verification and no password reset email — see [Authentication](#authentication).
 
 ## Data Flow
+
+A full state diagram of auth, children, sharing and views is in [`state-transitions.svg`](state-transitions.svg) (source: `state-transitions.dot`, re-render with `dot -Tsvg docs/state-transitions.dot -o docs/state-transitions.svg`).
 
 ### Store architecture
 
@@ -370,32 +372,55 @@ Always use optional chaining for derived store values in templates, even inside 
 
 ## Deployment
 
-### First-time Cloudflare setup
+Deploys run from your machine. Nothing deploys on `git push`.
+
+### Deploying a change
+
+```bash
+npm test          # Front-end + Worker tests
+npm run deploy    # Build, apply pending D1 migrations to production, wrangler deploy
+```
+
+`npm run deploy` runs migrations **before** uploading the new Worker, so a migration must keep working with the currently deployed code (add columns/tables; don't rename or drop something the live Worker still uses in the same deploy).
+
+The first time on a new machine, run `npx wrangler login` once. It opens a Cloudflare page in the browser to authorize Wrangler; the token is stored in `~/.config/.wrangler/`. `npx wrangler whoami` shows which account you're using.
+
+### Setting up a fresh environment
+
+Only needed for a brand-new deployment (e.g. a staging copy or a fork), not for the existing production app:
 
 1. `npx wrangler login`
-2. `npx wrangler d1 create crescere` — copy the printed `database_id` into `wrangler.jsonc` (only for a new deployment; the id there is the production database)
-3. `npm run deploy` — builds, applies migrations to the remote database, and deploys the Worker
+2. `npx wrangler d1 create <name>` and put the printed `database_id` (and the name) in `wrangler.jsonc`
+3. `npm run deploy`
 
 The app is then live at `https://crescere.<your-subdomain>.workers.dev`.
 
-### Production (automatic)
-
-Push to `master` triggers `.github/workflows/deploy.yml`, which runs the tests, applies D1 migrations and runs `wrangler deploy`. It needs two GitHub secrets:
-
-| Secret                  | Value                                                                    |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `CLOUDFLARE_API_TOKEN`  | API token with **Workers Scripts: Edit** and **D1: Edit** permissions    |
-| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID (dashboard → Workers & Pages → right sidebar) |
-
-### Manual preview
+### Previewing the production build locally
 
 ```bash
-npm run preview  # Build and serve the production build (with the Worker) locally
+npm run preview  # Build and serve the production build (with the Worker and local D1)
 ```
 
 ### Free plan limits
 
-The Workers Free plan allows 10 ms of CPU per request. Hashing a password at 100,000 PBKDF2 iterations takes roughly 10–15 ms, so sign-in, save account and change password may hit that limit (error 1102). If they do, either move to Workers Paid or lower `PASSWORD_ITERATIONS` in `wrangler.jsonc`. Existing hashes keep their own iteration count, so after lowering it, reset the password once with `scripts/set-password.js --iterations N`.
+The Workers Free plan allows 10 ms of CPU per request. Hashing a password at 100,000 PBKDF2 iterations takes roughly 10–15 ms, so sign-in, save account and change password may hit that limit (error 1102). So far they have worked in production. If they start failing, either move to Workers Paid or lower `PASSWORD_ITERATIONS` in `wrangler.jsonc`. Existing hashes keep their own iteration count, so after lowering it, reset the password once with `scripts/set-password.js --iterations N`.
+
+## Production Operations
+
+| Task                         | Command                                                                     |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| Live logs                    | `npm run logs` (`wrangler tail`)                                            |
+| Recent deployments           | `npx wrangler deployments list`                                             |
+| Roll back the Worker         | `npx wrangler rollback` (code only — database changes are not rolled back)  |
+| Back up the database         | `npm run db:backup` → `backups/crescere-<date>.sql` (git-ignored)           |
+| Restore to a point in time   | `npx wrangler d1 time-travel restore crescere --timestamp=<ISO time>`       |
+| Run SQL against production   | `npx wrangler d1 execute crescere --remote --command "SELECT ..."`          |
+| Reset a user's password      | `node scripts/set-password.js <email> --remote`                             |
+
+- D1 keeps point-in-time history (Time Travel) automatically — 7 days on the Free plan. `npx wrangler d1 time-travel info crescere` shows the current bookmark; take one before risky manual SQL.
+- Backups contain personal data (children's names, birth dates and measurements). Keep them out of git — `backups/` is ignored.
+- The daily cron (03:17 UTC) deletes expired sessions and guest users without a session. Its output shows up in `npm run logs` and in the dashboard (Workers & Pages → crescere → Logs).
+- The Cloudflare dashboard (Workers & Pages → crescere) shows requests, errors and CPU time; Storage & Databases → D1 → crescere has a SQL console.
 
 ## Common Tasks
 
@@ -409,6 +434,8 @@ The Workers Free plan allows 10 ms of CPU per request. Hashing a password at 100
 6. Add Worker tests, then update stores as needed
 
 ### Reset a user's password
+
+There is no email-based reset. Run this and type the new password twice (it isn't echoed); it also signs the user out everywhere:
 
 ```bash
 node scripts/set-password.js someone@example.com --remote
@@ -448,4 +475,4 @@ The Vite dev server should auto-detect file changes. If HMR stops working, resta
 
 ### Build warning about chunk size
 
-The ~690 KB bundle is expected. Chart.js is the largest contributor. This is tracked in `ideas.md` as a potential optimization.
+The ~690 KB bundle is expected. Chart.js is the largest contributor. This is tracked in `docs/ideas.md` as a potential optimization.
