@@ -1,9 +1,78 @@
 /**
- * API functions for Supabase CRUD operations
- * Handles children, measurements, and user preferences
+ * API client for the Crescere Worker (Cloudflare Workers + D1)
+ * Handles auth, children, measurements, user preferences and sharing.
+ * The session lives in an HttpOnly cookie set by the Worker.
  */
 
-import { supabase } from './supabaseClient.js';
+/**
+ * Call a JSON endpoint; throws an Error carrying the server's message and HTTP status
+ * @param {string} method
+ * @param {string} path - Path under /api
+ * @param {Object} [body]
+ */
+async function request(method, path, body) {
+  const response = await fetch(`/api${path}`, {
+    method,
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (_err) {
+    // Non-JSON response (e.g. network proxy error page)
+  }
+
+  if (!response.ok) {
+    const error = new Error(data?.error || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+// ============================================================================
+// Auth
+// ============================================================================
+
+/**
+ * Get the signed-in user, or null
+ * @returns {Promise<{id: string, email: string|null, isAnonymous: boolean}|null>}
+ */
+export async function getSessionUser() {
+  const { user } = await request('GET', '/auth/session');
+  return user;
+}
+
+/** Create a guest user and sign in as it */
+export async function signInAnonymously() {
+  const { user } = await request('POST', '/auth/anonymous');
+  return user;
+}
+
+/** Sign in with email and password */
+export async function signInWithPassword(email, password) {
+  const { user } = await request('POST', '/auth/login', { email, password });
+  return user;
+}
+
+/** Turn the current guest user into a saved account (keeps all data) */
+export async function claimAccount(email, password) {
+  const { user } = await request('POST', '/auth/claim', { email, password });
+  return user;
+}
+
+/** Change the password of a saved account */
+export async function changePassword(currentPassword, newPassword) {
+  await request('POST', '/auth/password', { currentPassword, newPassword });
+}
+
+/** End the current session */
+export async function signOut() {
+  await request('POST', '/auth/logout');
+}
 
 // ============================================================================
 // Children
@@ -13,30 +82,8 @@ import { supabase } from './supabaseClient.js';
  * Fetch all children for the current user
  * @returns {Promise<Array>} Array of children with their measurements
  */
-export async function fetchChildren() {
-  const { data, error } = await supabase
-    .from('children')
-    .select(
-      `
-      id,
-      name,
-      birth_date,
-      sex,
-      measurements (
-        id,
-        date,
-        weight,
-        length,
-        head_circ
-      )
-    `
-    )
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-
-  // Transform to app format
-  return (data || []).map(transformChildFromDb);
+export function fetchChildren() {
+  return request('GET', '/children');
 }
 
 /**
@@ -45,24 +92,12 @@ export async function fetchChildren() {
  * @returns {Promise<string>} Created child ID
  */
 export async function createChild(profile) {
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { data, error } = await supabase
-    .from('children')
-    .insert({
-      user_id: user.id,
-      name: profile.name || '',
-      birth_date: profile.birthDate,
-      sex: profile.sex
-    })
-    .select('id')
-    .single();
-
-  if (error) throw error;
-  return data.id;
+  const { id } = await request('POST', '/children', {
+    name: profile.name || '',
+    birthDate: profile.birthDate,
+    sex: profile.sex
+  });
+  return id;
 }
 
 /**
@@ -73,14 +108,12 @@ export async function createChild(profile) {
 export async function updateChild(id, profile) {
   const updates = {};
   if (profile.name !== undefined) updates.name = profile.name;
-  if (profile.birthDate !== undefined) updates.birth_date = profile.birthDate;
+  if (profile.birthDate !== undefined) updates.birthDate = profile.birthDate;
   if (profile.sex !== undefined) updates.sex = profile.sex;
 
   if (Object.keys(updates).length === 0) return;
 
-  const { error } = await supabase.from('children').update(updates).eq('id', id);
-
-  if (error) throw error;
+  await request('PATCH', `/children/${id}`, updates);
 }
 
 /**
@@ -88,9 +121,7 @@ export async function updateChild(id, profile) {
  * @param {string} id - Child ID
  */
 export async function deleteChild(id) {
-  const { error } = await supabase.from('children').delete().eq('id', id);
-
-  if (error) throw error;
+  await request('DELETE', `/children/${id}`);
 }
 
 // ============================================================================
@@ -104,20 +135,13 @@ export async function deleteChild(id) {
  * @returns {Promise<string>} Created measurement ID
  */
 export async function createMeasurement(childId, measurement) {
-  const { data, error } = await supabase
-    .from('measurements')
-    .insert({
-      child_id: childId,
-      date: measurement.date,
-      weight: measurement.weight,
-      length: measurement.length,
-      head_circ: measurement.headCirc
-    })
-    .select('id')
-    .single();
-
-  if (error) throw error;
-  return data.id;
+  const { id } = await request('POST', `/children/${childId}/measurements`, {
+    date: measurement.date,
+    weight: measurement.weight ?? null,
+    length: measurement.length ?? null,
+    headCirc: measurement.headCirc ?? null
+  });
+  return id;
 }
 
 /**
@@ -126,17 +150,14 @@ export async function createMeasurement(childId, measurement) {
  * @param {Object} updates - { date?, weight?, length?, headCirc? }
  */
 export async function updateMeasurement(id, updates) {
-  const dbUpdates = {};
-  if (updates.date !== undefined) dbUpdates.date = updates.date;
-  if (updates.weight !== undefined) dbUpdates.weight = updates.weight;
-  if (updates.length !== undefined) dbUpdates.length = updates.length;
-  if (updates.headCirc !== undefined) dbUpdates.head_circ = updates.headCirc;
+  const body = {};
+  for (const field of ['date', 'weight', 'length', 'headCirc']) {
+    if (updates[field] !== undefined) body[field] = updates[field];
+  }
 
-  if (Object.keys(dbUpdates).length === 0) return;
+  if (Object.keys(body).length === 0) return;
 
-  const { error } = await supabase.from('measurements').update(dbUpdates).eq('id', id);
-
-  if (error) throw error;
+  await request('PATCH', `/measurements/${id}`, body);
 }
 
 /**
@@ -144,9 +165,7 @@ export async function updateMeasurement(id, updates) {
  * @param {string} id - Measurement ID
  */
 export async function deleteMeasurement(id) {
-  const { error } = await supabase.from('measurements').delete().eq('id', id);
-
-  if (error) throw error;
+  await request('DELETE', `/measurements/${id}`);
 }
 
 // ============================================================================
@@ -158,13 +177,8 @@ export async function deleteMeasurement(id) {
  * @returns {Promise<string|null>} Active child ID or null
  */
 export async function getActiveChildId() {
-  const { data, error } = await supabase
-    .from('user_preferences')
-    .select('active_child_id')
-    .single();
-
-  if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
-  return data?.active_child_id || null;
+  const { activeChildId } = await request('GET', '/preferences');
+  return activeChildId;
 }
 
 /**
@@ -172,22 +186,7 @@ export async function getActiveChildId() {
  * @param {string|null} childId - Child ID or null to clear
  */
 export async function setActiveChildId(childId) {
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { error } = await supabase.from('user_preferences').upsert(
-    {
-      user_id: user.id,
-      active_child_id: childId
-    },
-    {
-      onConflict: 'user_id'
-    }
-  );
-
-  if (error) throw error;
+  await request('PUT', '/preferences', { activeChildId: childId });
 }
 
 // ============================================================================
@@ -195,59 +194,22 @@ export async function setActiveChildId(childId) {
 // ============================================================================
 
 /**
- * Generate a URL-safe random token (22 chars, 128-bit)
- * @returns {string}
- */
-export function generateToken() {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  // Convert to hex string (32 chars, URL-safe)
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
  * Create a named share link for a child
  * @param {string} childId - Child ID
  * @param {string} label - Human-readable label (e.g., "Doctor")
  * @returns {Promise<{id: string, token: string, label: string, created_at: string}>}
  */
-export async function createShare(childId, label) {
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const token = generateToken();
-
-  const { data, error } = await supabase
-    .from('child_shares')
-    .insert({
-      child_id: childId,
-      owner_id: user.id,
-      token,
-      label: label || ''
-    })
-    .select('id, token, label, created_at')
-    .single();
-
-  if (error) throw error;
-  return data;
+export function createShare(childId, label) {
+  return request('POST', `/children/${childId}/shares`, { label: label || '' });
 }
 
 /**
- * List all shares for a child (owner only via RLS)
+ * List all shares for a child (owner only)
  * @param {string} childId - Child ID
  * @returns {Promise<Array>}
  */
-export async function fetchShares(childId) {
-  const { data, error } = await supabase
-    .from('child_shares')
-    .select('id, token, label, created_at')
-    .eq('child_id', childId)
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
+export function fetchShares(childId) {
+  return request('GET', `/children/${childId}/shares`);
 }
 
 /**
@@ -255,21 +217,16 @@ export async function fetchShares(childId) {
  * @param {string} shareId - Share ID
  */
 export async function revokeShare(shareId) {
-  const { error } = await supabase.from('child_shares').delete().eq('id', shareId);
-
-  if (error) throw error;
+  await request('DELETE', `/shares/${shareId}`);
 }
 
 /**
- * Accept a share via token (calls SECURITY DEFINER RPC)
+ * Accept a share via token
  * @param {string} token - Share token
- * @returns {Promise<{child_id: string, already_accepted: boolean}>}
+ * @returns {Promise<{childId: string, alreadyAccepted: boolean}>}
  */
-export async function acceptShare(token) {
-  const { data, error } = await supabase.rpc('accept_share', { share_token: token });
-
-  if (error) throw error;
-  return data;
+export function acceptShare(token) {
+  return request('POST', '/shares/accept', { token });
 }
 
 /**
@@ -277,64 +234,8 @@ export async function acceptShare(token) {
  * Returns children in app format with _shared and _shareLabel markers
  * @returns {Promise<Array>}
  */
-export async function fetchSharedChildren() {
-  // Get access rows for current user
-  const { data: accessRows, error: accessError } = await supabase
-    .from('shared_child_access')
-    .select('child_id, share_id');
-
-  if (accessError) throw accessError;
-  if (!accessRows || accessRows.length === 0) return [];
-
-  const childIds = accessRows.map((a) => a.child_id);
-
-  // Fetch the actual children with measurements
-  const { data: children, error: childError } = await supabase
-    .from('children')
-    .select(
-      `
-      id,
-      name,
-      birth_date,
-      sex,
-      measurements (
-        id,
-        date,
-        weight,
-        length,
-        head_circ
-      )
-    `
-    )
-    .in('id', childIds);
-
-  if (childError) throw childError;
-
-  // Fetch share labels
-  const shareIds = accessRows.map((a) => a.share_id);
-  const { data: shares } = await supabase
-    .from('child_shares')
-    .select('id, label')
-    .in('id', shareIds);
-
-  const shareLabelMap = {};
-  if (shares) {
-    for (const s of shares) {
-      shareLabelMap[s.id] = s.label;
-    }
-  }
-
-  // Build access-to-label map
-  const childLabelMap = {};
-  for (const a of accessRows) {
-    childLabelMap[a.child_id] = shareLabelMap[a.share_id] || '';
-  }
-
-  return (children || []).map((child) => ({
-    ...transformChildFromDb(child),
-    _shared: true,
-    _shareLabel: childLabelMap[child.id] || ''
-  }));
+export function fetchSharedChildren() {
+  return request('GET', '/shared-children');
 }
 
 /**
@@ -342,39 +243,5 @@ export async function fetchSharedChildren() {
  * @param {string} childId - Child ID
  */
 export async function removeSharedChild(childId) {
-  const { error } = await supabase.from('shared_child_access').delete().eq('child_id', childId);
-
-  if (error) throw error;
-}
-
-// ============================================================================
-// Transform Functions
-// ============================================================================
-
-/**
- * Transform child from database format to app format
- */
-function transformChildFromDb(dbChild) {
-  return {
-    id: dbChild.id,
-    profile: {
-      name: dbChild.name,
-      birthDate: dbChild.birth_date,
-      sex: dbChild.sex
-    },
-    measurements: (dbChild.measurements || []).map(transformMeasurementFromDb)
-  };
-}
-
-/**
- * Transform measurement from database format to app format
- */
-function transformMeasurementFromDb(dbMeasurement) {
-  return {
-    id: dbMeasurement.id,
-    date: dbMeasurement.date,
-    weight: dbMeasurement.weight,
-    length: dbMeasurement.length ? Number(dbMeasurement.length) : null,
-    headCirc: dbMeasurement.head_circ ? Number(dbMeasurement.head_circ) : null
-  };
+  await request('DELETE', `/shared-children/${childId}`);
 }

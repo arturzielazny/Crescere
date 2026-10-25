@@ -1,6 +1,6 @@
 /**
  * Svelte store for child growth data
- * Synced with Supabase backend
+ * Synced with the Worker API backend (Cloudflare D1)
  */
 
 import { writable, derived, get } from 'svelte/store';
@@ -28,7 +28,7 @@ export const exampleChildId = writable(null);
 // Track children shared with this user (read-only)
 export const sharedChildIds = writable(new Set());
 
-// Track if we're in sync mode (Supabase connected)
+// Track if we're in sync mode (backend connected)
 let syncEnabled = false;
 
 // Reactive guard: auto-remove example child when real children exist.
@@ -50,7 +50,7 @@ childStore.subscribe((state) => {
 // Track children currently being synced to prevent double-sync
 const syncingChildIds = new Set();
 
-// Track children that exist only locally (not yet created in Supabase)
+// Track children that exist only locally (not yet created in the backend)
 const pendingChildIds = new Set();
 
 const getActiveChild = (state) => {
@@ -125,7 +125,7 @@ export const measurementsWithZScores = derived(childStore, ($store) => {
 // ============================================================================
 
 /**
- * Enable sync mode and load data from Supabase.
+ * Enable sync mode and load data from the backend.
  * If no children exist on the backend, injects a local-only example child.
  * @param {string} [exampleName] - Translated name for the example child
  */
@@ -518,7 +518,7 @@ export async function syncChildToBackend(childId) {
 
 /**
  * Import children from CSV data, syncing each to the backend.
- * Imported children are created in Supabase immediately so they get real IDs.
+ * Imported children are created in the backend immediately so they get real IDs.
  * @param {Array} children - Array of child objects from CSV import
  */
 export async function importChildren(children) {
@@ -646,9 +646,9 @@ export async function acceptLiveShare(token) {
     return {
       ...state,
       children: [...ownChildren, ...shared],
-      activeChildId: result.child_id
+      activeChildId: result.childId
     };
   });
 
-  return { childId: result.child_id, alreadyAccepted: result.already_accepted };
+  return result;
 }

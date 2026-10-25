@@ -1,5 +1,5 @@
 /**
- * Sharing utilities for child data via Supabase live share links
+ * Sharing utilities for child data via live share links
  */
 
 /**

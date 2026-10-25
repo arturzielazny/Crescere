@@ -1,12 +1,16 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
+import { cloudflare } from '@cloudflare/vite-plugin';
 import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig({
   plugins: [
     svelte(),
     tailwindcss(),
+    // Runs the Worker (worker/index.js) and local D1 inside `vite` dev/preview and builds it.
+    // Skipped under Vitest, which tests the Worker separately (vitest.worker.config.js).
+    !process.env.VITEST && cloudflare(),
     process.env.ANALYZE &&
       visualizer({
         filename: 'reports/bundle.html',
@@ -16,7 +20,6 @@ export default defineConfig({
         template: 'treemap'
       })
   ].filter(Boolean),
-  base: '/Crescere/',
   test: {
     coverage: {
       provider: 'v8',

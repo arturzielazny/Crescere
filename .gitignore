@@ -31,3 +31,10 @@ reports/
 
 # Claude Code
 .claude
+
+# Cloudflare local state and secrets
+.wrangler/
+.dev.vars*
+
+# Data exported by scripts/migrate-from-supabase.js
+supabase-export.sql

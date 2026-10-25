@@ -42,7 +42,7 @@ function run(name, cmd, { optional = false } = {}) {
 run('ESLint + SonarJS', 'npx eslint src/ --format stylish', { optional: true });
 
 // 2. Test coverage
-run('Test Coverage', 'npx vitest run --exclude "**/*.integration.test.js" --coverage', {
+run('Test Coverage', 'npx vitest run --exclude "worker/**" --coverage', {
   optional: true
 });
 

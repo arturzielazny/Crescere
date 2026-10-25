@@ -1,12 +1,12 @@
 # Developer Onboarding Guide
 
-Welcome to **Crescere** — a pediatric growth tracker built with Svelte 5 and Supabase. This guide covers everything you need to get the project running locally, understand the architecture, and start contributing.
+Welcome to **Crescere** — a pediatric growth tracker built with Svelte 5 on Cloudflare Workers + D1. This guide covers everything you need to get the project running locally, understand the architecture, and start contributing.
 
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
-- [Local Supabase Setup](#local-supabase-setup)
+- [Local Database](#local-database)
 - [Project Structure](#project-structure)
 - [Architecture Deep Dive](#architecture-deep-dive)
 - [Data Flow](#data-flow)
@@ -26,8 +26,8 @@ Welcome to **Crescere** — a pediatric growth tracker built with Svelte 5 and S
 
 - **Node.js** 20+
 - **npm** (bundled with Node)
-- **Supabase CLI** — required for the local database ([install guide](https://supabase.com/docs/guides/cli/getting-started))
-- **Docker** — required by Supabase CLI for local containers
+
+That's all. Wrangler (the Cloudflare CLI) is a dev dependency, and the local Worker runtime and D1 database run inside `npm run dev` — no Docker, no accounts.
 
 ## Quick Start
 
@@ -37,143 +37,95 @@ git clone https://github.com/arturzielazny/Crescere.git
 cd Crescere
 npm install
 
-# 2. Start local Supabase (Docker must be running)
-supabase start
-
-# 3. Start dev server
+# 2. Start dev server (applies D1 migrations to the local database first)
 npm run dev
 ```
 
-The app will be available at **http://localhost:5173/Crescere/**.
+The app will be available at **http://localhost:5173/**. The Svelte app gets hot reloading, and requests to `/api/*` run the Worker (`worker/index.js`) against a local D1 database, through `@cloudflare/vite-plugin`.
 
-### Without Supabase (limited)
+## Local Database
 
-If you only need to work on UI/charts and don't need auth or persistence:
-
-```bash
-npm install
-npm run dev
-```
-
-The app will start but show a console warning about missing Supabase credentials. You can browse the UI using the example (demo) child, but cannot sign in or persist data.
-
-## Local Supabase Setup
-
-### First-time setup
-
-```bash
-# Start local Supabase Docker containers
-supabase start
-
-# This outputs connection info:
-#   API URL:    http://127.0.0.1:54321
-#   Anon key:   eyJhbG...
-#   Studio URL: http://127.0.0.1:54323
-```
-
-The `.env.local` file is pre-configured with the default local Supabase credentials. You should not need to change it.
-
-### Local services
-
-| Service        | URL                          | Purpose                              |
-|----------------|------------------------------|--------------------------------------|
-| API            | http://127.0.0.1:54321      | REST API (PostgREST)                 |
-| Studio         | http://127.0.0.1:54323      | Database admin UI                    |
-| Inbucket       | http://127.0.0.1:54324      | Email testing (catches magic links)  |
-| Database       | localhost:54322              | Postgres 17 (direct connection)      |
+The local D1 database is a SQLite file under `.wrangler/state/` (git-ignored). It persists between runs of `npm run dev`.
 
 ### Database schema
 
-Migrations are in `supabase/migrations/`:
+Migrations are in `migrations/`, applied in order by Wrangler:
 
-1. **`20250201000000_initial_schema.sql`** — Core tables:
+1. **`0001_initial_schema.sql`**:
+   - `users` (id, email, password_hash) — a guest user has no email and no password
+   - `sessions` (token_hash, user_id, expires_at) — only a SHA-256 of the session token is stored
    - `children` (id, user_id, name, birth_date, sex, created_at, updated_at)
    - `measurements` (id, child_id, date, weight, length, head_circ)
    - `user_preferences` (user_id, active_child_id)
-   - Row-Level Security (RLS) policies enforce per-user ownership
-
-2. **`20250202000000_child_sharing.sql`** — Sharing system:
    - `child_shares` (token-based named share links)
-   - `shared_child_access` (tracks who accepted which shares)
-   - `accept_share(share_token)` RPC function
+   - `shared_child_access` (who accepted which shares)
 
-### Useful Supabase commands
+There is no row-level security in D1: **every query in `worker/data.js` scopes itself to the signed-in user**. Keep that true when adding routes, and add an isolation test (see `worker/test/data.test.js`).
 
-```bash
-supabase start          # Start local containers
-supabase stop           # Stop local containers
-supabase status         # Show running service URLs and keys
-supabase db reset       # Re-run all migrations + seed (destructive!)
-supabase db diff        # Generate migration from schema changes
-supabase migration new  # Create empty migration file
-```
-
-### Connecting to the local database directly
+### Useful commands
 
 ```bash
-psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+npm run db:migrate:local    # Apply pending migrations to the local database
+npx wrangler d1 execute crescere --local --command "SELECT * FROM users"
+npx wrangler d1 migrations create crescere my_change   # New migration file
+rm -rf .wrangler/state      # Wipe the local database (then npm run dev)
 ```
 
 ## Project Structure
 
 ```
 crescere/
-├── .env.local                  # Local Supabase credentials (pre-configured)
-├── .env.example                # Template for production credentials
+├── wrangler.jsonc              # Worker config: D1 binding, rate limiter, cron, assets
+├── migrations/                 # D1 schema migrations (SQL)
+├── worker/                     # Cloudflare Worker (the backend)
+│   ├── index.js                # Router, CSRF checks, error handling, cron handler
+│   ├── auth.js                 # Guest users, claiming, sign-in, sessions, cleanup
+│   ├── data.js                 # Children, measurements, preferences, sharing
+│   ├── password.js             # PBKDF2 password hashing (WebCrypto)
+│   ├── http.js                 # JSON responses and input validation
+│   └── test/                   # Worker tests (run inside workerd with real D1)
 ├── .github/workflows/
-│   └── deploy.yml              # GitHub Pages deployment (master → production)
+│   └── deploy.yml              # Cloudflare deployment (master → production)
 ├── .husky/
 │   └── pre-commit              # Runs lint-staged + tests before each commit
-├── supabase/
-│   ├── config.toml             # Local Supabase configuration
-│   ├── migrations/             # Database schema migrations (SQL)
-│   └── seed.sql                # Seed data (currently empty)
 ├── scripts/
-│   └── compress-who-data.js    # Utility to recompress WHO reference data
+│   ├── compress-who-data.js    # Recompress WHO reference data
+│   ├── set-password.js         # Reset a user's password in D1 (no email reset exists)
+│   ├── migrate-from-supabase.js  # One-off export of a Supabase account to D1 SQL
+│   ├── analyze.js              # Runs all code analysis tools
+│   └── lighthouse.js           # Lighthouse audit
 ├── src/
 │   ├── main.js                 # App entry point
 │   ├── app.css                 # Global styles (Tailwind v4 import)
-│   ├── App.svelte              # Root component (auth, routing, migration)
+│   ├── App.svelte              # Root component (auth bootstrap, share links, layout)
 │   ├── components/             # Svelte UI components
-│   │   ├── Header.svelte
-│   │   ├── WelcomeScreen.svelte
+│   │   ├── AuthModal.svelte          # Sign in / save account / change password
+│   │   ├── UserMenu.svelte
+│   │   ├── OnboardingBanner.svelte
 │   │   ├── ChildList.svelte
-│   │   ├── ChildProfile.svelte
 │   │   ├── MeasurementTable.svelte
 │   │   ├── ChartGrid.svelte          # Chart group layout + drag reorder
-│   │   ├── GrowthMetricChart.svelte   # Raw measurement charts
-│   │   ├── ZScoreChart.svelte         # Z-score deviation charts
-│   │   ├── VelocityChart.svelte       # Growth velocity charts
+│   │   ├── GrowthMetricChart.svelte  # Raw measurement charts
+│   │   ├── ZScoreChart.svelte        # Z-score deviation charts
+│   │   ├── VelocityChart.svelte      # Growth velocity charts
 │   │   ├── ShareModal.svelte
-│   │   ├── ConfirmModal.svelte
-│   │   └── Toast.svelte
+│   │   └── ...
 │   ├── stores/                 # Svelte stores (state management)
 │   │   ├── childStore.js       # Core data store (children, measurements)
 │   │   ├── authStore.js        # Authentication state + methods
 │   │   ├── chartStore.js       # Chart layout preferences
 │   │   └── i18n.js             # Internationalization (en/pl)
 │   ├── lib/                    # Utility modules
-│   │   ├── api.js              # Supabase CRUD operations
-│   │   ├── supabaseClient.js   # Supabase client initialization
+│   │   ├── api.js              # fetch client for the Worker API
 │   │   ├── zscore.js           # WHO LMS z-score calculations
-│   │   ├── share.js            # URL sharing (snapshot + live)
-│   │   ├── storage.js          # Legacy localStorage (migration only)
-│   │   ├── migrate.js          # localStorage → Supabase migration
-│   │   ├── utils.js            # Date formatting, age calculation
-│   │   └── __mocks__/          # Vitest mocks
-│   │       └── supabaseClient.js
+│   │   ├── share.js            # Live share link URLs
+│   │   ├── csv.js              # CSV export/import
+│   │   ├── utils.js            # Date formatting
+│   │   └── __mocks__/api.js    # In-memory API for unit tests
 │   └── data/                   # WHO reference datasets
-│       ├── who-weight.js       # Weight-for-age LMS tables
-│       ├── who-length.js       # Length-for-age LMS tables
-│       ├── who-headc.js        # Head circumference-for-age LMS tables
-│       └── who-wfl.js          # Weight-for-length LMS tables
 ├── eslint.config.js            # ESLint 9 flat config
-├── svelte.config.js            # Svelte preprocessor config
-├── vite.config.js              # Vite + Svelte + Tailwind v4 plugins
-├── jsconfig.json               # JS/TS language service config
-├── .prettierrc                 # Prettier formatting rules
-├── CLAUDE.md                   # AI assistant guidance
-├── ideas.md                    # Feature backlog and known issues
+├── vite.config.js              # Vite + Svelte + Tailwind v4 + Cloudflare plugins
+├── vitest.worker.config.js     # Worker test config (@cloudflare/vitest-plugin)
 └── package.json                # Dependencies, scripts, lint-staged config
 ```
 
@@ -181,24 +133,28 @@ crescere/
 
 ### Tech Stack
 
-| Layer          | Technology                                    |
-|----------------|-----------------------------------------------|
-| Framework      | Svelte 5 (SPA, no SSR)                        |
-| Build          | Vite 7 with `@sveltejs/vite-plugin-svelte`    |
-| Styling        | Tailwind CSS v4 via `@tailwindcss/vite`        |
-| Backend        | Supabase (Postgres + Auth + RLS + RPC)         |
-| Charts         | Chart.js 4 (tree-shaken) + chartjs-plugin-annotation |
-| Testing        | Vitest 4                                       |
-| Linting        | ESLint 9 + eslint-plugin-svelte                |
-| Formatting     | Prettier 3 + prettier-plugin-svelte            |
-| Deployment     | GitHub Pages via GitHub Actions                |
+| Layer      | Technology                                           |
+| ---------- | ---------------------------------------------------- |
+| Framework  | Svelte 5 (SPA, no SSR)                               |
+| Build      | Vite 7 with `@sveltejs/vite-plugin-svelte`           |
+| Styling    | Tailwind CSS v4 via `@tailwindcss/vite`              |
+| Backend    | Cloudflare Worker (plain JS, no framework)           |
+| Database   | Cloudflare D1 (SQLite)                               |
+| Charts     | Chart.js 4 (tree-shaken) + chartjs-plugin-annotation |
+| Testing    | Vitest 4 + `@cloudflare/vitest-plugin`               |
+| Linting    | ESLint 9 + eslint-plugin-svelte                      |
+| Formatting | Prettier 3 + prettier-plugin-svelte                  |
+| Deployment | `wrangler deploy` via GitHub Actions                 |
+
+The Worker serves both the API (`/api/*`) and the built SPA (static assets), so the app and API share one origin — no CORS, and the session is an `HttpOnly` cookie.
 
 ### Key design decisions
 
-- **Optimistic updates**: All mutations update the Svelte store immediately, then fire an async Supabase call. On failure, the store rolls back. This makes the UI feel instant.
-- **No localStorage persistence**: Child data is stored exclusively in Supabase. The `storage.js` file exists solely to migrate data from the pre-Supabase era.
+- **Optimistic updates**: All mutations update the Svelte store immediately, then fire an async API call. On failure, the store rolls back. This makes the UI feel instant.
+- **No localStorage persistence for data**: Child data lives only in D1.
 - **Chart layout in localStorage**: Chart ordering and column preferences are stored in localStorage (via `chartStore.js`) since they're UI preferences, not user data.
-- **Row-Level Security**: Every Supabase table has RLS policies. Users can only access their own data. Sharing is enforced at the database level.
+- **Authorization in the Worker**: D1 has no row-level security, so each route checks ownership itself (`requireOwnedChild`, `WHERE user_id = ?`).
+- **No email**: Nothing in the app sends email. There are no magic links, no email verification and no password reset email — see [Authentication](#authentication).
 
 ## Data Flow
 
@@ -211,58 +167,61 @@ authStore.js          childStore.js              chartStore.js
    │ sign in/out         │ CRUD operations           │ group order
    │                     │                           │ columns
    ▼                     ▼                           ▼
-supabaseClient.js ←── api.js                    localStorage
-   │
-   ▼
-Supabase (Postgres + Auth)
+            api.js (fetch)                      localStorage
+               │
+               ▼
+     Worker /api/* (worker/)
+               │
+               ▼
+          D1 (SQLite)
 ```
 
 ### Mutation lifecycle (example: adding a measurement)
 
 1. `addMeasurement()` is called in `childStore.js`
 2. Store is updated immediately (optimistic) → UI refreshes
-3. `api.addMeasurement()` sends an INSERT to Supabase
-4. **Success**: No further action needed (store already has the data)
+3. `api.createMeasurement()` sends `POST /api/children/:id/measurements`
+4. **Success**: the temporary ID is replaced with the real one
 5. **Failure**: Store rolls back to previous state, `dataError` is set
 
 ### Special child types
 
-| Type           | Store                | Synced to Supabase | Purpose                              |
-|----------------|----------------------|--------------------|--------------------------------------|
-| Regular        | `childStore`         | Yes                | Normal user children                 |
-| Example        | `exampleChildId`     | No                 | Demo data for new users              |
-| Pending        | `pendingChildIds`    | After profile done | Missing required fields              |
-| Shared         | `sharedChildIds`     | Read-only          | Shared by another user               |
+| Type    | Store             | Synced to backend  | Purpose                 |
+| ------- | ----------------- | ------------------ | ----------------------- |
+| Regular | `childStore`      | Yes                | Normal user children    |
+| Example | `exampleChildId`  | No                 | Demo data for new users |
+| Pending | `pendingChildIds` | After profile done | Missing required fields |
+| Shared  | `sharedChildIds`  | Read-only          | Shared by another user  |
 
 ## Authentication
 
-Three methods, all via Supabase Auth:
+Implemented in `worker/auth.js`:
 
-1. **Anonymous**: Auto-created guest account. Can be upgraded to email later.
-2. **Magic link**: Passwordless email OTP. Supabase sends a login link.
-3. **Email + password**: Standard sign-up and sign-in.
+1. **Guest**: on first visit the app calls `POST /api/auth/anonymous`, which creates a `users` row with no email and starts a session.
+2. **Save account (claim)**: `POST /api/auth/claim` sets an email and password on that same row, so the user ID — and all data — stays the same.
+3. **Sign in**: `POST /api/auth/login` with email + password. Signing in from a guest session ends that guest session.
+4. **Change password**: `POST /api/auth/password` requires the current password and signs out all other sessions.
 
-### Auth flow
+Details:
 
-1. `WelcomeScreen.svelte` shows on first visit (no session)
-2. User chooses "Continue as Guest" (anonymous) or signs in with email
-3. `authStore.js` manages the session and exposes `user`, `isAuthenticated`, `isAnonymous`
-4. On auth state change, `App.svelte` calls `enableSync()` on `childStore` to load data from Supabase
-
-### Testing magic links locally
-
-When running with local Supabase, emails are caught by **Inbucket** at http://127.0.0.1:54324. Enter any email address, click "Send link", then check Inbucket to find the login URL.
+- Passwords are hashed with PBKDF2-SHA256 (`worker/password.js`). The iteration count is the `PASSWORD_ITERATIONS` var in `wrangler.jsonc` (max 100,000, the Workers limit) and is stored in each hash.
+- Sessions are random 256-bit tokens in an `HttpOnly; SameSite=Lax` cookie (`Secure` on HTTPS). They last 400 days and slide forward once a day while used.
+- Writes must be `Content-Type: application/json` and, when the browser sends an `Origin` header, same-origin.
+- Sign-in, claim, password change and guest creation are rate limited per IP (`AUTH_LIMITER` in `wrangler.jsonc`, 10 per minute per action).
+- A daily cron (`scheduled` in `worker/index.js`) deletes expired sessions and guest users with no session left (nobody can ever sign in as them again).
+- **No password reset email.** An operator can reset a password with `node scripts/set-password.js <email> --remote`.
+- Emails are never verified; they are effectively usernames.
 
 ## Sharing System
 
-Sharing is done via Supabase token-based live links:
+Sharing is done via token-based live links:
 
-- Owner creates a named share link with a unique token (`#live-share=<token>`)
-- Stored in `child_shares` table
-- Recipient calls `accept_share` RPC to get read-only access
-- Data stays live — recipient sees updates in real-time
-- Both parties must be authenticated
-- Owner can revoke access at any time
+- Owner (a saved account, not a guest) creates a named share link with a random token (`#live-share=<token>`)
+- Stored in `child_shares`
+- Recipient calls `POST /api/shares/accept` to get read-only access (`shared_child_access`)
+- Data stays live — the recipient sees the owner's updates on reload
+- Both parties must be signed in (guests can accept)
+- Owner can revoke access at any time (cascades to every recipient)
 
 ## Charts
 
@@ -270,12 +229,12 @@ Sharing is done via Supabase token-based live links:
 
 Charts are organized into **groups**, displayed as vertical stacks:
 
-| Group           | Charts                                           |
-|-----------------|--------------------------------------------------|
-| Weight          | Weight over time, Weight z-score, Weight velocity |
-| Length          | Length over time, Length z-score, Length velocity  |
-| Head Circumference | Head circ over time, Head circ z-score         |
-| Weight-for-Length | WFL z-score                                    |
+| Group              | Charts                                           |
+| ------------------ | ------------------------------------------------ |
+| Weight             | Weight over time, Weight z-score, Weight velocity |
+| Length             | Length over time, Length z-score, Length velocity |
+| Head Circumference | Head circ over time, Head circ z-score           |
+| Weight-for-Length  | WFL z-score                                      |
 
 Groups are draggable as a unit. A column selector (2/3/4) controls how many groups appear per row. Chart preferences persist in localStorage.
 
@@ -288,6 +247,7 @@ Groups are draggable as a unit. A column selector (2/3/4) controls how many grou
 ### WHO reference data
 
 Located in `src/data/`. Compact format: `{ [sex]: [[l,m,s], ...] }` where:
+
 - Array index = age in days (0-1826, covering 0-5 years)
 - Sex: 1 = male, 2 = female
 - Weight-for-length uses length strings as keys instead of day indices
@@ -309,23 +269,20 @@ To add a new translation key, add it to both the `en` and `pl` objects in `i18n.
 ## Testing
 
 ```bash
-npm run test              # Unit tests only (excludes integration)
-npm run test:watch        # Unit tests in watch mode
-npm run test:integration  # Integration tests (requires local Supabase)
-npm run test:all          # All tests
+npm run test          # Everything: front-end unit tests, then Worker tests
+npm run test:watch    # Front-end unit tests in watch mode
+npm run test:worker   # Worker tests only
 ```
 
 ### Test organization
 
-- Unit tests are co-located: `foo.js` → `foo.test.js`
-- Integration tests: `foo.integration.test.js` (require running Supabase)
-- Supabase client is mocked in `src/lib/__mocks__/supabaseClient.js` for unit tests
-- The pre-commit hook runs unit tests automatically
+- Front-end unit tests are co-located: `foo.js` → `foo.test.js`. `childStore` tests use the in-memory API in `src/lib/__mocks__/api.js`.
+- Worker tests live in `worker/test/` and run inside the Workers runtime (workerd) against a real local D1 database with the migrations applied. They drive the Worker through the real client in `src/lib/api.js`, using a fake browser with its own cookie jar (`worker/test/browser.js`).
+- The pre-commit hook runs all tests.
 
 ### Writing tests
 
-- Use Vitest (compatible with Jest API)
-- Mock the Supabase client for unit tests — don't make real API calls
+- New API route → add a Worker test, including one that another user can't reach the data
 - Test z-score calculations against known WHO values
 - Test store mutations and their rollback behavior
 
@@ -353,15 +310,15 @@ npm run analyze:lighthouse:open  # Same + open report
 
 ### What each tool does
 
-| Tool | Runs via | Report | What it finds |
-|------|----------|--------|---------------|
-| **eslint-plugin-sonarjs** | `npm run lint` | Console | Code smells: cognitive complexity, duplicate strings, nested conditionals, ignored exceptions |
-| **@vitest/coverage-v8** | `analyze:coverage` | `reports/coverage/index.html` | Line/branch/function/statement coverage with thresholds |
-| **jscpd** | `analyze:duplication` | `reports/duplication/html/index.html` | Duplicated code blocks across files |
-| **rollup-plugin-visualizer** | `analyze:bundle` | `reports/bundle.html` | Interactive treemap of bundle composition (gzip + brotli sizes) |
-| **madge** | `analyze:deps` | Console (+ SVG if graphviz installed) | Circular dependencies between JS modules |
-| **knip** | `analyze:deps` | Console | Unused exports, files, and dependencies |
-| **Lighthouse** | `analyze:lighthouse` | `reports/lighthouse.html` | Performance, accessibility, best practices, SEO audit |
+| Tool                         | Runs via              | Report                                  | What it finds                                                                                 |
+| ---------------------------- | --------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **eslint-plugin-sonarjs**    | `npm run lint`        | Console                                 | Code smells: cognitive complexity, duplicate strings, nested conditionals, ignored exceptions |
+| **@vitest/coverage-v8**      | `analyze:coverage`    | `reports/coverage/index.html`           | Line/branch/function/statement coverage with thresholds                                       |
+| **jscpd**                    | `analyze:duplication` | `reports/duplication/html/index.html`   | Duplicated code blocks across files                                                           |
+| **rollup-plugin-visualizer** | `analyze:bundle`      | `reports/bundle.html`                   | Interactive treemap of bundle composition (gzip + brotli sizes)                               |
+| **madge**                    | `analyze:deps`        | Console (+ SVG if graphviz installed)   | Circular dependencies between JS modules                                                      |
+| **knip**                     | `analyze:deps`        | Console                                 | Unused exports, files, and dependencies                                                       |
+| **Lighthouse**               | `analyze:lighthouse`  | `reports/lighthouse.html`               | Performance, accessibility, best practices, SEO audit                                         |
 
 ### Configuration files
 
@@ -373,28 +330,28 @@ npm run analyze:lighthouse:open  # Same + open report
 ### Notes
 
 - The bundle visualizer only activates when `ANALYZE=true` is set (used by `analyze:bundle`). Normal `npm run build` is unaffected.
-- Coverage thresholds are intentionally low (30%) since Svelte components aren't unit-tested. The `src/lib/` layer has ~84% coverage.
-- The dependency graph SVG requires graphviz: `brew install graphviz`. Without it, madge still detects circular deps but skips the graph.
+- Coverage covers the front-end unit tests only; the Worker is covered by `npm run test:worker`.
+- The dependency graph SVG requires graphviz. Without it, madge still detects circular deps but skips the graph.
 - Lighthouse builds the app, starts a preview server, runs the audit, and cleans up automatically. Requires Chrome/Chromium.
 
 ## Code Style & Linting
 
 Enforced automatically via pre-commit hooks (Husky + lint-staged):
 
-| Rule                  | Tool      | Config                |
-|-----------------------|-----------|-----------------------|
-| Formatting            | Prettier  | `.prettierrc`         |
-| Code quality          | ESLint    | `eslint.config.js`    |
-| Code smells           | SonarJS   | `eslint.config.js`    |
-| 2-space indentation   | Prettier  | -                     |
-| Single quotes         | Prettier  | -                     |
-| Semicolons            | Prettier  | -                     |
-| PascalCase components | Convention | `*.svelte` files      |
-| lowercase utilities   | Convention | `*.js` files          |
-| Unused vars prefix    | ESLint    | `_` prefix allowed    |
+| Rule                  | Tool       | Config             |
+| --------------------- | ---------- | ------------------ |
+| Formatting            | Prettier   | `.prettierrc`      |
+| Code quality          | ESLint     | `eslint.config.js` |
+| Code smells           | SonarJS    | `eslint.config.js` |
+| 2-space indentation   | Prettier   | -                  |
+| Single quotes         | Prettier   | -                  |
+| Semicolons            | Prettier   | -                  |
+| PascalCase components | Convention | `*.svelte` files   |
+| lowercase utilities   | Convention | `*.js` files       |
+| Unused vars prefix    | ESLint     | `_` prefix allowed |
 
 ```bash
-npm run lint         # Check only
+npm run lint         # Check only (src/, worker/, scripts/)
 npm run lint:fix     # Auto-fix
 npm run format       # Format all files
 npm run format:check # Check without changing
@@ -413,41 +370,49 @@ Always use optional chaining for derived store values in templates, even inside 
 
 ## Deployment
 
+### First-time Cloudflare setup
+
+1. `npx wrangler login`
+2. `npx wrangler d1 create crescere` — copy the printed `database_id` into `wrangler.jsonc` (only for a new deployment; the id there is the production database)
+3. `npm run deploy` — builds, applies migrations to the remote database, and deploys the Worker
+
+The app is then live at `https://crescere.<your-subdomain>.workers.dev`.
+
 ### Production (automatic)
 
-Push to `master` triggers the GitHub Actions workflow (`.github/workflows/deploy.yml`):
+Push to `master` triggers `.github/workflows/deploy.yml`, which runs the tests, applies D1 migrations and runs `wrangler deploy`. It needs two GitHub secrets:
 
-1. Installs dependencies (`npm ci`)
-2. Builds with production Supabase credentials injected from GitHub secrets
-3. Deploys `dist/` to GitHub Pages
-
-Live at: https://arturzielazny.github.io/Crescere/
-
-### GitHub secrets required
-
-| Secret              | Value                           |
-|---------------------|---------------------------------|
-| `SUPABASE_URL`      | Production Supabase project URL |
-| `SUPABASE_ANON_KEY` | Production Supabase anon key    |
+| Secret                  | Value                                                                    |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `CLOUDFLARE_API_TOKEN`  | API token with **Workers Scripts: Edit** and **D1: Edit** permissions    |
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID (dashboard → Workers & Pages → right sidebar) |
 
 ### Manual preview
 
 ```bash
-npm run build    # Build to dist/
-npm run preview  # Serve locally
+npm run preview  # Build and serve the production build (with the Worker) locally
 ```
 
-Note: The app uses `base: '/Crescere/'` in `vite.config.js` for GitHub Pages path. All routes are relative to this base.
+### Free plan limits
+
+The Workers Free plan allows 10 ms of CPU per request. Hashing a password at 100,000 PBKDF2 iterations takes roughly 10–15 ms, so sign-in, save account and change password may hit that limit (error 1102). If they do, either move to Workers Paid or lower `PASSWORD_ITERATIONS` in `wrangler.jsonc`. Existing hashes keep their own iteration count, so after lowering it, reset the password once with `scripts/set-password.js --iterations N`.
 
 ## Common Tasks
 
-### Add a new database table
+### Add a new database table or column
 
-1. Create a migration: `supabase migration new my_table_name`
-2. Write SQL in the generated file (include RLS policies!)
-3. Apply locally: `supabase db reset`
-4. Add CRUD functions in `src/lib/api.js`
-5. Update stores as needed
+1. `npx wrangler d1 migrations create crescere my_change`
+2. Write SQL in the generated file in `migrations/`
+3. `npm run db:migrate:local`
+4. Add the route in `worker/index.js` and its handler in `worker/data.js` — scope every query to `user.id`
+5. Add the client function in `src/lib/api.js` (and `src/lib/__mocks__/api.js`)
+6. Add Worker tests, then update stores as needed
+
+### Reset a user's password
+
+```bash
+node scripts/set-password.js someone@example.com --remote
+```
 
 ### Add a new translation
 
@@ -469,22 +434,18 @@ Add the key to both `en` and `pl` objects in `src/stores/i18n.js`.
 
 ## Troubleshooting
 
-### "Supabase credentials not configured" warning
+### `no such table` errors in dev
 
-The `.env.local` file should contain local Supabase URLs. Run `supabase status` to get the correct values, or just run `supabase start` if the containers aren't running.
+The local database hasn't been migrated. `npm run dev` does it automatically; otherwise run `npm run db:migrate:local`.
 
-### Supabase containers won't start
+### Sign-in fails with error 1102 in production
 
-Make sure Docker is running. Try `supabase stop` then `supabase start`. If that fails, `supabase stop --no-backup` to clean up.
-
-### Tests fail with Supabase errors
-
-Unit tests mock Supabase — they should not need a running instance. If integration tests fail, ensure `supabase start` is running.
+CPU limit exceeded on the Workers Free plan — see [Free plan limits](#free-plan-limits).
 
 ### HMR not working
 
-The Vite dev server should auto-detect file changes. If HMR stops working, restart with `npm run dev`. Check that you're editing files inside `src/`.
+The Vite dev server should auto-detect file changes. If HMR stops working, restart with `npm run dev`. Changes in `worker/` reload the Worker automatically.
 
 ### Build warning about chunk size
 
-The ~777 KB bundle is expected. Chart.js is the largest contributor. This is tracked in `ideas.md` as a potential optimization.
+The ~690 KB bundle is expected. Chart.js is the largest contributor. This is tracked in `ideas.md` as a potential optimization.

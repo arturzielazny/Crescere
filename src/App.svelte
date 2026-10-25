@@ -40,7 +40,7 @@
 
   let showShareModal = false;
   let toast = null;
-  /** @type {null | 'signIn' | 'claimAccount' | 'setPassword'} */
+  /** @type {null | 'signIn' | 'claimAccount' | 'changePassword'} */
   let authModalMode = null;
 
   async function checkForLiveShare() {

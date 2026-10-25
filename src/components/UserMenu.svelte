@@ -1,9 +1,9 @@
 <script>
-  import { user, isAuthenticated, isAnonymous, hasPassword, loading } from '../stores/authStore.js';
+  import { user, isAuthenticated, isAnonymous, loading } from '../stores/authStore.js';
   import { t } from '../stores/i18n.js';
 
   export let onSignOut = () => {};
-  /** @param {'signIn' | 'claimAccount' | 'setPassword'} mode */
+  /** @param {'signIn' | 'claimAccount' | 'changePassword'} mode */
   export let onOpenAuth = (_mode) => {};
 
   let open = false;
@@ -21,9 +21,7 @@
     fn();
   }
 
-  $: userEmail = $user?.email;
-  $: userName = $user?.user_metadata?.full_name || $user?.user_metadata?.name;
-  $: displayName = userName || userEmail || '';
+  $: displayName = $user?.email || '';
   $: initial = displayName ? displayName.charAt(0).toUpperCase() : '';
 </script>
 
@@ -109,10 +107,10 @@
             </span>
           </div>
           <button
-            on:click={() => handleAction(() => onOpenAuth('setPassword'))}
+            on:click={() => handleAction(() => onOpenAuth('changePassword'))}
             class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
-            {$hasPassword ? $t('menu.password.change') : $t('menu.password.set')}
+            {$t('menu.password.change')}
           </button>
           <div class="border-t border-gray-100 mt-1 pt-1">
             <button

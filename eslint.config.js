@@ -20,6 +20,7 @@ export default [
         alert: 'readonly',
         confirm: 'readonly',
         crypto: 'readonly',
+        fetch: 'readonly',
         URL: 'readonly',
         Blob: 'readonly',
         FileReader: 'readonly',
@@ -56,6 +57,20 @@ export default [
     files: ['**/*.test.js'],
     rules: {
       'sonarjs/no-duplicate-string': 'off'
+    }
+  },
+  {
+    // Cloudflare Worker: Workers runtime globals
+    files: ['worker/**/*.js'],
+    languageOptions: {
+      globals: {
+        Request: 'readonly',
+        Response: 'readonly',
+        Headers: 'readonly',
+        TextEncoder: 'readonly',
+        btoa: 'readonly',
+        atob: 'readonly'
+      }
     }
   },
   {

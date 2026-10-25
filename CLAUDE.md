@@ -8,14 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm install          # Install dependencies
-npm run dev          # Start Vite dev server with HMR
-npm run build        # Create production build in dist/
-npm run preview      # Serve production build locally
-npm run test         # Run unit tests once
-npm run test:watch   # Run unit tests in watch mode
-npm run test:integration  # Run Supabase integration tests (requires local Supabase)
-npm run test:all     # Run all tests (unit + integration)
-npm run lint         # Check code with ESLint
+npm run dev          # Vite dev server with HMR + the Worker API and a local D1 database
+npm run build        # Create production build in dist/ (client + Worker)
+npm run preview      # Build and serve the production build locally
+npm run deploy       # Build, apply D1 migrations remotely, wrangler deploy
+npm run test         # Front-end unit tests, then Worker tests
+npm run test:watch   # Front-end unit tests in watch mode
+npm run test:worker  # Worker tests only (run in workerd against real local D1)
+npm run db:migrate:local   # Apply D1 migrations to the local database
+npm run lint         # Check code with ESLint (src/, worker/, scripts/)
 npm run lint:fix     # Auto-fix ESLint issues
 npm run format       # Format code with Prettier
 npm run format:check # Check formatting without changes
@@ -23,22 +24,23 @@ npm run format:check # Check formatting without changes
 
 **Pre-commit hooks:** Husky + lint-staged automatically runs ESLint, Prettier, and unit tests on every commit.
 
-**Deployment:** Push to `master` triggers GitHub Actions deployment to https://arturzielazny.github.io/Crescere/
+**Deployment:** Push to `master` triggers GitHub Actions: tests, D1 migrations, `wrangler deploy` to Cloudflare Workers (needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets).
 
 ## Architecture Overview
 
-Svelte 5 SPA for pediatric growth monitoring. Uses Supabase for persistence, authentication, and real-time sharing.
+Svelte 5 SPA for pediatric growth monitoring, served by a Cloudflare Worker (`worker/`) that also provides the JSON API under `/api/*`, backed by Cloudflare D1 (SQLite).
 
 ### Core Data Flow
 
-1. **State Management** (`src/stores/childStore.js`): Central `childStore` (writable) holds `children[]` array and `activeChildId`. Derived stores (`activeChild`, `measurementsWithZScores`) compute current selection and enriched data. All mutations use **optimistic updates** — the UI updates instantly, then an async Supabase call runs in the background. On failure, the store rolls back and `dataError` is set.
+1. **State Management** (`src/stores/childStore.js`): Central `childStore` (writable) holds `children[]` array and `activeChildId`. Derived stores (`activeChild`, `measurementsWithZScores`) compute current selection and enriched data. All mutations use **optimistic updates** — the UI updates instantly, then an async API call runs in the background. On failure, the store rolls back and `dataError` is set.
 
-2. **Persistence** (`src/lib/api.js` + Supabase): All data is stored in Supabase (tables: `children`, `measurements`, `user_preferences`). There is no localStorage persistence for child data. The `src/lib/storage.js` file is retained solely for migrating legacy localStorage data to Supabase (imported by `App.svelte` and `src/lib/migrate.js`).
+2. **Persistence** (`src/lib/api.js` → `worker/data.js` → D1): `api.js` is a thin `fetch` client for the Worker. Tables: `users`, `sessions`, `children`, `measurements`, `user_preferences`, `child_shares`, `shared_child_access` (schema in `migrations/`). There is no row-level security: every Worker query must scope itself to the signed-in user. There is no localStorage persistence for child data.
 
-3. **Authentication** (`src/stores/authStore.js`): Three methods via Supabase Auth:
-   - Anonymous sign-in (auto-created, upgradeable)
-   - Magic link (email OTP)
-   - Email + password
+3. **Authentication** (`src/stores/authStore.js` → `worker/auth.js`): cookie sessions (`HttpOnly`, hashed tokens in D1).
+   - Guest: auto-created on first visit (`users` row with no email)
+   - Save account (`claimAccount`): sets email + password on the same row, so all data stays attached
+   - Email + password sign-in; change password requires the current one
+   - No email is ever sent: no magic links, no verification, no reset email. Operators reset passwords with `scripts/set-password.js`.
 
 4. **Z-Score Calculation** (`src/lib/zscore.js`): Implements WHO LMS method with two variants:
    - Standard LMS for length-for-age, head circumference-for-age
@@ -46,14 +48,14 @@ Svelte 5 SPA for pediatric growth monitoring. Uses Supabase for persistence, aut
 
 5. **WHO Reference Data** (`src/data/`): Four datasets in compact array format `{ [sex]: [[l,m,s], ...] }` where array index = day. Sex: 1=male, 2=female. Age range: 0-1826 days (0-5 years). WFL uses length strings as keys.
 
-6. **Sharing** (`src/lib/share.js`): Supabase token-based live sharing (`#live-share=<token>`). Named share links with read-only access. Both parties must be authenticated. Owner can revoke access at any time.
+6. **Sharing** (`src/lib/share.js`, `worker/data.js`): token-based live sharing (`#live-share=<token>`). Named share links with read-only access. Both parties must be authenticated. Owner can revoke access at any time.
 
 7. **i18n** (`src/stores/i18n.js`): English (en) and Polish (pl). Auto-detects browser language.
 
 ### Special Child Types
 
 - **Example child** (`exampleChildId`): Client-side demo data, never synced. Auto-removed when user adds a real child.
-- **Pending child** (`pendingChildIds`): Created locally but missing required fields (birthDate, sex). Synced to Supabase once profile is complete.
+- **Pending child** (`pendingChildIds`): Created locally but missing required fields (birthDate, sex). Synced to the backend once profile is complete.
 
 ### Key Data Models
 
@@ -115,20 +117,17 @@ Chart configuration is persisted in localStorage via `src/stores/chartStore.js` 
 
 ## Build Optimizations
 
-Bundle: ~777 KB (233 KB gzipped)
+Bundle: ~690 KB (215 KB gzipped)
 
 1. **Tree-shaken Chart.js**: Only imports LineController, LineElement, PointElement, LinearScale, Filler, Legend, Tooltip.
 
 2. **Compact WHO data**: Arrays `[l,m,s]` instead of objects. Run `node scripts/compress-who-data.js` to recompress if data changes.
 
-## Supabase
+## Cloudflare Workers + D1
 
-Database schema is defined in `supabase/migrations/`. Two migrations exist:
-- `20250201000000_initial_schema.sql`: Core tables (`children`, `measurements`, `user_preferences`) with RLS policies
-- `20250202000000_child_sharing.sql`: Sharing tables (`child_shares`, `shared_child_access`) with RLS and `accept_share` RPC
-
-Local development uses Docker-based Supabase (`supabase start`). Production credentials are injected via GitHub Actions secrets during deployment.
-
-### Legacy localStorage Migration
-
-`src/lib/storage.js` contains a schema-versioned localStorage system (current: v2). This is no longer the primary data store — it exists solely to support one-time migration of pre-Supabase data. The `migrateToSupabase()` function in `src/lib/migrate.js` reads from localStorage and writes to Supabase, then clears localStorage. Do not add new localStorage-based persistence.
+- `wrangler.jsonc`: Worker config — D1 binding `DB`, rate limiter `AUTH_LIMITER`, `PASSWORD_ITERATIONS` var, daily cleanup cron, static assets (the built SPA) with `/api/*` routed to the Worker first.
+- `worker/index.js`: router (route table), CSRF checks (same-origin + JSON content type for writes), error handling, `scheduled` cleanup.
+- `migrations/`: D1 schema. Add changes as new numbered migration files; never edit an applied one.
+- Worker tests (`worker/test/`) use `@cloudflare/vitest-plugin` (`vitest.worker.config.js`) and exercise the real `src/lib/api.js` through a fake browser with a cookie jar. Every new route needs a test that another user can't reach the data.
+- `src/lib/__mocks__/api.js` is an in-memory stand-in for `api.js` used by `childStore` unit tests; keep it in sync with `api.js`.
+- Dev: `@cloudflare/vite-plugin` runs the Worker and local D1 (`.wrangler/state/`) inside `vite`.

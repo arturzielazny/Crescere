@@ -3,34 +3,32 @@
     loading,
     error as authError,
     clearError,
-    signInWithEmail,
     signInWithPassword,
-    linkWithEmail,
-    linkWithPassword,
-    setPassword
+    claimAccount,
+    changePassword
   } from '../stores/authStore.js';
   import { t } from '../stores/i18n.js';
 
-  /** @type {'signIn' | 'claimAccount' | 'setPassword'} */
+  /** @type {'signIn' | 'claimAccount' | 'changePassword'} */
   export let mode = 'signIn';
   export let onClose = () => {};
   export let onSuccess = () => {};
 
+  const MIN_PASSWORD_LENGTH = 6;
+
   let email = '';
+  let currentPassword = '';
   let password = '';
   let confirmPassword = '';
-  let usePassword = false;
-  let emailSent = false;
-  let passwordSet = false;
+  let done = false;
   let localError = '';
 
   function reset() {
     email = '';
+    currentPassword = '';
     password = '';
     confirmPassword = '';
-    usePassword = false;
-    emailSent = false;
-    passwordSet = false;
+    done = false;
     localError = '';
     clearError();
   }
@@ -40,75 +38,75 @@
     onClose();
   }
 
-  async function handleSetPassword() {
-    localError = '';
-    clearError();
-    if (password.length < 6) {
+  /** Validate the new password + confirmation; sets localError and returns false on failure */
+  function checkNewPassword() {
+    if (password.length < MIN_PASSWORD_LENGTH) {
       localError = $t('auth.setPassword.tooShort');
-      return;
+      return false;
     }
     if (password !== confirmPassword) {
       localError = $t('auth.setPassword.mismatch');
-      return;
+      return false;
     }
+    return true;
+  }
+
+  $: needsEmail = mode !== 'changePassword';
+  $: needsConfirm = mode !== 'signIn';
+  $: canSubmit =
+    (!needsEmail || email) &&
+    password &&
+    (!needsConfirm || confirmPassword) &&
+    (mode !== 'changePassword' || currentPassword) &&
+    !$loading;
+
+  async function handleSubmit() {
+    if (!canSubmit) return;
+    localError = '';
+    clearError();
+    if (needsConfirm && !checkNewPassword()) return;
+
     try {
-      await setPassword(password);
-      passwordSet = true;
+      if (mode === 'signIn') {
+        await signInWithPassword(email, password);
+        onSuccess();
+      } else if (mode === 'claimAccount') {
+        await claimAccount(email, password);
+        done = true;
+      } else {
+        await changePassword(currentPassword, password);
+        done = true;
+      }
     } catch (_err) {
       // error is set in auth store
     }
   }
 
-  $: needsConfirmPassword = usePassword && mode === 'claimAccount';
-
-  async function handleEmailSubmit() {
-    if (!email) return;
-    localError = '';
-    clearError();
-
-    // Validate password for claim-account flow
-    if (needsConfirmPassword) {
-      if (password.length < 6) {
-        localError = $t('auth.setPassword.tooShort');
-        return;
-      }
-      if (password !== confirmPassword) {
-        localError = $t('auth.setPassword.mismatch');
-        return;
-      }
-    }
-
-    try {
-      if (mode === 'claimAccount') {
-        if (usePassword) {
-          await linkWithPassword(email, password);
-        } else {
-          await linkWithEmail(email);
-        }
-        emailSent = true;
-      } else {
-        // signIn mode
-        if (usePassword) {
-          await signInWithPassword(email, password);
-          onSuccess();
-        } else {
-          await signInWithEmail(email);
-          emailSent = true;
-        }
-      }
-    } catch (_err) {
-      // error is set in auth store
-    }
+  function submitOnEnter(e) {
+    if (e.key === 'Enter') handleSubmit();
   }
 
   $: title =
-    mode === 'setPassword'
-      ? $t('auth.setPassword.modalTitle')
+    mode === 'changePassword'
+      ? $t('auth.changePassword.modalTitle')
       : mode === 'claimAccount'
         ? $t('auth.claimAccount.modalTitle')
         : $t('auth.signIn.modalTitle');
 
   $: description = mode === 'claimAccount' ? $t('auth.claimAccount.description') : '';
+
+  $: submitLabel =
+    mode === 'changePassword'
+      ? $t('auth.changePassword.submit')
+      : mode === 'claimAccount'
+        ? $t('auth.claimAccount.submitPassword')
+        : $t('auth.signInWithPassword');
+
+  $: doneMessage =
+    mode === 'changePassword' ? $t('auth.changePassword.updated') : $t('auth.claimAccount.saved');
+
+  const inputClass =
+    'w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500';
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -145,134 +143,76 @@
       </button>
     </div>
 
-    {#if description}
+    {#if description && !done}
       <p class="text-sm text-gray-500 mb-4">{description}</p>
     {/if}
 
-    {#if mode === 'setPassword'}
-      <!-- Set password form -->
-      {#if passwordSet}
-        <p class="text-sm text-green-600 mb-4">{$t('auth.setPassword.updated')}</p>
-        <div class="flex justify-end">
-          <button
-            on:click={handleClose}
-            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded"
-          >
-            {$t('share.close')}
-          </button>
-        </div>
-      {:else}
-        <div class="space-y-3">
-          <input
-            type="password"
-            bind:value={password}
-            placeholder={$t('auth.setPassword.newPlaceholder')}
-            class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            on:keydown={(e) => e.key === 'Enter' && confirmPassword && handleSetPassword()}
-          />
-          <input
-            type="password"
-            bind:value={confirmPassword}
-            placeholder={$t('auth.setPassword.confirmPlaceholder')}
-            class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            on:keydown={(e) => e.key === 'Enter' && handleSetPassword()}
-          />
-          {#if localError}
-            <p class="text-xs text-red-600">{localError}</p>
-          {/if}
-          {#if $authError}
-            <p class="text-xs text-red-600">{$authError}</p>
-          {/if}
-          <button
-            on:click={handleSetPassword}
-            disabled={!password || !confirmPassword || $loading}
-            class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {$t('auth.setPassword.submit')}
-          </button>
-        </div>
-      {/if}
+    {#if done}
+      <p class="text-sm text-green-600 mb-4">{doneMessage}</p>
+      <div class="flex justify-end">
+        <button
+          on:click={handleClose}
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded"
+        >
+          {$t('share.close')}
+        </button>
+      </div>
     {:else}
-      <!-- Sign in / Claim account form -->
-      {#if emailSent}
-        <p class="text-sm text-green-600 mb-4">
-          {mode === 'claimAccount'
-            ? usePassword
-              ? $t('auth.emailSent.claimPassword')
-              : $t('auth.emailSent.claim')
-            : $t('auth.emailSent.signIn')}
-        </p>
-        <div class="flex justify-end">
-          <button
-            on:click={handleClose}
-            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded"
-          >
-            {$t('share.close')}
-          </button>
-        </div>
-      {:else}
-        <div class="space-y-3">
+      <div class="space-y-3">
+        {#if needsEmail}
           <input
             type="email"
+            autocomplete="username"
             bind:value={email}
             placeholder={$t('auth.emailPlaceholder')}
-            class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            on:keydown={(e) => e.key === 'Enter' && !usePassword && handleEmailSubmit()}
+            class={inputClass}
+            on:keydown={submitOnEnter}
           />
-          {#if usePassword}
-            <input
-              type="password"
-              bind:value={password}
-              placeholder={$t('auth.passwordPlaceholder')}
-              class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              on:keydown={(e) => e.key === 'Enter' && !needsConfirmPassword && handleEmailSubmit()}
-            />
-            {#if needsConfirmPassword}
-              <input
-                type="password"
-                bind:value={confirmPassword}
-                placeholder={$t('auth.setPassword.confirmPlaceholder')}
-                class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                on:keydown={(e) => e.key === 'Enter' && handleEmailSubmit()}
-              />
-            {/if}
-          {/if}
-          {#if localError}
-            <p class="text-xs text-red-600">{localError}</p>
-          {/if}
-          {#if $authError}
-            <p class="text-xs text-red-600">{$authError}</p>
-          {/if}
-          <button
-            on:click={handleEmailSubmit}
-            disabled={!email ||
-              (usePassword && !password) ||
-              (needsConfirmPassword && !confirmPassword) ||
-              $loading}
-            class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {#if usePassword}
-              {mode === 'claimAccount'
-                ? $t('auth.claimAccount.submitPassword')
-                : $t('auth.signInWithPassword')}
-            {:else}
-              {$t('auth.sendLink')}
-            {/if}
-          </button>
-          <button
-            on:click={() => {
-              usePassword = !usePassword;
-              password = '';
-              confirmPassword = '';
-              localError = '';
-              clearError();
-            }}
-            class="text-xs text-blue-500 hover:text-blue-700"
-          >
-            {usePassword ? $t('auth.switchToMagicLink') : $t('auth.switchToPassword')}
-          </button>
-        </div>
-      {/if}
+        {/if}
+        {#if mode === 'changePassword'}
+          <input
+            type="password"
+            autocomplete="current-password"
+            bind:value={currentPassword}
+            placeholder={$t('auth.changePassword.currentPlaceholder')}
+            class={inputClass}
+            on:keydown={submitOnEnter}
+          />
+        {/if}
+        <input
+          type="password"
+          autocomplete={mode === 'signIn' ? 'current-password' : 'new-password'}
+          bind:value={password}
+          placeholder={mode === 'signIn'
+            ? $t('auth.passwordPlaceholder')
+            : $t('auth.setPassword.newPlaceholder')}
+          class={inputClass}
+          on:keydown={submitOnEnter}
+        />
+        {#if needsConfirm}
+          <input
+            type="password"
+            autocomplete="new-password"
+            bind:value={confirmPassword}
+            placeholder={$t('auth.setPassword.confirmPlaceholder')}
+            class={inputClass}
+            on:keydown={submitOnEnter}
+          />
+        {/if}
+        {#if localError}
+          <p class="text-xs text-red-600">{localError}</p>
+        {/if}
+        {#if $authError}
+          <p class="text-xs text-red-600">{$authError}</p>
+        {/if}
+        <button
+          on:click={handleSubmit}
+          disabled={!canSubmit}
+          class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitLabel}
+        </button>
+      </div>
     {/if}
   </div>
 </div>

@@ -4,10 +4,10 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { get } from 'svelte/store';
-import { resetMockData, setMockUser, getMockData } from '../lib/__mocks__/supabaseClient.js';
+import { resetMockData, setMockUser, getMockData } from '../lib/__mocks__/api.js';
 
-// Mock the supabaseClient module
-vi.mock('../lib/supabaseClient.js', () => import('../lib/__mocks__/supabaseClient.js'));
+// Mock the API module with an in-memory backend
+vi.mock('../lib/api.js', () => import('../lib/__mocks__/api.js'));
 
 // Import after mocking
 const childStoreModule = await import('./childStore.js');
@@ -241,7 +241,7 @@ describe('childStore - syncChildToBackend', () => {
     const realId = await syncChildToBackend(localChild.id);
     expect(realId).toBeDefined();
 
-    // Now add a measurement - this should work without RLS error
+    // Now add a measurement - this should work without an access error
     addMeasurement({
       date: '2024-02-15',
       weight: 4500,
@@ -273,7 +273,7 @@ describe('childStore - shared children', () => {
 
   it('loads shared children on enableSync', async () => {
     // Set up owned child
-    const { seedMockData } = await import('../lib/__mocks__/supabaseClient.js');
+    const { seedMockData } = await import('../lib/__mocks__/api.js');
     seedMockData('children', [
       { id: 'own-1', user_id: 'user-123', name: 'Own Child', birth_date: '2024-01-15', sex: 1 }
     ]);
@@ -339,7 +339,7 @@ describe('childStore - shared children', () => {
   });
 
   it('acceptLiveShare adds shared child to store', async () => {
-    const { seedMockData } = await import('../lib/__mocks__/supabaseClient.js');
+    const { seedMockData } = await import('../lib/__mocks__/api.js');
 
     seedMockData('children', [
       {
@@ -373,7 +373,7 @@ describe('childStore - shared children', () => {
   });
 
   it('acceptLiveShare removes example child from store', async () => {
-    const { seedMockData } = await import('../lib/__mocks__/supabaseClient.js');
+    const { seedMockData } = await import('../lib/__mocks__/api.js');
 
     // Start with no data — enableSync will create an example child
     await enableSync('Example');
@@ -417,7 +417,7 @@ describe('childStore - shared children', () => {
   });
 });
 
-describe('childStore - pending child (RLS fix)', () => {
+describe('childStore - pending child (deferred creation)', () => {
   beforeEach(() => {
     resetMockData();
     resetStore();
@@ -439,7 +439,7 @@ describe('childStore - pending child (RLS fix)', () => {
     expect(newChild.profile.birthDate).toBeNull();
     expect(newChild.profile.sex).toBeNull();
 
-    // Child should NOT be created in Supabase yet
+    // Child should NOT be created in the backend yet
     expect(getMockData('children')).toHaveLength(0);
   });
 
@@ -450,7 +450,7 @@ describe('childStore - pending child (RLS fix)', () => {
     const state = get(childStore);
     const childId = state.children[0].id;
 
-    // Add measurement to pending child - should NOT call Supabase
+    // Add measurement to pending child - should NOT call the backend
     addMeasurement({
       date: '2024-02-15',
       weight: 4500,
@@ -467,7 +467,7 @@ describe('childStore - pending child (RLS fix)', () => {
     expect(child.measurements).toHaveLength(1);
     expect(child.measurements[0].weight).toBe(4500);
 
-    // But NOT in Supabase (no RLS error)
+    // But NOT in the backend (no API error)
     expect(getMockData('measurements')).toHaveLength(0);
     expect(getMockData('children')).toHaveLength(0);
   });
@@ -486,7 +486,7 @@ describe('childStore - pending child (RLS fix)', () => {
     updateProfile({ sex: 1 });
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // Child should now exist in Supabase
+    // Child should now exist in the backend
     const dbChildren = getMockData('children');
     expect(dbChildren).toHaveLength(1);
     expect(dbChildren[0].birth_date).toBe('2024-01-15');
@@ -494,7 +494,7 @@ describe('childStore - pending child (RLS fix)', () => {
     expect(dbChildren[0].user_id).toBe('guest-user-123');
   });
 
-  it('full guest flow: add child -> fill profile -> add measurement (no RLS error)', async () => {
+  it('full guest flow: add child -> fill profile -> add measurement (no API error)', async () => {
     await enableSync();
 
     // Step 1: Guest creates new child
@@ -520,7 +520,7 @@ describe('childStore - pending child (RLS fix)', () => {
     const realId = stateAfterSync.children[0].id;
     expect(realId).not.toBe(tempId); // ID should have been replaced
 
-    // Step 3: Guest adds measurement - should succeed without RLS error
+    // Step 3: Guest adds measurement - should succeed without an access error
     addMeasurement({
       date: '2024-06-01',
       weight: 3200,
@@ -530,7 +530,7 @@ describe('childStore - pending child (RLS fix)', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // Measurement should exist in Supabase
+    // Measurement should exist in the backend
     const dbMeasurements = getMockData('measurements');
     expect(dbMeasurements).toHaveLength(1);
     expect(dbMeasurements[0].child_id).toBe(realId);
@@ -547,7 +547,7 @@ describe('childStore - pending child (RLS fix)', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // Nothing in Supabase yet
+    // Nothing in the backend yet
     expect(getMockData('children')).toHaveLength(0);
     expect(getMockData('measurements')).toHaveLength(0);
 
@@ -620,7 +620,7 @@ describe('childStore - pending child (RLS fix)', () => {
     const state = get(childStore);
     const childId = state.children[0].id;
 
-    // Remove pending child - should not try to delete from Supabase
+    // Remove pending child - should not try to delete from the backend
     removeChild(childId);
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -718,7 +718,7 @@ describe('childStore - example child', () => {
   });
 
   it('enableSync with real backend data does NOT inject example', async () => {
-    const { seedMockData } = await import('../lib/__mocks__/supabaseClient.js');
+    const { seedMockData } = await import('../lib/__mocks__/api.js');
     seedMockData('children', [
       {
         id: 'real-child-1',
@@ -1255,13 +1255,13 @@ describe('childStore - setActiveChild safety', () => {
 
     // setActiveChild will try to call the API for this child because
     // shouldSync returns true (it's not example, not pending).
-    // In real Supabase this would 409 due to FK constraint.
-    // The mock doesn't enforce FK constraints, but this test documents
+    // The real Worker would 404 (child not found).
+    // The mock does not check this, but this test documents
     // the pattern that importChildren fixes.
     setActiveChild('unsyncable-id');
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // The mock upsert succeeds (no FK check), but the child doesn't exist
+    // The mock upsert succeeds (no existence check), but the child doesn't exist
     // in the children table - this is the bug importChildren fixes
     const dbChildren = getMockData('children');
     expect(dbChildren).toHaveLength(0); // Child was never created in DB
