@@ -105,7 +105,6 @@ crescere/
 │   │   ├── ChildList.svelte          # Child switcher pills
 │   │   ├── ChildProfileSheet.svelte  # Edit/delete the active child
 │   │   ├── SummaryCard.svelte        # "Now" card: latest values and percentiles
-│   │   ├── MeasurementTable.svelte   # Inline-editable table (lg: and up)
 │   │   ├── MeasurementSheet.svelte   # Add/edit one measurement
 │   │   ├── ZScoreTable.svelte        # Measurement history with z-scores
 │   │   ├── Toast.svelte              # Toast with optional action (Undo, Retry)

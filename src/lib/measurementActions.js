@@ -1,5 +1,5 @@
 /**
- * Measurement actions shared by the history list, the desktop table and the edit sheet.
+ * Measurement actions used by the edit sheet.
  */
 
 import { get } from 'svelte/store';

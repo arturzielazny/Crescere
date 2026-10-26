@@ -2,6 +2,7 @@
  * Svelte action for modal dialogs: moves focus into the dialog, keeps Tab
  * inside it, closes it on Escape and gives focus back to the opener on close.
  * Stacked dialogs (a confirm on top of a modal) only react while on top.
+ * While any dialog is open the page behind it doesn't scroll.
  */
 
 const FOCUSABLE =
@@ -22,6 +23,7 @@ export function dialog(node, options = {}) {
   let onClose = options.onClose;
   const opener = /** @type {HTMLElement | null} */ (document.activeElement);
   stack.push(node);
+  if (stack.length === 1) document.documentElement.style.overflow = 'hidden';
 
   // Prefer an explicit target, then the first form field, then any control
   requestAnimationFrame(() => {
@@ -66,6 +68,7 @@ export function dialog(node, options = {}) {
     destroy() {
       window.removeEventListener('keydown', handleKeydown);
       stack.splice(stack.indexOf(node), 1);
+      if (stack.length === 0) document.documentElement.style.overflow = '';
       if (opener?.isConnected) opener.focus();
     }
   };

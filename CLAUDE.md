@@ -86,9 +86,9 @@ Chart features:
 
 The selected tab/view and display mode are persisted in localStorage via `chartStore.js`.
 
-Measurements are added and edited in `MeasurementSheet.svelte` (from the summary card's "Add measurement" and the history list in `ZScoreTable.svelte`); input parsing (g/kg, comma decimals) is in `src/lib/measurementInput.js`. Deleting offers Undo instead of a confirmation (`src/lib/measurementActions.js`). The inline-editable `MeasurementTable.svelte` is shown from `lg:` up only.
+Measurements are added and edited in `MeasurementSheet.svelte` (from the summary card's "Add measurement" and the history list in `ZScoreTable.svelte`); input parsing (g/kg, comma decimals) is in `src/lib/measurementInput.js`. Deleting offers Undo instead of a confirmation (`src/lib/measurementActions.js`).
 
-Above the charts, `SummaryCard.svelte` shows the latest value, percentile and change per metric (`src/lib/summary.js`). Children are switched with pills (`ChildList.svelte`); the active child's profile is edited in `ChildProfileSheet.svelte`. Modals use the `dialog` action (`src/lib/dialog.js`) for focus handling; bottom sheets use `Sheet.svelte`.
+Above the charts, `SummaryCard.svelte` shows the latest value, percentile and change per metric (`src/lib/summary.js`). Children are switched with pills (`ChildList.svelte`); the active child's profile is edited in `ChildProfileSheet.svelte`. Modals use the `dialog` action (`src/lib/dialog.js`) for focus handling and to stop the page behind them scrolling; bottom sheets use `Sheet.svelte` (on phones the handle drags down to close).
 
 ## Code Style
 

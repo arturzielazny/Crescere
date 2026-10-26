@@ -1,7 +1,6 @@
 <script>
   import { onMount, onDestroy, tick, flushSync } from 'svelte';
   import ChildList from './components/ChildList.svelte';
-  import MeasurementTable from './components/MeasurementTable.svelte';
   import ZScoreTable from './components/ZScoreTable.svelte';
   import ChartPanel from './components/ChartPanel.svelte';
   import SummaryCard from './components/SummaryCard.svelte';
@@ -401,16 +400,8 @@
         onAddChild={handleAddChild}
       />
 
-      <div class="lg:flex lg:gap-6 lg:items-start print-full-width">
-        <!-- Left panel: measurement entry (1/3) -->
-        <aside
-          class="hidden lg:block lg:w-1/3 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto print-hidden"
-        >
-          <MeasurementTable compact />
-        </aside>
-
-        <!-- Right panel: charts + z-scores (2/3) -->
-        <div class="flex-1 min-w-0">
+      <div class="print-full-width">
+        <div class="min-w-0">
           <!-- Print order: table first, then charts -->
           <div class="print-only hidden mb-4 print-table">
             <ZScoreTable />
