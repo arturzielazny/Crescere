@@ -3,10 +3,10 @@
 ## UX Issues
 
 - ☑ **Header is too crowded on mobile.** Fixed — Export, Import, Clear, and language selector collapse into a kebab menu on mobile. Share and auth stay visible.
-- ☐ **No sync status feedback.** When a measurement is saved, nothing tells the user it worked (or failed). The optimistic update looks instant, but if the network call fails, the rollback happens silently — data just disappears with no explanation.
+- ☑ **No sync status feedback.** Fixed — a failed save is rolled back and reported in a toast with a Retry button (`syncError` in `childStore.js`). A failed initial load shows a banner with Reload.
 - ☐ **"Clear" button is dangerous and prominent.** It's a red button in the top bar next to Export/Import. One misclick and a confirm dialog is all that stands between the user and total data loss. This should be buried in settings or at least not red and prominent.
-- ☐ **No way to undo measurement deletion.** Delete is instant (optimistic) with only a confirm dialog. No toast with "Undo" option.
-- ☐ **Measurement table is hard to use on mobile.** Seven columns on a phone screen. Even with horizontal scroll, it's painful.
+- ☑ **No way to undo measurement deletion.** Fixed — deleting a measurement no longer asks for confirmation; a toast offers Undo for 6 seconds (`restoreMeasurement`).
+- ☑ **Measurement table is hard to use on mobile.** Fixed — below `lg` the inline table is replaced by an "Add measurement" button and a history list; both open a bottom sheet (`MeasurementSheet.svelte`) with labelled fields. Weight can be typed in grams or kilograms, with dot or comma decimals.
 - ☑ **Example child is confusing for new users.** Fixed — example child is now client-side only (never synced to the backend), shown with green indicator and a demo banner. Auto-removed when user adds their first real child. Cleaned up 8 previously synced example children from production DB.
 - ☐ **Charts have no empty state.** If a child has no measurements, charts render empty with just reference bands. No helpful message like "Add measurements to see growth charts."
 - ☑ **Ability to login with password.** Fixed — email + password sign-in. Guest accounts are saved via `claimAccount()` (same user ID, data kept). Magic links were dropped in the move to Cloudflare Workers + D1, since nothing sends email.
@@ -19,7 +19,7 @@
 - ☑ **No growth velocity / rate of change.** Fixed — added velocity charts showing average daily gain (g/day for weight, cm/day for length) between consecutive measurements, plotted at midpoint ages. Tooltips show age range, rate, and absolute change. Y-axis range excludes first-week data to prevent the dramatic post-birth drop from dominating the scale.
 - ☐ **No BMI calculation.** Weight-for-length is shown, but BMI (common for 2+ years) is missing.
 - ☐ **No notes on measurements.** Parents might want to note "sick this week" or "started solids" next to a measurement.
-- ☐ **Date input allows invalid values.** Future birth dates, measurements dated before birth, or dates far in the future are all accepted without warning.
+- ☑ **Date input allows invalid values.** Fixed — measurements dated before birth are rejected, a future birth date shows a warning, and values more than 5 SD from the WHO median need a second "Save anyway" click. Future measurement dates stay allowed (planned measurements) and are labelled "planned".
 
 ## Technical Improvements
 

@@ -105,7 +105,10 @@ crescere/
 │   │   ├── ChildList.svelte          # Child switcher pills
 │   │   ├── ChildProfileSheet.svelte  # Edit/delete the active child
 │   │   ├── SummaryCard.svelte        # "Now" card: latest values and percentiles
-│   │   ├── MeasurementTable.svelte
+│   │   ├── MeasurementTable.svelte   # Inline-editable table (lg: and up)
+│   │   ├── MeasurementSheet.svelte   # Add/edit one measurement
+│   │   ├── ZScoreTable.svelte        # Measurement history with z-scores
+│   │   ├── Toast.svelte              # Toast with optional action (Undo, Retry)
 │   │   ├── ChartPanel.svelte         # Chart tabs, maximize, print layout
 │   │   ├── ChartView.svelte          # Renders one chart for a group + view
 │   │   ├── GrowthMetricChart.svelte  # Raw measurement charts
@@ -119,6 +122,7 @@ crescere/
 │   │   ├── childStore.js       # Core data store (children, measurements)
 │   │   ├── authStore.js        # Authentication state + methods
 │   │   ├── chartStore.js       # Selected chart tab/view, percentile vs z-score
+│   │   ├── toastStore.js       # showToast() / the toast on screen
 │   │   └── i18n.js             # Internationalization (en/pl)
 │   ├── lib/                    # Utility modules
 │   │   ├── api.js              # fetch client for the Worker API
@@ -126,6 +130,8 @@ crescere/
 │   │   ├── share.js            # Live share link URLs
 │   │   ├── csv.js              # CSV export/import
 │   │   ├── summary.js          # Latest-values summary for SummaryCard
+│   │   ├── measurementInput.js # Parse typed weights (g/kg) and lengths
+│   │   ├── measurementActions.js # Delete with Undo toast
 │   │   ├── dialog.js           # Modal focus handling (Svelte action)
 │   │   ├── utils.js            # Formatting and chart helpers
 │   │   └── __mocks__/api.js    # In-memory API for unit tests
@@ -157,7 +163,7 @@ The Worker serves both the API (`/api/*`) and the built SPA (static assets), so 
 
 ### Key design decisions
 
-- **Optimistic updates**: All mutations update the Svelte store immediately, then fire an async API call. On failure, the store rolls back. This makes the UI feel instant.
+- **Optimistic updates**: All mutations update the Svelte store immediately, then fire an async API call. On failure, the store rolls back and sets `syncError` with a `retry` function; `App.svelte` shows it as a toast with Retry. This makes the UI feel instant without losing changes silently.
 - **No localStorage persistence for data**: Child data lives only in D1.
 - **Chart choice in localStorage**: The selected chart tab and view, and percentile vs z-score mode, are stored in localStorage (via `chartStore.js`) since they're UI preferences, not user data.
 - **Authorization in the Worker**: D1 has no row-level security, so each route checks ownership itself (`requireOwnedChild`, `WHERE user_id = ?`).

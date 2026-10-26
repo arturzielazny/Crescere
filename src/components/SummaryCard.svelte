@@ -11,6 +11,7 @@
   import { formatDate, formatPercentile, formatZScore } from '../lib/utils.js';
   import { summarizeGrowth, describeZScore, SUMMARY_METRICS } from '../lib/summary.js';
 
+  export let onAddMeasurement = () => {};
   export let onEditProfile = () => {};
   export let onShare = () => {};
   export let onExplain = () => {};
@@ -225,7 +226,32 @@
       </ul>
     {/if}
 
-    <div class="mt-3 flex justify-end print-hidden">
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 print-hidden">
+      {#if !isShared && hasProfile}
+        <button
+          type="button"
+          on:click={onAddMeasurement}
+          class="inline-flex items-center gap-1.5 px-4 py-2 pointer-coarse:py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          {$t('measurements.addTitle')}
+        </button>
+      {:else}
+        <span></span>
+      {/if}
       <button
         type="button"
         on:click={onExplain}

@@ -6,6 +6,7 @@
   import ChartPanel from './components/ChartPanel.svelte';
   import SummaryCard from './components/SummaryCard.svelte';
   import ChildProfileSheet from './components/ChildProfileSheet.svelte';
+  import MeasurementSheet from './components/MeasurementSheet.svelte';
   import ShareModal from './components/ShareModal.svelte';
   import Toast from './components/Toast.svelte';
   import UserMenu from './components/UserMenu.svelte';
@@ -20,6 +21,7 @@
     sharedChildIds,
     dataLoading,
     dataError,
+    syncError,
     enableSync,
     disableSync,
     acceptLiveShare,
@@ -38,16 +40,18 @@
   import { exportToCsv, importFromCsv } from './lib/csv.js';
   import { parseLiveShareUrl, clearShareHash } from './lib/share.js';
   import { t, language } from './stores/i18n.js';
+  import { toast, showToast, dismissToast } from './stores/toastStore.js';
   import { calculateAgeInDays, formatAge } from './lib/zscore.js';
   import { formatDate } from './lib/utils.js';
   import { dialog } from './lib/dialog.js';
 
   let showShareModal = false;
   let showProfileSheet = false;
+  /** null = closed; { measurement: null } adds, { measurement } edits */
+  let measurementSheet = null;
   let explainOpen = false;
   /** True while printing: the chart panel renders every chart for the print layout */
   let printing = false;
-  let toast = null;
   /** @type {null | 'signIn' | 'claimAccount' | 'changePassword'} */
   let authModalMode = null;
 
@@ -58,25 +62,37 @@
     clearShareHash();
 
     if (!$isAuthenticated) {
-      toast = { message: $t('share.live.requiresAuth'), type: 'error' };
+      showToast({ message: $t('share.live.requiresAuth'), type: 'error' });
       return;
     }
 
     try {
       const result = await acceptLiveShare(token);
       if (result.alreadyAccepted) {
-        toast = { message: $t('share.live.alreadyAdded'), type: 'info' };
+        showToast({ message: $t('share.live.alreadyAdded'), type: 'info' });
       } else {
-        toast = { message: $t('share.live.accepted'), type: 'success' };
+        showToast({ message: $t('share.live.accepted'), type: 'success' });
       }
     } catch (_err) {
       console.error('Failed to accept live share:', _err);
-      toast = { message: $t('share.live.error'), type: 'error' };
+      showToast({ message: $t('share.live.error'), type: 'error' });
     }
   }
 
   async function loadAuthenticatedData() {
     await enableSync($t('children.example'));
+  }
+
+  // Failed saves are rolled back by the store; tell the user and offer to repeat the change
+  $: if ($syncError) {
+    const { retry } = $syncError;
+    showToast({
+      message: $t('sync.failed'),
+      type: 'error',
+      duration: 10000,
+      action: retry ? { label: $t('sync.retry'), onClick: retry } : null
+    });
+    syncError.set(null);
   }
 
   async function initializeApp() {
@@ -161,9 +177,9 @@
       try {
         const importedData = importFromCsv(e.target.result);
         await importChildren(importedData.children);
-        toast = { message: $t('app.import.success'), type: 'success' };
+        showToast({ message: $t('app.import.success'), type: 'success' });
       } catch (_err) {
-        toast = { message: $t('app.import.error'), type: 'error' };
+        showToast({ message: $t('app.import.error'), type: 'error' });
       }
     };
     reader.readAsText(file);
@@ -283,8 +299,36 @@
       </div>
     {:else}
       {#if $dataError}
-        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 print-hidden">
-          {$t('auth.error')}: {$dataError}
+        <div
+          class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 print-hidden flex flex-wrap items-center gap-3"
+          role="alert"
+        >
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium">{$t('data.loadFailed')}</p>
+            <p class="text-xs text-red-700 mt-0.5 break-words">{$dataError}</p>
+          </div>
+          <button
+            type="button"
+            on:click={() => window.location.reload()}
+            class="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded"
+          >
+            {$t('data.reload')}
+          </button>
+          <button
+            type="button"
+            on:click={() => dataError.set(null)}
+            class="p-1.5 text-red-500 hover:text-red-700 rounded"
+            aria-label={$t('common.dismiss')}
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
       {/if}
 
@@ -328,6 +372,7 @@
       {/if}
 
       <SummaryCard
+        onAddMeasurement={() => (measurementSheet = { measurement: null })}
         onEditProfile={() => (showProfileSheet = true)}
         onShare={handleShare}
         onExplain={handleExplain}
@@ -337,7 +382,7 @@
       <div class="lg:flex lg:gap-6 lg:items-start print-full-width">
         <!-- Left panel: measurement entry (1/3) -->
         <aside
-          class="lg:w-1/3 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto mb-4 lg:mb-0 print-hidden"
+          class="hidden lg:block lg:w-1/3 lg:flex-shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto print-hidden"
         >
           <MeasurementTable compact />
         </aside>
@@ -352,7 +397,7 @@
           <ChartPanel {printing} />
 
           <div class="print-hidden mt-6">
-            <ZScoreTable />
+            <ZScoreTable onEdit={(measurement) => (measurementSheet = { measurement })} />
           </div>
 
           <details
@@ -441,6 +486,13 @@
   />
 {/if}
 
+{#if measurementSheet}
+  <MeasurementSheet
+    measurement={measurementSheet.measurement}
+    onClose={() => (measurementSheet = null)}
+  />
+{/if}
+
 {#if showProfileSheet}
   <ChildProfileSheet onClose={() => (showProfileSheet = false)} />
 {/if}
@@ -479,6 +531,14 @@
   </div>
 {/if}
 
-{#if toast}
-  <Toast message={toast.message} type={toast.type} onClose={() => (toast = null)} />
+{#if $toast}
+  {#key $toast.id}
+    <Toast
+      message={$toast.message}
+      type={$toast.type}
+      duration={$toast.duration}
+      action={$toast.action}
+      onClose={dismissToast}
+    />
+  {/key}
 {/if}

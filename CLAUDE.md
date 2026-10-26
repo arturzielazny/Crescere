@@ -34,7 +34,7 @@ Svelte 5 SPA for pediatric growth monitoring, served by a Cloudflare Worker (`wo
 
 ### Core Data Flow
 
-1. **State Management** (`src/stores/childStore.js`): Central `childStore` (writable) holds `children[]` array and `activeChildId`. Derived stores (`activeChild`, `measurementsWithZScores`) compute current selection and enriched data. All mutations use **optimistic updates** — the UI updates instantly, then an async API call runs in the background. On failure, the store rolls back and `dataError` is set.
+1. **State Management** (`src/stores/childStore.js`): Central `childStore` (writable) holds `children[]` array and `activeChildId`. Derived stores (`activeChild`, `measurementsWithZScores`) compute current selection and enriched data. All mutations use **optimistic updates** — the UI updates instantly, then an async API call runs in the background. On failure, the store rolls back and sets `syncError` (`{ message, retry }`), which `App.svelte` shows as a toast with Retry. `dataError` is only for failing to load data. Toasts go through `src/stores/toastStore.js` (`showToast`).
 
 2. **Persistence** (`src/lib/api.js` → `worker/data.js` → D1): `api.js` is a thin `fetch` client for the Worker. Tables: `users`, `sessions`, `children`, `measurements`, `user_preferences`, `child_shares`, `shared_child_access` (schema in `migrations/`). There is no row-level security: every Worker query must scope itself to the signed-in user. There is no localStorage persistence for child data.
 
@@ -83,6 +83,8 @@ Chart features:
 - Printing renders every chart (`printing` flag in `App.svelte`, charts mounted with `animate={false}`)
 
 The selected tab/view and display mode are persisted in localStorage via `chartStore.js`.
+
+Measurements are added and edited in `MeasurementSheet.svelte` (from the summary card's "Add measurement" and the history list in `ZScoreTable.svelte`); input parsing (g/kg, comma decimals) is in `src/lib/measurementInput.js`. Deleting offers Undo instead of a confirmation (`src/lib/measurementActions.js`). The inline-editable `MeasurementTable.svelte` is shown from `lg:` up only.
 
 Above the charts, `SummaryCard.svelte` shows the latest value, percentile and change per metric (`src/lib/summary.js`). Children are switched with pills (`ChildList.svelte`); the active child's profile is edited in `ChildProfileSheet.svelte`. Modals use the `dialog` action (`src/lib/dialog.js`) for focus handling; bottom sheets use `Sheet.svelte`.
 

@@ -19,8 +19,19 @@ export const childStore = writable(initialState);
 // Loading state for async operations
 export const dataLoading = writable(true);
 
-// Error state for async operations
+// Error loading data from the backend (shown as a banner with a reload button)
 export const dataError = writable(null);
+
+/**
+ * Last failed save, shown as a toast. `retry` repeats the change, when that's possible.
+ * @type {import('svelte/store').Writable<{ message: string, retry: (() => void) | null } | null>}
+ */
+export const syncError = writable(null);
+
+function reportSyncError(err, retry = null) {
+  console.error('Sync failed:', err);
+  syncError.set({ message: err?.message || String(err), retry });
+}
 
 // Track the example (demo) child — client-side only, never synced to backend
 export const exampleChildId = writable(null);
@@ -58,6 +69,14 @@ const getActiveChild = (state) => {
   if (!activeId) return null;
   return state.children.find((child) => child.id === activeId) || null;
 };
+
+const updateChildById = (state, childId, updater) => ({
+  ...state,
+  children: state.children.map((child) => (child.id === childId ? updater(child) : child))
+});
+
+const findChildWithMeasurement = (state, measurementId) =>
+  state.children.find((child) => child.measurements.some((m) => m.id === measurementId)) || null;
 
 const updateActiveChild = (state, updater) => {
   const activeChild = getActiveChild(state);
@@ -202,11 +221,11 @@ function shouldSync(childId) {
   return syncEnabled && get(exampleChildId) !== childId && !pendingChildIds.has(childId);
 }
 
-/** Run an API call; on failure, rollback the store to the snapshot and set dataError */
-function syncWithRollback(snapshot, apiCall) {
+/** Run an API call; on failure, roll the store back to the snapshot and report it */
+function syncWithRollback(snapshot, apiCall, retry = null) {
   apiCall().catch((err) => {
     childStore.set(snapshot);
-    dataError.set(err.message);
+    reportSyncError(err, retry);
   });
 }
 
@@ -243,86 +262,115 @@ export function updateProfile(profile) {
         });
       }
     } else {
-      syncWithRollback(state, () => api.updateChild(activeChild.id, profile));
+      const childId = activeChild.id;
+      syncWithRollback(
+        state,
+        () => api.updateChild(childId, profile),
+        () => {
+          // Only retry while the same child is still selected
+          if (getActiveChild(get(childStore))?.id === childId) updateProfile(profile);
+        }
+      );
     }
   }
 }
 
-export function addMeasurement(measurement) {
-  const state = get(childStore);
-  const activeChild = getActiveChild(state);
-  if (!activeChild) return;
-  if (get(sharedChildIds).has(activeChild.id)) return;
+/**
+ * Add a measurement to a child (the active child by default).
+ * @param {{date: string, weight: number|null, length: number|null, headCirc: number|null}} measurement
+ * @param {string} [childId]
+ */
+export function addMeasurement(measurement, childId = getActiveChild(get(childStore))?.id) {
+  const child = get(childStore).children.find((c) => c.id === childId);
+  if (!child) return;
+  if (get(sharedChildIds).has(childId)) return;
 
   // Convert example child to pending on first edit
-  if (get(exampleChildId) === activeChild.id) {
-    convertExampleToPending(activeChild.id);
+  if (get(exampleChildId) === childId) {
+    convertExampleToPending(childId);
   }
 
   const tempId = crypto.randomUUID();
+  const setMeasurements = (fn) =>
+    childStore.update((s) =>
+      updateChildById(s, childId, (c) => ({ ...c, measurements: fn(c.measurements) }))
+    );
 
   // Optimistic update
-  childStore.update((s) =>
-    updateActiveChild(s, (child) => ({
-      ...child,
-      measurements: [...child.measurements, { ...measurement, id: tempId }]
-    }))
-  );
+  setMeasurements((list) => [...list, { ...measurement, id: tempId }]);
 
-  if (shouldSync(activeChild.id)) {
+  if (shouldSync(childId)) {
     api
-      .createMeasurement(activeChild.id, measurement)
+      .createMeasurement(childId, measurement)
       .then((realId) => {
-        childStore.update((s) =>
-          updateActiveChild(s, (child) => ({
-            ...child,
-            measurements: child.measurements.map((m) =>
-              m.id === tempId ? { ...m, id: realId } : m
-            )
-          }))
-        );
+        setMeasurements((list) => list.map((m) => (m.id === tempId ? { ...m, id: realId } : m)));
       })
       .catch((err) => {
-        childStore.set(state);
-        dataError.set(err.message);
+        setMeasurements((list) => list.filter((m) => m.id !== tempId));
+        reportSyncError(err, () => addMeasurement(measurement, childId));
       });
   }
 }
 
+/**
+ * Undo a deletion: add the measurement back to the child it came from.
+ * @param {string} childId
+ * @param {{id?: string, date: string, weight: number|null, length: number|null, headCirc: number|null}} measurement
+ */
+export function restoreMeasurement(childId, measurement) {
+  const { date, weight, length, headCirc } = measurement;
+  addMeasurement({ date, weight, length, headCirc }, childId);
+}
+
 export function updateMeasurement(id, updates) {
   const state = get(childStore);
-  const active = getActiveChild(state);
-  if (active && get(sharedChildIds).has(active.id)) return;
+  const child = findChildWithMeasurement(state, id);
+  if (!child || get(sharedChildIds).has(child.id)) return;
 
   // Optimistic update
   childStore.update((s) =>
-    updateActiveChild(s, (child) => ({
-      ...child,
-      measurements: child.measurements.map((m) => (m.id === id ? { ...m, ...updates } : m))
+    updateChildById(s, child.id, (c) => ({
+      ...c,
+      measurements: c.measurements.map((m) => (m.id === id ? { ...m, ...updates } : m))
     }))
   );
 
-  if (shouldSync(active?.id)) {
-    syncWithRollback(state, () => api.updateMeasurement(id, updates));
+  if (shouldSync(child.id)) {
+    syncWithRollback(
+      state,
+      () => api.updateMeasurement(id, updates),
+      () => updateMeasurement(id, updates)
+    );
   }
 }
 
+/**
+ * Delete a measurement.
+ * @param {string} id
+ * @returns {{ childId: string, measurement: object } | null} What was removed, for undo
+ */
 export function deleteMeasurement(id) {
   const state = get(childStore);
-  const active = getActiveChild(state);
-  if (active && get(sharedChildIds).has(active.id)) return;
+  const child = findChildWithMeasurement(state, id);
+  if (!child || get(sharedChildIds).has(child.id)) return null;
+  const measurement = child.measurements.find((m) => m.id === id);
 
   // Optimistic update
   childStore.update((s) =>
-    updateActiveChild(s, (child) => ({
-      ...child,
-      measurements: child.measurements.filter((m) => m.id !== id)
+    updateChildById(s, child.id, (c) => ({
+      ...c,
+      measurements: c.measurements.filter((m) => m.id !== id)
     }))
   );
 
-  if (shouldSync(active?.id)) {
-    syncWithRollback(state, () => api.deleteMeasurement(id));
+  if (shouldSync(child.id)) {
+    syncWithRollback(
+      state,
+      () => api.deleteMeasurement(id),
+      () => deleteMeasurement(id)
+    );
   }
+  return { childId: child.id, measurement };
 }
 
 export function clearMeasurements() {
@@ -372,6 +420,7 @@ export function resetStore() {
   childStore.set(initialState);
   dataLoading.set(true);
   dataError.set(null);
+  syncError.set(null);
   exampleChildId.set(null);
   sharedChildIds.set(new Set());
   pendingChildIds.clear();
@@ -420,8 +469,10 @@ export function removeChild(childId) {
   }
 
   if (shouldSync(childId)) {
-    syncWithRollback(state, () =>
-      isShared ? api.removeSharedChild(childId) : api.deleteChild(childId)
+    syncWithRollback(
+      state,
+      () => (isShared ? api.removeSharedChild(childId) : api.deleteChild(childId)),
+      () => removeChild(childId)
     );
   }
   pendingChildIds.delete(childId);
@@ -508,8 +559,7 @@ export async function syncChildToBackend(childId) {
 
     return realId;
   } catch (err) {
-    console.error('Failed to sync child:', err);
-    dataError.set(err.message);
+    reportSyncError(err);
     throw err;
   } finally {
     syncingChildIds.delete(childId);
@@ -573,8 +623,7 @@ export async function importChildren(children) {
         });
       }
     } catch (err) {
-      console.error('Failed to import child:', err);
-      dataError.set(err.message);
+      reportSyncError(err);
     }
   }
 }

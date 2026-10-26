@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { get } from 'svelte/store';
-import { resetMockData, setMockUser, getMockData } from '../lib/__mocks__/api.js';
+import { resetMockData, setMockUser, getMockData, seedMockData } from '../lib/__mocks__/api.js';
 
 // Mock the API module with an in-memory backend
 vi.mock('../lib/api.js', () => import('../lib/__mocks__/api.js'));
@@ -29,7 +29,8 @@ const {
   clearMeasurements,
   removeChild,
   exampleChildId,
-  dataError: _dataError
+  restoreMeasurement,
+  syncError
 } = childStoreModule;
 
 describe('childStore - syncChildToBackend', () => {
@@ -1265,5 +1266,86 @@ describe('childStore - setActiveChild safety', () => {
     // in the children table - this is the bug importChildren fixes
     const dbChildren = getMockData('children');
     expect(dbChildren).toHaveLength(0); // Child was never created in DB
+  });
+});
+
+describe('childStore - undo and sync errors', () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  beforeEach(async () => {
+    resetMockData();
+    resetStore();
+    setMockUser({ id: 'user-1', email: 'a@example.com' });
+    seedMockData('children', [
+      { id: 'child-a', user_id: 'user-1', name: 'A', birth_date: '2025-01-01', sex: 1 },
+      { id: 'child-b', user_id: 'user-1', name: 'B', birth_date: '2025-01-01', sex: 2 }
+    ]);
+    seedMockData('measurements', [
+      { id: 'm-a1', child_id: 'child-a', date: '2025-02-01', weight: 4000 },
+      { id: 'm-b1', child_id: 'child-b', date: '2025-02-01', weight: 3900 }
+    ]);
+    await enableSync();
+    setActiveChild('child-a');
+  });
+
+  afterEach(() => {
+    disableSync();
+  });
+
+  const childById = (id) => get(childStore).children.find((c) => c.id === id);
+
+  it('deleteMeasurement returns what it removed, and restore puts it back on the same child', async () => {
+    const removed = deleteMeasurement('m-a1');
+    expect(removed.childId).toBe('child-a');
+    expect(removed.measurement).toMatchObject({ date: '2025-02-01', weight: 4000 });
+    await flush();
+    expect(getMockData('measurements').map((m) => m.id)).toEqual(['m-b1']);
+
+    // Undo after switching to another child still restores to the original one
+    setActiveChild('child-b');
+    restoreMeasurement(removed.childId, removed.measurement);
+    await flush();
+
+    expect(childById('child-a').measurements).toHaveLength(1);
+    expect(childById('child-b').measurements).toHaveLength(1);
+    const saved = getMockData('measurements').filter((m) => m.child_id === 'child-a');
+    expect(saved).toHaveLength(1);
+    expect(childById('child-a').measurements[0].id).toBe(saved[0].id);
+  });
+
+  it('updates and deletes measurements of a child that is not selected', async () => {
+    updateMeasurement('m-b1', { weight: 4100 });
+    await flush();
+    expect(childById('child-b').measurements[0].weight).toBe(4100);
+    expect(getMockData('measurements').find((m) => m.id === 'm-b1').weight).toBe(4100);
+  });
+
+  it('a failed add is removed again and reported with a working retry', async () => {
+    setMockUser(null); // API calls now fail with 401
+    addMeasurement({ date: '2025-03-01', weight: 5000, length: null, headCirc: null });
+    expect(childById('child-a').measurements).toHaveLength(2);
+    await flush();
+
+    expect(childById('child-a').measurements).toHaveLength(1);
+    const error = get(syncError);
+    expect(error.message).toBe('Not authenticated');
+
+    setMockUser({ id: 'user-1', email: 'a@example.com' });
+    error.retry();
+    await flush();
+    expect(childById('child-a').measurements).toHaveLength(2);
+    expect(getMockData('measurements').filter((m) => m.child_id === 'child-a')).toHaveLength(2);
+  });
+
+  it('a failed update rolls back and its retry applies the change', async () => {
+    setMockUser(null);
+    updateMeasurement('m-a1', { weight: 4200 });
+    await flush();
+    expect(childById('child-a').measurements[0].weight).toBe(4000);
+
+    setMockUser({ id: 'user-1', email: 'a@example.com' });
+    get(syncError).retry();
+    await flush();
+    expect(getMockData('measurements').find((m) => m.id === 'm-a1').weight).toBe(4200);
   });
 });

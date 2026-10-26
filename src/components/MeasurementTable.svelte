@@ -4,7 +4,6 @@
     measurementsWithZScores,
     addMeasurement,
     updateMeasurement,
-    deleteMeasurement,
     isActiveChildReadOnly
   } from '../stores/childStore.js';
   import { formatAge } from '../lib/zscore.js';
@@ -16,7 +15,9 @@
     formatDate
   } from '../lib/utils.js';
   import { t, language } from '../stores/i18n.js';
-  import ConfirmModal from './ConfirmModal.svelte';
+  import { showToast } from '../stores/toastStore.js';
+  import { parseWeight, parseCm } from '../lib/measurementInput.js';
+  import { deleteMeasurementWithUndo } from '../lib/measurementActions.js';
   import DateInput from './DateInput.svelte';
 
   export let compact = false;
@@ -27,53 +28,55 @@
   let newLength = '';
   let newHeadCirc = '';
 
-  // Delete confirmation
-  let deleteModalOpen = false;
-  let deleteTargetId = null;
-
-  function toNumberOrNull(value) {
-    if (value === '' || value === null || value === undefined) return null;
-    const num = Number(value);
-    return Number.isFinite(num) ? num : null;
-  }
+  /** Parsed value: null for an empty field, undefined when it isn't a number */
+  const PARSERS = {
+    weight: (v) => parseWeight(v)?.grams,
+    length: (v) => parseCm(v)?.value,
+    headCirc: (v) => parseCm(v)?.value
+  };
+  const parseField = (field, value) => PARSERS[field](value);
 
   function handleAddMeasurement() {
     if (!newDate) return;
     if (!newWeight && !newLength && !newHeadCirc) return;
 
-    addMeasurement({
-      date: newDate,
-      weight: toNumberOrNull(newWeight),
-      length: toNumberOrNull(newLength),
-      headCirc: toNumberOrNull(newHeadCirc)
-    });
+    const values = {
+      weight: parseField('weight', newWeight),
+      length: parseField('length', newLength),
+      headCirc: parseField('headCirc', newHeadCirc)
+    };
+    if (Object.values(values).includes(undefined)) {
+      showToast({ message: $t('measurements.invalid.number'), type: 'error' });
+      return;
+    }
+    const birthDate = $activeChild?.profile?.birthDate;
+    if (birthDate && newDate < birthDate) {
+      showToast({ message: $t('measurements.invalid.beforeBirth'), type: 'error' });
+      return;
+    }
+
+    addMeasurement({ date: newDate, ...values });
 
     newWeight = '';
     newLength = '';
     newHeadCirc = '';
   }
 
-  function handleUpdate(id, field, value) {
-    const nextValue = field === 'date' ? value : toNumberOrNull(value);
-    updateMeasurement(id, { [field]: nextValue });
-  }
-
-  function handleDelete(id) {
-    deleteTargetId = id;
-    deleteModalOpen = true;
-  }
-
-  function confirmDelete() {
-    if (deleteTargetId) {
-      deleteMeasurement(deleteTargetId);
+  function handleUpdate(id, field, event) {
+    if (field === 'date') {
+      updateMeasurement(id, { date: event.detail.value });
+      return;
     }
-    deleteModalOpen = false;
-    deleteTargetId = null;
-  }
-
-  function cancelDelete() {
-    deleteModalOpen = false;
-    deleteTargetId = null;
+    const input = event.currentTarget;
+    const value = parseField(field, input.value);
+    if (value === undefined) {
+      // Not a number: show the stored value again
+      const current = $measurementsWithZScores.find((m) => m.id === id)?.[field];
+      input.value = current ?? '';
+      showToast({ message: $t('measurements.invalid.number'), type: 'error' });
+      return;
+    }
+    updateMeasurement(id, { [field]: value });
   }
 </script>
 
@@ -150,7 +153,7 @@
               {/if}
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <input
-                  type="number"
+                  type="text"
                   step="1"
                   inputmode="numeric"
                   aria-label={$t('measurements.weight')}
@@ -164,7 +167,7 @@
               </td>
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <input
-                  type="number"
+                  type="text"
                   step="0.1"
                   inputmode="decimal"
                   aria-label={$t('measurements.length')}
@@ -178,7 +181,7 @@
               </td>
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 <input
-                  type="number"
+                  type="text"
                   step="0.1"
                   inputmode="decimal"
                   aria-label={$t('measurements.head')}
@@ -208,8 +211,9 @@
         <tbody>
           {#each $measurementsWithZScores as m (m.id)}
             <tr
-              class="border-b border-gray-100 hover:bg-gray-50"
+              class="group border-b border-gray-100 hover:bg-gray-50"
               class:bg-green-50={isFutureDate(m.date)}
+              title={isFutureDate(m.date) ? $t('measurements.planned') : undefined}
             >
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 {#if $isActiveChildReadOnly}
@@ -218,7 +222,7 @@
                   <DateInput
                     ariaLabel={$t('measurements.date')}
                     value={m.date}
-                    on:change={(e) => handleUpdate(m.id, 'date', e.detail.value)}
+                    on:change={(e) => handleUpdate(m.id, 'date', e)}
                     cssClass="{compact
                       ? 'w-28 text-xs'
                       : 'w-32 text-sm'} px-1 py-0.5 pointer-coarse:py-1.5 border border-transparent hover:border-gray-300 focus:border-blue-400 focus:outline-none rounded cursor-pointer bg-transparent"
@@ -241,12 +245,12 @@
                   <span class="text-xs">{m.weight || '—'}</span>
                 {:else}
                   <input
-                    type="number"
+                    type="text"
                     step="1"
                     inputmode="numeric"
                     aria-label={$t('measurements.weight')}
                     value={m.weight || ''}
-                    on:change={(e) => handleUpdate(m.id, 'weight', e.target.value)}
+                    on:change={(e) => handleUpdate(m.id, 'weight', e)}
                     placeholder="—"
                     class="{compact
                       ? 'w-14 text-xs'
@@ -259,12 +263,12 @@
                   <span class="text-xs">{m.length || '—'}</span>
                 {:else}
                   <input
-                    type="number"
+                    type="text"
                     step="0.1"
                     inputmode="decimal"
                     aria-label={$t('measurements.length')}
                     value={m.length || ''}
-                    on:change={(e) => handleUpdate(m.id, 'length', e.target.value)}
+                    on:change={(e) => handleUpdate(m.id, 'length', e)}
                     placeholder="—"
                     class="{compact
                       ? 'w-14 text-xs'
@@ -277,12 +281,12 @@
                   <span class="text-xs">{m.headCirc || '—'}</span>
                 {:else}
                   <input
-                    type="number"
+                    type="text"
                     step="0.1"
                     inputmode="decimal"
                     aria-label={$t('measurements.head')}
                     value={m.headCirc || ''}
-                    on:change={(e) => handleUpdate(m.id, 'headCirc', e.target.value)}
+                    on:change={(e) => handleUpdate(m.id, 'headCirc', e)}
                     placeholder="—"
                     class="{compact
                       ? 'w-14 text-xs'
@@ -319,8 +323,8 @@
               <td class={compact ? 'py-1 px-1' : 'py-2 px-2'}>
                 {#if !$isActiveChildReadOnly}
                   <button
-                    on:click={() => handleDelete(m.id)}
-                    class="inline-flex items-center justify-center w-6 h-6 pointer-coarse:w-10 pointer-coarse:h-10 rounded text-red-500 hover:text-red-700 hover:bg-red-50"
+                    on:click={() => deleteMeasurementWithUndo(m.id)}
+                    class="inline-flex items-center justify-center w-6 h-6 pointer-coarse:w-10 pointer-coarse:h-10 rounded text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus:opacity-100 pointer-coarse:opacity-100"
                     aria-label={$t('measurements.delete.title')}
                   >
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -347,13 +351,3 @@
     {/if}
   {/if}
 </div>
-
-{#if deleteModalOpen}
-  <ConfirmModal
-    title={$t('confirm.measurement.title')}
-    message={$t('confirm.measurement.message')}
-    confirmLabel={$t('measurements.delete.title')}
-    onConfirm={confirmDelete}
-    onCancel={cancelDelete}
-  />
-{/if}
