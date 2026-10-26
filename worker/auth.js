@@ -197,15 +197,45 @@ export async function handleLogin(request, env, session) {
 
   const { statement, token } = await newSessionStatement(env, row.id);
   const statements = [statement];
+  // Signing in from a guest session: move the guest's children into the account,
+  // otherwise they'd be stranded and deleted with the guest by the daily cleanup
+  const moveFrom = session?.user.isAnonymous && session.user.id !== row.id ? session.user.id : null;
+  if (moveFrom) statements.push(...moveGuestDataStatements(env, moveFrom, row.id));
   // Replace the current session (usually a guest one) rather than leaving it behind
   if (session) {
     statements.push(
       env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(session.tokenHash)
     );
   }
-  await env.DB.batch(statements);
+  const results = await env.DB.batch(statements);
+  const movedChildren = moveFrom ? results[1].meta.changes : 0;
 
-  return json({ user: toUser(row) }, { headers: { 'Set-Cookie': sessionCookie(request, token) } });
+  return json(
+    { user: toUser(row), movedChildren },
+    { headers: { 'Set-Cookie': sessionCookie(request, token) } }
+  );
+}
+
+/**
+ * Hand a guest's data over to an account: their children (measurements follow the
+ * child) and the children others shared with them. Guests can't make share links.
+ * The first statement moves the children, so its change count is the number moved.
+ */
+function moveGuestDataStatements(env, guestId, accountId) {
+  return [
+    env.DB.prepare('UPDATE children SET user_id = ? WHERE user_id = ?').bind(accountId, guestId),
+    // OR IGNORE: the account may already see that child; the guest's copy goes with the guest
+    env.DB.prepare('UPDATE OR IGNORE shared_child_access SET user_id = ? WHERE user_id = ?').bind(
+      accountId,
+      guestId
+    ),
+    // Access the account had to children it now owns is pointless
+    env.DB.prepare(
+      `DELETE FROM shared_child_access
+        WHERE user_id = ?
+          AND child_id IN (SELECT id FROM children WHERE user_id = ?)`
+    ).bind(accountId, accountId)
+  ];
 }
 
 /** POST /api/auth/claim — turn the current guest user into a full account */

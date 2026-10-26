@@ -107,7 +107,7 @@ export async function signInAnonymously() {
 
 export async function signInWithPassword(email) {
   mockUser = { id: crypto.randomUUID(), email, isAnonymous: false };
-  return mockUser;
+  return { user: mockUser, movedChildren: 0 };
 }
 
 export async function claimAccount(email) {

@@ -18,7 +18,7 @@
   export let onSwitchMode = null;
   /** Why the dialog was opened, shown above the form (e.g. sharing needs a saved account) */
   export let notice = '';
-  /** A guest with their own children: signing in to another account leaves those behind */
+  /** A guest with their own children: signing in moves them into that account */
   export let guestHasData = false;
 
   const MIN_PASSWORD_LENGTH = 6;
@@ -77,8 +77,8 @@
 
     try {
       if (mode === 'signIn') {
-        await signInWithPassword(email, password);
-        onSuccess();
+        const { movedChildren } = await signInWithPassword(email, password);
+        onSuccess({ movedChildren });
       } else if (mode === 'claimAccount') {
         await claimAccount(email, password);
         done = true;
@@ -159,8 +159,8 @@
       <p class="text-sm text-gray-500 mb-4">{description}</p>
     {/if}
     {#if mode === 'signIn' && guestHasData}
-      <p class="text-sm text-amber-800 bg-amber-50 rounded px-3 py-2 mb-4" role="note">
-        {$t('auth.signIn.guestDataWarning')}
+      <p class="text-sm text-blue-800 bg-blue-50 rounded px-3 py-2 mb-4" role="note">
+        {$t('auth.signIn.guestDataMoves')}
       </p>
     {/if}
 

@@ -116,8 +116,18 @@
     checkForLiveShare();
   }
 
-  async function handleSignedIn() {
+  async function handleSignedIn({ movedChildren = 0 } = {}) {
     await loadAuthenticatedData();
+    if (movedChildren > 0) {
+      showToast({
+        message:
+          movedChildren === 1
+            ? $t('auth.signIn.moved.one')
+            : $t('auth.signIn.moved.many').replace('{count}', String(movedChildren)),
+        type: 'success',
+        duration: 5000
+      });
+    }
     checkForLiveShare();
   }
 
@@ -230,7 +240,7 @@
     }
   }
 
-  // Guests with their own children: worth saving, and lost if they sign in to another account
+  // Guests with their own children: worth saving, and moved into the account if they sign in
   $: guestChildren = $isAnonymous
     ? $childStore.children.filter((c) => c.id !== $exampleChildId && !$sharedChildIds.has(c.id))
     : [];
@@ -498,10 +508,10 @@
       onSwitchMode={(mode) => (authModalMode = mode)}
       onClose={closeAuthModal}
       onSuccess={authModalMode === 'signIn'
-        ? () => {
+        ? (result) => {
             shareAfterSave = false;
             authModalMode = null;
-            handleSignedIn();
+            handleSignedIn(result);
           }
         : closeAuthModal}
     />

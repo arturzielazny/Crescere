@@ -41,7 +41,7 @@ Svelte 5 SPA for pediatric growth monitoring, served by a Cloudflare Worker (`wo
 3. **Authentication** (`src/stores/authStore.js` → `worker/auth.js`): cookie sessions (`HttpOnly`, hashed tokens in D1).
    - Guest: auto-created on first visit (`users` row with no email)
    - Save account (`claimAccount`): sets email + password on the same row, so all data stays attached
-   - Email + password sign-in; change password requires the current one
+   - Email + password sign-in; change password requires the current one. Signing in from a guest session moves the guest's children into the account (`moveGuestDataStatements` in `worker/auth.js`)
    - No email is ever sent: no magic links, no verification, no reset email. Operators reset passwords with `scripts/set-password.js`.
 
 4. **Z-Score Calculation** (`src/lib/zscore.js`): Implements WHO LMS method with two variants:

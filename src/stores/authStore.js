@@ -85,11 +85,17 @@ export function signInAnonymously() {
   });
 }
 
-/** Sign in with email and password */
-export function signInWithPassword(email, password) {
-  return withAuthLoading(() => api.signInWithPassword(email, password), setAuthUser, {
-    key: 'signInWithPassword'
-  });
+/**
+ * Sign in with email and password
+ * @returns {Promise<{movedChildren: number}>} how many guest children moved into the account
+ */
+export async function signInWithPassword(email, password) {
+  const result = await withAuthLoading(
+    () => api.signInWithPassword(email, password),
+    (r) => setAuthUser(r.user),
+    { key: 'signInWithPassword' }
+  );
+  return { movedChildren: result.movedChildren ?? 0 };
 }
 
 /** Save the guest account with email and password (keeps all data) */

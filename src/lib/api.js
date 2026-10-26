@@ -52,10 +52,13 @@ export async function signInAnonymously() {
   return user;
 }
 
-/** Sign in with email and password */
+/**
+ * Sign in with email and password. Children added as a guest in this browser
+ * move into the account; movedChildren says how many.
+ * @returns {Promise<{user: {id: string, email: string|null, isAnonymous: boolean}, movedChildren: number}>}
+ */
 export async function signInWithPassword(email, password) {
-  const { user } = await request('POST', '/auth/login', { email, password });
-  return user;
+  return request('POST', '/auth/login', { email, password });
 }
 
 /** Turn the current guest user into a saved account (keeps all data) */

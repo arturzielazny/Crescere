@@ -110,7 +110,7 @@ describe('claiming a guest account', () => {
     const { email, password, user } = await savedAccount();
 
     createBrowser().use();
-    const signedIn = await api.signInWithPassword(email, password);
+    const { user: signedIn } = await api.signInWithPassword(email, password);
     expect(signedIn.id).toBe(user.id);
   });
 
@@ -183,7 +183,7 @@ describe('signing in', () => {
   it('accepts the email in any letter case', async () => {
     const { email, password, user } = await savedAccount();
     createBrowser().use();
-    const signedIn = await api.signInWithPassword(email.toUpperCase(), password);
+    const { user: signedIn } = await api.signInWithPassword(email.toUpperCase(), password);
     expect(signedIn.id).toBe(user.id);
   });
 
@@ -201,6 +201,52 @@ describe('signing in', () => {
     // The old guest cookie no longer works
     browser.cookie = guestCookie;
     expect(await api.getSessionUser()).toBeNull();
+  });
+
+  it("moves the guest's children and measurements into the account", async () => {
+    const { email, password, user } = await savedAccount();
+    const ownChildId = await api.createChild({ name: 'Ala', birthDate: '2024-05-01', sex: 2 });
+
+    // Another browser: a guest adds a child, then signs in
+    createBrowser().use();
+    await api.signInAnonymously();
+    const guestChildId = await api.createChild({ name: 'Zosia', birthDate: '2025-01-10', sex: 2 });
+    await api.createMeasurement(guestChildId, { date: '2025-02-10', weight: 4200 });
+
+    const result = await api.signInWithPassword(email, password);
+    expect(result).toEqual({ user, movedChildren: 1 });
+
+    const children = await api.fetchChildren();
+    expect(children.map((c) => c.id).sort()).toEqual([ownChildId, guestChildId].sort());
+    expect(children.find((c) => c.id === guestChildId).measurements).toHaveLength(1);
+  });
+
+  it('keeps children another user shared with the guest', async () => {
+    const { email, password } = await savedAccount();
+
+    // A third user shares a child; a guest opens the link, then signs in
+    const owner = await savedAccount();
+    owner.browser.use();
+    const sharedChildId = await api.createChild({ name: 'Ola', birthDate: '2025-03-01', sex: 2 });
+    const { token } = await api.createShare(sharedChildId, 'Friend');
+
+    createBrowser().use();
+    await api.signInAnonymously();
+    await api.acceptShare(token);
+
+    expect((await api.signInWithPassword(email, password)).movedChildren).toBe(0);
+    expect((await api.fetchSharedChildren()).map((c) => c.id)).toEqual([sharedChildId]);
+  });
+
+  it("moves nothing when signing in from another saved account's session", async () => {
+    const first = await savedAccount();
+    await api.createChild({ name: 'Ala', birthDate: '2024-05-01', sex: 2 });
+    const second = await savedAccount();
+
+    first.browser.use();
+    const result = await api.signInWithPassword(second.email, second.password);
+    expect(result.movedChildren).toBe(0);
+    expect(await api.fetchChildren()).toEqual([]);
   });
 
   it('rate limits repeated attempts from one client', async () => {
@@ -241,7 +287,7 @@ describe('changing the password', () => {
     otherDevice.use();
     expect(await api.getSessionUser()).toBeNull();
     await expect(api.signInWithPassword(email, password)).rejects.toMatchObject({ status: 401 });
-    expect(await api.signInWithPassword(email, 'brand-new-secret')).toMatchObject({ email });
+    expect((await api.signInWithPassword(email, 'brand-new-secret')).user).toMatchObject({ email });
   });
 
   it('is not available to guests', async () => {

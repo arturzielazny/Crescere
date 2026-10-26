@@ -25,7 +25,7 @@ vi.mock('../lib/api.js', () => ({
       return Promise.reject(apiError('Invalid email or password', 401));
     }
     mockUser = { id: 'user-pw-123', email, isAnonymous: false };
-    return Promise.resolve(mockUser);
+    return Promise.resolve({ user: mockUser, movedChildren: 2 });
   },
   claimAccount: (email, password) => {
     if (!mockUser) return Promise.reject(apiError('Not authenticated', 401));
@@ -145,6 +145,13 @@ describe('Auth Store', () => {
       expect(get(isAuthenticated)).toBe(true);
       expect(get(isAnonymous)).toBe(false);
       expect(get(user)?.email).toBe('test@example.com');
+    });
+
+    it('reports how many guest children moved into the account', async () => {
+      await initAuth();
+      expect(await signInWithPassword('test@example.com', 'correct')).toEqual({
+        movedChildren: 2
+      });
     });
 
     it('sets error on invalid credentials', async () => {

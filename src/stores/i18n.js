@@ -218,12 +218,14 @@ const translations = {
     'auth.haveAccount': 'Already have an account?',
     'auth.forgotPassword':
       'Forgot your password? There is no reset email. Ask the person who runs this app to reset it.',
-    'auth.signIn.guestDataWarning':
-      "Children you added as a guest aren't moved to that account. To keep them, save your data instead, or export them first (⋮ → Export) and import them after signing in.",
     'share.send': 'Send',
     'share.live.shareText': 'Growth chart shared from Crescere',
     'chart.axis.age.weeks': 'Age (weeks)',
-    'chart.axis.age.months': 'Age (months)'
+    'chart.axis.age.months': 'Age (months)',
+    'auth.signIn.guestDataMoves':
+      'The children you added as a guest will be moved into the account you sign in to.',
+    'auth.signIn.moved.one': 'The child from this device was moved into your account.',
+    'auth.signIn.moved.many': '{count} children from this device were moved into your account.'
   },
   pl: {
     'app.share': 'Udostępnij',
@@ -441,12 +443,15 @@ const translations = {
     'auth.haveAccount': 'Masz już konto?',
     'auth.forgotPassword':
       'Nie pamiętasz hasła? Nie ma resetu przez email. Poproś osobę prowadzącą tę aplikację o jego zresetowanie.',
-    'auth.signIn.guestDataWarning':
-      'Dzieci dodane w trybie gościa nie zostaną przeniesione na to konto. Aby je zachować, zapisz dane zamiast logowania albo najpierw je wyeksportuj (⋮ → Eksportuj) i zaimportuj po zalogowaniu.',
     'share.send': 'Wyślij',
     'share.live.shareText': 'Wykres wzrostu udostępniony z Crescere',
     'chart.axis.age.weeks': 'Wiek (tygodnie)',
-    'chart.axis.age.months': 'Wiek (miesiące)'
+    'chart.axis.age.months': 'Wiek (miesiące)',
+    'auth.signIn.guestDataMoves':
+      'Dzieci dodane w trybie gościa zostaną przeniesione na konto, na które się zalogujesz.',
+    'auth.signIn.moved.one': 'Dziecko z tego urządzenia zostało przeniesione na Twoje konto.',
+    'auth.signIn.moved.many':
+      'Dzieci z tego urządzenia ({count}) zostały przeniesione na Twoje konto.'
   }
 };
 
