@@ -13,8 +13,14 @@
   import annotationPlugin from 'chartjs-plugin-annotation';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { activeChild } from '../stores/childStore.js';
-  import { calculateAgeInDays } from '../lib/zscore.js';
-  import { isFutureDate, hexToRgba, findClosestToNowIndex, formatDate } from '../lib/utils.js';
+  import { calculateAgeInDays, formatAge } from '../lib/zscore.js';
+  import {
+    isFutureDate,
+    hexToRgba,
+    findClosestToNowIndex,
+    formatDate,
+    ageAxis
+  } from '../lib/utils.js';
   import { WHO_WEIGHT } from '../data/who-weight.js';
   import { WHO_LENGTH } from '../data/who-length.js';
   import { WHO_HEADC } from '../data/who-headc.js';
@@ -42,6 +48,18 @@
 
   let canvas;
   let chart;
+
+  function getAgeAxis() {
+    return ageAxis(maxAge ? maxAge * 1.1 : 0);
+  }
+
+  function ageText(days) {
+    return formatAge(Math.round(days), {
+      invalid: $t('age.invalid'),
+      month: $t('age.month'),
+      day: $t('age.day')
+    });
+  }
 
   const metricConfig = {
     weight: {
@@ -95,8 +113,7 @@
       measurements.length > 0
         ? calculateAgeInDays(child.profile.birthDate, measurements.at(-1).date)
         : 0;
-    const maxBandAge =
-      maxAge && maxAge > 0 ? Math.ceil(maxAge * 1.1) : Math.max(0, maxMeasurementAge);
+    const maxBandAge = Math.ceil(Math.max(getAgeAxis().max, maxMeasurementAge));
     const maxReferenceAge = (config.dataset?.[String(child.profile.sex)]?.length || 1) - 1;
     const bandEndAge = Math.min(maxBandAge, maxReferenceAge);
     const scale = metric === 'weight' ? 1000 : 1;
@@ -255,6 +272,7 @@
   }
 
   function getChartOptions(range) {
+    const ageAxisSpec = getAgeAxis();
     const unitLabel = unit || metricConfig[metric].unit;
     const stepSize = getStepSize(unitLabel, range);
     const nowAge = getCurrentAgeInDays();
@@ -291,7 +309,7 @@
               if (!items.length) return '';
               const age = items[0].parsed.x;
               const date = items[0].raw?.date;
-              const ageLine = `${$t('chart.axis.age')}: ${Math.round(age)}`;
+              const ageLine = `${$t('chart.axis.age')}: ${ageText(age)}`;
               return date ? [formatDate(date, $language), ageLine] : ageLine;
             },
             label: (context) => {
@@ -318,7 +336,11 @@
             const v = value?.y;
             if (v == null) return '';
             const decimals = unitLabel === 'g' ? 0 : 1;
-            return `${Number(v).toFixed(decimals)} ${unitLabel}`;
+            const number = new Intl.NumberFormat($language, {
+              minimumFractionDigits: decimals,
+              maximumFractionDigits: decimals
+            });
+            return `${number.format(v)} ${unitLabel}`;
           }
         }
       },
@@ -327,10 +349,15 @@
           type: 'linear',
           title: {
             display: true,
-            text: $t('chart.axis.age')
+            text: $t(`chart.axis.age.${ageAxisSpec.unit}`)
           },
           min: 0,
-          max: maxAge ? Math.ceil(maxAge * 1.1) : undefined
+          max: ageAxisSpec.max,
+          ticks: {
+            stepSize: ageAxisSpec.stepSize,
+            maxRotation: 0,
+            callback: (value) => ageAxisSpec.format(value)
+          }
         },
         y: {
           title: {

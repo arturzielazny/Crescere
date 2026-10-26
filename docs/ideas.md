@@ -8,7 +8,7 @@
 - ☑ **No way to undo measurement deletion.** Fixed — deleting a measurement no longer asks for confirmation; a toast offers Undo for 6 seconds (`restoreMeasurement`).
 - ☑ **Measurement table is hard to use on mobile.** Fixed — below `lg` the inline table is replaced by an "Add measurement" button and a history list; both open a bottom sheet (`MeasurementSheet.svelte`) with labelled fields. Weight can be typed in grams or kilograms, with dot or comma decimals.
 - ☑ **Example child is confusing for new users.** Fixed — example child is now client-side only (never synced to the backend), shown with green indicator and a demo banner. Auto-removed when user adds their first real child. Cleaned up 8 previously synced example children from production DB.
-- ☐ **Charts have no empty state.** If a child has no measurements, charts render empty with just reference bands. No helpful message like "Add measurements to see growth charts."
+- ☑ **Charts have no empty state.** Fixed — a chart with nothing to plot shows a message instead (the gain-rate chart asks for two measurements, an incomplete profile asks for birth date and sex).
 - ☑ **Ability to login with password.** Fixed — email + password sign-in. Guest accounts are saved via `claimAccount()` (same user ID, data kept). Magic links were dropped in the move to Cloudflare Workers + D1, since nothing sends email.
 
 
@@ -27,6 +27,7 @@
 - ☐ **No conflict resolution.** If two devices edit the same child simultaneously, last-write-wins with no warning. Data can be silently overwritten.
 - ☑ **Export exported raw store data.** Fixed — exports from store instead of empty localStorage. localStorage fallback mode has since been removed entirely.
 - ☐ **No self-service password reset.** There is no email, so a forgotten password can only be reset by the operator (`node scripts/set-password.js <email> --remote`). A recovery code shown when saving the account would let users do it themselves.
+- ☐ **Signing in as a guest drops the guest's children.** `handleLogin` replaces the guest session, and the cleanup cron then deletes the guest user with its children. The sign-in dialog warns about this and suggests export/import; merging the guest's children into the signed-in account would remove the trap.
 - ☐ **No data backup/recovery for anonymous users.** If an anonymous user's session expires or they clear cookies, their data becomes unreachable (the daily cleanup cron then deletes guests with no sessions left). Could offer a recovery code or QR code as backup.
 - ☐ **Bundle size (553 KB).** Chart.js is the biggest contributor. Code splitting the chart components behind a dynamic import would improve initial load.
 - ☑ **Backend hosting kept pausing the free-tier project.** Fixed — the backend runs on Cloudflare Workers + D1 (`worker/`, `migrations/`), which doesn't pause idle projects. Magic links and email verification were dropped in the move.

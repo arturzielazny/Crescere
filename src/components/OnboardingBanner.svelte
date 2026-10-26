@@ -3,15 +3,22 @@
   import { t } from '../stores/i18n.js';
 
   export let onSaveAccount = () => {};
-  export let hasRealChildren = false;
 
   let visible = false;
   let dismissed = false;
 
   const DISMISSED_KEY = 'crescere-onboarding-dismissed';
 
+  function readDismissed() {
+    try {
+      return !!sessionStorage.getItem(DISMISSED_KEY);
+    } catch (_err) {
+      return false;
+    }
+  }
+
   onMount(() => {
-    if (sessionStorage.getItem(DISMISSED_KEY)) {
+    if (readDismissed()) {
       dismissed = true;
       return;
     }
@@ -25,7 +32,11 @@
     visible = false;
     setTimeout(() => {
       dismissed = true;
-      sessionStorage.setItem(DISMISSED_KEY, '1');
+      try {
+        sessionStorage.setItem(DISMISSED_KEY, '1');
+      } catch (_err) {
+        // Storage blocked: the banner just comes back on the next visit
+      }
     }, 300);
   }
 </script>
@@ -38,65 +49,40 @@
   >
     <div class="min-h-0 overflow-hidden">
       <div
-        class="mb-4 p-4 bg-gradient-to-r {hasRealChildren
-          ? 'from-amber-50 to-yellow-50 border-amber-200/60'
-          : 'from-emerald-50 to-teal-50 border-emerald-200/60'} border rounded-lg"
+        class="mb-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200/60 rounded-lg"
       >
         <div class="flex items-start gap-3">
-          {#if hasRealChildren}
-            <svg
-              class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-          {:else}
-            <svg
-              class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-              />
-            </svg>
-          {/if}
+          <svg
+            class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
           <div class="flex-1 min-w-0">
-            <p
-              class="text-sm font-medium {hasRealChildren ? 'text-amber-900' : 'text-emerald-900'}"
-            >
-              {hasRealChildren ? $t('onboarding.guestWelcome') : $t('onboarding.welcome')}
-            </p>
-            <p class="text-sm {hasRealChildren ? 'text-amber-700' : 'text-emerald-700'} mt-0.5">
-              {hasRealChildren ? $t('onboarding.guestDescription') : $t('onboarding.description')}
-            </p>
+            <p class="text-sm font-medium text-amber-900">{$t('onboarding.guestWelcome')}</p>
+            <p class="text-sm text-amber-800 mt-0.5">{$t('onboarding.guestDescription')}</p>
             <div class="mt-2.5">
               <button
+                type="button"
                 on:click={onSaveAccount}
-                class="px-3 py-1.5 text-xs font-medium {hasRealChildren
-                  ? 'bg-amber-600 hover:bg-amber-700'
-                  : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded transition-colors"
+                class="px-3 py-1.5 pointer-coarse:py-2 text-xs font-medium bg-amber-700 hover:bg-amber-800 text-white rounded transition-colors"
               >
-                {$t('onboarding.saveAccount')}
+                {$t('auth.claimAccount')}
               </button>
             </div>
           </div>
           <button
+            type="button"
             on:click={dismiss}
-            class="p-1 pointer-coarse:p-2.5 pointer-coarse:-m-1.5 {hasRealChildren
-              ? 'text-amber-400 hover:text-amber-600'
-              : 'text-emerald-400 hover:text-emerald-600'} rounded flex-shrink-0"
+            class="p-1 pointer-coarse:p-2.5 pointer-coarse:-m-1.5 text-amber-500 hover:text-amber-700 rounded flex-shrink-0"
             aria-label={$t('common.dismiss')}
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

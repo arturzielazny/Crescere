@@ -260,7 +260,9 @@ The "score" view shows percentiles or z-scores depending on the display mode (to
 - **Growth charts** (`GrowthMetricChart.svelte`): Raw measurements plotted against WHO reference bands (median, ±1SD, ±2SD)
 - **Percentile charts** (`PercentileChart.svelte`): Percentiles over time with P16–P84 and P2–P98 bands (±1 and ±2 SD)
 - **Z-score charts** (`ZScoreChart.svelte`): Standard deviation scores over time
-- **Velocity charts** (`VelocityChart.svelte`): Rate of change (g/day or cm/day) between consecutive measurements
+- **Velocity charts** (`VelocityChart.svelte`): Rate of change between consecutive measurements (weight in g/day, length in cm/month)
+
+All charts plot age in days but label the axis in weeks (up to 13 weeks) or months, via `ageAxis()` in `src/lib/utils.js`. `ChartView.svelte` shows an empty state when there's nothing to plot.
 
 ### WHO reference data
 

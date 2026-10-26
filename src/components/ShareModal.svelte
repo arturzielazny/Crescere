@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
-  import { t } from '../stores/i18n.js';
+  import { t, language } from '../stores/i18n.js';
+  import { formatDate } from '../lib/utils.js';
   import { createShare, fetchShares, revokeShare } from '../lib/api.js';
   import { generateLiveShareUrl } from '../lib/share.js';
   import ConfirmModal from './ConfirmModal.svelte';
@@ -89,8 +90,20 @@
     }
   }
 
-  function formatDate(dateStr) {
-    return new Date(dateStr).toLocaleDateString();
+  // Phones offer the system share sheet (WhatsApp, Messages, …); elsewhere links are copied
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  async function nativeShare(share) {
+    try {
+      await navigator.share({
+        title: childName ? `${childName} · Crescere` : 'Crescere',
+        text: $t('share.live.shareText'),
+        url: generateLiveShareUrl(share.token)
+      });
+    } catch (err) {
+      // Closing the share sheet rejects with AbortError; anything else falls back to copying
+      if (err?.name !== 'AbortError') await copyLiveShareUrl(share);
+    }
   }
 </script>
 
@@ -125,6 +138,7 @@
         type="text"
         bind:value={newLabel}
         placeholder={$t('share.live.label.placeholder')}
+        aria-label={$t('share.live.label.placeholder')}
         on:keydown={(e) => e.key === 'Enter' && handleCreateShare()}
         class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
@@ -159,19 +173,31 @@
                 {share.label || $t('share.live.sharedBadge')}
               </div>
               <div class="text-xs text-gray-500">
-                {formatDate(share.created_at)}
+                {formatDate(share.created_at?.slice(0, 10), $language)}
               </div>
             </div>
             <div class="flex gap-2 ml-3">
+              {#if canNativeShare}
+                <button
+                  type="button"
+                  on:click={() => nativeShare(share)}
+                  class="px-3 py-1.5 pointer-coarse:py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded"
+                >
+                  {copiedShareId === share.id ? $t('share.copied') : $t('share.send')}
+                </button>
+              {:else}
+                <button
+                  type="button"
+                  on:click={() => copyLiveShareUrl(share)}
+                  class="px-3 py-1.5 pointer-coarse:py-2 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded"
+                >
+                  {copiedShareId === share.id ? $t('share.copied') : $t('share.copy')}
+                </button>
+              {/if}
               <button
-                on:click={() => copyLiveShareUrl(share)}
-                class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded"
-              >
-                {copiedShareId === share.id ? $t('share.copied') : $t('share.copy')}
-              </button>
-              <button
+                type="button"
                 on:click={() => handleRevokeClick(share.id)}
-                class="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded"
+                class="px-3 py-1.5 pointer-coarse:py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded"
               >
                 {$t('share.live.revoke')}
               </button>

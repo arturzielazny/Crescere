@@ -178,7 +178,7 @@ digraph crescere {
         view_loading   [label="Loading Screen\n(spinner)\nauthLoading || dataLoading", fillcolor="#fff3cd"];
         view_error     [label="Error banner\n(guest creation failed)", fillcolor="#f8d7da"];
         view_dashboard [label="Main Dashboard\n(child list + charts\n+ measurement table)", fillcolor="#d4edda"];
-        view_onboard   [label="Onboarding Banner\n(shown to anonymous users\non dashboard)", fillcolor="#d4edda", style="rounded,filled,dashed"];
+        view_onboard   [label="Onboarding Banner\n(guests with their own\nmeasurements)", fillcolor="#d4edda", style="rounded,filled,dashed"];
     }
 
     view_loading   -> view_dashboard [label="auth + enableSync\ncompleted"];
@@ -204,7 +204,7 @@ digraph crescere {
 
     // Auth modal triggers
     view_dashboard -> modal_auth_signin  [label="UserMenu: Sign In\n(anonymous or unauth)"];
-    view_dashboard -> modal_auth_claim   [label="UserMenu: Save Account\nor OnboardingBanner"];
+    view_dashboard -> modal_auth_claim   [label="Header: Save your data,\nOnboardingBanner, or Share\n(as guest; opens sharing after)"];
     view_dashboard -> modal_auth_setpw   [label="UserMenu: Change\nPassword"];
     view_dashboard -> modal_share        [label="Share button\n(own, synced, non-anon,\nnon-example)"];
     view_dashboard -> modal_share_info   [label="Share button\n(disabled: guest/no child/\nalready shared)"];
@@ -247,7 +247,7 @@ digraph crescere {
         color="#17a2b8";
         fontsize=10;
 
-        claim_start    [label="Anonymous user\nclicks Save Account", shape=ellipse, fillcolor="#d1ecf1"];
+        claim_start    [label="Anonymous user\nclicks Save your data", shape=ellipse, fillcolor="#d1ecf1"];
         claim_modal    [label="Auth Modal\nmode = claimAccount", fillcolor="#e2d5f1"];
         claim_password [label="claimAccount(email, pw)\nPOST /api/auth/claim\nsets email + PBKDF2 hash", fillcolor="#fff3cd"];
         claim_taken    [label="409: email already used\n400: short password /\ninvalid email", fillcolor="#f8d7da"];

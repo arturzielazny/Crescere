@@ -1,6 +1,6 @@
 <script>
   import { CHART_GROUPS } from '../stores/chartStore.js';
-  import { maxAgeInDays } from '../stores/childStore.js';
+  import { maxAgeInDays, activeChild, measurementsWithZScores } from '../stores/childStore.js';
   import { t } from '../stores/i18n.js';
   import GrowthMetricChart from './GrowthMetricChart.svelte';
   import ZScoreChart from './ZScoreChart.svelte';
@@ -28,11 +28,49 @@
     length: $t('chart.lengthVelocity.title')
   };
   $: scoreTitle = $t(mode === 'percentile' ? `chart.${metric}.percentile` : `chart.${metric}`);
+  $: titles = { growth: growthTitles[metric], velocity: velocityTitles[metric], score: scoreTitle };
+
+  // How many measurements this chart can plot; gain rates need two
+  $: points = $measurementsWithZScores.filter((m) =>
+    view === 'score' ? m.zscores?.[metric] != null : m[metric] != null
+  ).length;
+  $: hasProfile = !!($activeChild?.profile?.birthDate && $activeChild?.profile?.sex);
+  $: emptyMessage = (() => {
+    if (!hasProfile) return $t('profile.age.missing');
+    if (view === 'velocity' && points < 2) return $t('chart.empty.velocity');
+    if (points === 0) return $t(view === 'score' ? 'chart.empty.score' : 'chart.empty');
+    return '';
+  })();
 </script>
 
 <!-- Charts don't react to prop changes, so remount on every switch -->
 {#key `${group}|${view}|${mode}`}
-  {#if metric}
+  {#if metric && emptyMessage}
+    <div class="p-4">
+      {#if showTitle}
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">{titles[view]}</h2>
+      {/if}
+      <div
+        class="h-80 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-200 text-center px-6"
+      >
+        <svg
+          class="w-8 h-8 text-gray-300"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M3 3v18h18M7 15l4-4 3 3 5-6"
+          />
+        </svg>
+        <p class="text-sm text-gray-500 max-w-xs">{emptyMessage}</p>
+      </div>
+    </div>
+  {:else if metric}
     {#if view === 'growth'}
       <GrowthMetricChart
         {metric}

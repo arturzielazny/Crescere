@@ -12,14 +12,16 @@
   import annotationPlugin from 'chartjs-plugin-annotation';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { activeChild } from '../stores/childStore.js';
-  import { calculateAgeInDays } from '../lib/zscore.js';
+  import { calculateAgeInDays, formatAge } from '../lib/zscore.js';
   import {
     computeVelocity,
     isFutureDate,
     hexToRgba,
     findClosestToNowIndex,
     formatDate,
-    niceRange
+    ageAxis,
+    niceRange,
+    DAYS_PER_MONTH
   } from '../lib/utils.js';
   import { t, language } from '../stores/i18n.js';
 
@@ -44,16 +46,31 @@
   let canvas;
   let chart;
 
+  function getAgeAxis() {
+    return ageAxis(maxAge ? maxAge * 1.1 : 0);
+  }
+
+  function ageText(days) {
+    return formatAge(Math.round(days), {
+      invalid: $t('age.invalid'),
+      month: $t('age.month'),
+      day: $t('age.day')
+    });
+  }
+
+  // Weight gain is usually discussed per day, length gain per month
   const metricConfig = {
     weight: {
       dataKey: 'weight',
       color: '#2563eb',
-      unit: 'g/day'
+      unitKey: 'chart.unit.gPerDay',
+      perDays: 1
     },
     length: {
       dataKey: 'length',
       color: '#16a34a',
-      unit: 'cm/day'
+      unitKey: 'chart.unit.cmPerMonth',
+      perDays: DAYS_PER_MONTH
     }
   };
 
@@ -89,7 +106,7 @@
         if (daysDiff <= 0) return null;
         return {
           x: (fromAge + toAge) / 2,
-          y: (point.toValue - point.fromValue) / daysDiff,
+          y: ((point.toValue - point.fromValue) / daysDiff) * config.perDays,
           fromDate: point.fromDate,
           toDate: point.toDate,
           fromValue: point.fromValue,
@@ -150,10 +167,11 @@
   }
 
   function getChartOptions(range) {
+    const ageAxisSpec = getAgeAxis();
     const config = metricConfig[metric];
-    const unitLabel = config.unit;
+    const unitLabel = $t(config.unitKey);
     const isWeight = metric === 'weight';
-    const decimals = isWeight ? 1 : 2;
+    const decimals = 1;
     const nowAge = getCurrentAgeInDays();
     const measurementData = chart?.data?.datasets?.[0]?.data || [];
     const closestIndex = findClosestToNowIndex(measurementData, nowAge);
@@ -178,7 +196,7 @@
             title: (items) => {
               if (!items.length) return '';
               const raw = items[0].raw;
-              const ageLine = `${$t('chart.axis.age')}: ${Math.round(raw.fromAge)}–${Math.round(raw.toAge)}`;
+              const ageLine = `${$t('chart.axis.age')}: ${ageText(raw.fromAge)} – ${ageText(raw.toAge)}`;
               return raw.fromDate && raw.toDate
                 ? [
                     `${formatDate(raw.fromDate, $language)} – ${formatDate(raw.toDate, $language)}`,
@@ -223,10 +241,15 @@
           type: 'linear',
           title: {
             display: true,
-            text: $t('chart.axis.age')
+            text: $t(`chart.axis.age.${ageAxisSpec.unit}`)
           },
           min: 0,
-          max: maxAge ? Math.ceil(maxAge * 1.1) : undefined
+          max: ageAxisSpec.max,
+          ticks: {
+            stepSize: ageAxisSpec.stepSize,
+            maxRotation: 0,
+            callback: (value) => ageAxisSpec.format(value)
+          }
         },
         y: {
           title: {

@@ -13,13 +13,14 @@
   import annotationPlugin from 'chartjs-plugin-annotation';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { measurementsWithZScores, activeChild } from '../stores/childStore.js';
-  import { calculateAgeInDays, zToPercentile } from '../lib/zscore.js';
+  import { calculateAgeInDays, formatAge, zToPercentile } from '../lib/zscore.js';
   import {
     isFutureDate,
     hexToRgba,
     formatPercentile,
     findClosestToNowIndex,
-    formatDate
+    formatDate,
+    ageAxis
   } from '../lib/utils.js';
   import { t, language } from '../stores/i18n.js';
 
@@ -44,6 +45,18 @@
 
   let canvas;
   let chart;
+
+  function getAgeAxis() {
+    return ageAxis(maxAge ? maxAge * 1.1 : 0);
+  }
+
+  function ageText(days) {
+    return formatAge(Math.round(days), {
+      invalid: $t('age.invalid'),
+      month: $t('age.month'),
+      day: $t('age.day')
+    });
+  }
 
   const colors = {
     waz: { border: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
@@ -110,7 +123,7 @@
     // Add reference bands at percentile equivalents
     if (measurements.length > 0) {
       const measMaxAge = Math.max(...measurements.map((d) => d.ageInDays || 0), 100);
-      const xEnd = maxAge ? Math.ceil(maxAge * 1.1) : measMaxAge;
+      const xEnd = Math.ceil(Math.max(getAgeAxis().max, measMaxAge));
       const refPoints = [0, xEnd];
       const bandColor = hexToRgba(colors[m].border, 0.12);
       const bandColorWide = hexToRgba(colors[m].border, 0.08);
@@ -181,6 +194,7 @@
   }
 
   function getChartOptions() {
+    const ageAxisSpec = getAgeAxis();
     const nowAge = getCurrentAgeInDays();
     const datasets = chart?.data?.datasets;
     const measurementData = datasets?.[0]?.data || [];
@@ -212,7 +226,7 @@
               if (!items.length) return '';
               const age = items[0].parsed.x;
               const date = items[0].raw?.date;
-              const ageLine = `${$t('chart.axis.age')}: ${Math.round(age)}`;
+              const ageLine = `${$t('chart.axis.age')}: ${ageText(age)}`;
               return date ? [formatDate(date, $language), ageLine] : ageLine;
             },
             label: (context) => {
@@ -243,10 +257,15 @@
           type: 'linear',
           title: {
             display: true,
-            text: $t('chart.axis.age')
+            text: $t(`chart.axis.age.${ageAxisSpec.unit}`)
           },
           min: 0,
-          max: maxAge ? Math.ceil(maxAge * 1.1) : undefined
+          max: ageAxisSpec.max,
+          ticks: {
+            stepSize: ageAxisSpec.stepSize,
+            maxRotation: 0,
+            callback: (value) => ageAxisSpec.format(value)
+          }
         },
         y: {
           title: {

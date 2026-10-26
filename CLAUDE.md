@@ -74,9 +74,11 @@ Svelte 5 SPA for pediatric growth monitoring, served by a Cloudflare Worker (`wo
 Charts use Chart.js (tree-shaken imports). One chart is shown at a time in `ChartPanel.svelte`: tabs pick the **group** (Weight, Length, Head Circumference, Weight-for-Length), a segmented control picks the **view** (`CHART_GROUPS` in `src/stores/chartStore.js` lists which views each group has):
 - **Curve**: Raw measurements over time with WHO reference bands (±1SD, ±2SD)
 - **Percentile / Z-score**: score over time; the ⋮ menu switches between percentiles and z-scores
-- **Gain rate**: Daily gain between consecutive measurements
+- **Gain rate**: Gain between consecutive measurements (weight in g/day, length in cm/month)
 
 Chart features:
+- Age axis in weeks up to 13 weeks, then months (`ageAxis()` in `src/lib/utils.js`)
+- Empty states when a chart has nothing to plot (`ChartView.svelte`)
 - Vertical "now" line at current age (chartjs-plugin-annotation)
 - 4-level z-score coloring: green bold (±1SD), amber (±1-2SD), red (±2-3SD), red bold (>±3SD)
 - Future measurements as faded triangles

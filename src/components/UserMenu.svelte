@@ -39,17 +39,12 @@
   <!-- Authenticated: avatar button -->
   <div class="relative flex items-center gap-1.5">
     {#if $isAnonymous}
+      <!-- Signing in to an existing account is in the avatar menu and the save dialog -->
       <button
         on:click={() => onOpenAuth('claimAccount')}
-        class="hidden sm:block whitespace-nowrap px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 transition-colors"
+        class="whitespace-nowrap px-2.5 py-1 pointer-coarse:py-2 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 transition-colors"
       >
         {$t('auth.claimAccount')}
-      </button>
-      <button
-        on:click={() => onOpenAuth('signIn')}
-        class="hidden sm:block whitespace-nowrap px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
-      >
-        {$t('auth.signIn')}
       </button>
     {/if}
     <button

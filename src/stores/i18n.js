@@ -6,7 +6,8 @@ const translations = {
   en: {
     'app.share': 'Share',
     'app.share.disabled.notSignedIn': 'Sign in to share',
-    'app.share.disabled.guest': 'Save your account to share',
+    'app.share.disabled.guest':
+      'Save your data with an email and password first, then you can share it.',
     'app.share.disabled.noChild': 'Select a child to share',
     'app.share.disabled.alreadyShared': 'This child is shared with you',
     'app.share.disabled.example': 'Add your own child first to share',
@@ -53,7 +54,7 @@ const translations = {
     'chart.wflz.percentile': 'Weight-for-Length - Percentile',
     'chart.axis.percentile': 'Percentile',
     'chart.title': 'Z-Scores Over Time',
-    'chart.axis.age': 'Age (days)',
+    'chart.axis.age': 'Age',
     'chart.axis.zscore': 'Z-Score',
     'chart.reference.median': 'Median',
     'chart.reference.sd2plus': '+2 SD',
@@ -120,7 +121,7 @@ const translations = {
       'Are you sure you want to delete this child profile? All measurements will be permanently removed.',
     'auth.signIn': 'Sign in',
     'auth.signOut': 'Sign out',
-    'auth.claimAccount': 'Save account',
+    'auth.claimAccount': 'Save your data',
     'auth.anonymous': 'Guest',
     'auth.loading': 'Loading...',
     'auth.emailPlaceholder': 'your@email.com',
@@ -135,23 +136,18 @@ const translations = {
     'menu.overflow': 'More options',
     'menu.password.change': 'Change password',
     'auth.signIn.modalTitle': 'Sign in',
-    'auth.claimAccount.modalTitle': 'Save your account',
-    'auth.claimAccount.submitPassword': 'Save account',
+    'auth.claimAccount.modalTitle': 'Save your data',
+    'auth.claimAccount.submitPassword': 'Save',
     'auth.claimAccount.description':
-      'Choose an email and password to open your data on any device. There is no password reset, so keep your password somewhere safe.',
-    'auth.claimAccount.saved':
-      'Account saved! Use this email and password to sign in on other devices.',
+      'Your data is already stored in this browser. Add an email and password to open it on any device and keep it if this browser is cleared. There is no password reset by email, so keep your password somewhere safe.',
+    'auth.claimAccount.saved': 'Saved! Use this email and password to sign in on other devices.',
     'auth.changePassword.modalTitle': 'Change password',
     'auth.changePassword.currentPlaceholder': 'Current password',
     'auth.changePassword.submit': 'Change password',
     'auth.changePassword.updated': 'Password changed. Other devices have been signed out.',
-    'onboarding.welcome': 'Welcome to Crescere!',
-    'onboarding.description':
-      "You're viewing sample data for a demo child. Add your own child to start tracking real measurements.",
-    'onboarding.saveAccount': 'Create free account',
     'onboarding.guestWelcome': 'You are using guest mode',
     'onboarding.guestDescription':
-      'Your data is tied to this browser and could be lost if you clear cookies. Create a free account to keep it safe and access it from any device.',
+      'Your data is tied to this browser and is lost if you clear cookies. Save it with an email and password to keep it safe and open it on any device.',
     'menu.showZScores': 'Show Z-Scores',
     'menu.showPercentiles': 'Show Percentiles',
     'print.title': 'Growth Report',
@@ -218,12 +214,27 @@ const translations = {
     'measurements.planned': 'planned',
     'measurements.history': 'Measurement history',
     'measurements.history.hint': 'Select a measurement to edit or delete it.',
-    'measurements.headShort': 'head'
+    'measurements.headShort': 'head',
+    'chart.unit.gPerDay': 'g/day',
+    'chart.unit.cmPerMonth': 'cm/month',
+    'chart.empty': 'Add a measurement to see this chart.',
+    'chart.empty.score': 'Add a measurement to see percentiles.',
+    'chart.empty.velocity': 'The gain rate needs at least two measurements.',
+    'auth.haveAccount': 'Already have an account?',
+    'auth.forgotPassword':
+      'Forgot your password? There is no reset email. Ask the person who runs this app to reset it.',
+    'auth.signIn.guestDataWarning':
+      "Children you added as a guest aren't moved to that account. To keep them, save your data instead, or export them first (⋮ → Export) and import them after signing in.",
+    'share.send': 'Send',
+    'share.live.shareText': 'Growth chart shared from Crescere',
+    'chart.axis.age.weeks': 'Age (weeks)',
+    'chart.axis.age.months': 'Age (months)'
   },
   pl: {
     'app.share': 'Udostępnij',
     'app.share.disabled.notSignedIn': 'Zaloguj się, aby udostępnić',
-    'app.share.disabled.guest': 'Zapisz konto, aby udostępnić',
+    'app.share.disabled.guest':
+      'Najpierw zapisz dane, podając email i hasło, a potem możesz je udostępnić.',
     'app.share.disabled.noChild': 'Wybierz dziecko, aby udostępnić',
     'app.share.disabled.alreadyShared': 'To dziecko jest Ci udostępnione',
     'app.share.disabled.example': 'Najpierw dodaj własne dziecko, aby udostępnić',
@@ -270,7 +281,7 @@ const translations = {
     'chart.wflz.percentile': 'Masa do długości - Percentyl',
     'chart.axis.percentile': 'Percentyl',
     'chart.title': 'Z-scores w czasie',
-    'chart.axis.age': 'Wiek (dni)',
+    'chart.axis.age': 'Wiek',
     'chart.axis.zscore': 'Z-score',
     'chart.reference.median': 'Mediana',
     'chart.reference.sd2plus': '+2 SD',
@@ -337,7 +348,7 @@ const translations = {
       'Czy na pewno chcesz usunąć ten profil dziecka? Wszystkie pomiary zostaną trwale usunięte.',
     'auth.signIn': 'Zaloguj',
     'auth.signOut': 'Wyloguj',
-    'auth.claimAccount': 'Zapisz konto',
+    'auth.claimAccount': 'Zapisz dane',
     'auth.anonymous': 'Gość',
     'auth.loading': 'Ładowanie...',
     'auth.emailPlaceholder': 'twoj@email.pl',
@@ -352,23 +363,19 @@ const translations = {
     'menu.overflow': 'Więcej opcji',
     'menu.password.change': 'Zmień hasło',
     'auth.signIn.modalTitle': 'Zaloguj się',
-    'auth.claimAccount.modalTitle': 'Zapisz swoje konto',
-    'auth.claimAccount.submitPassword': 'Zapisz konto',
+    'auth.claimAccount.modalTitle': 'Zapisz swoje dane',
+    'auth.claimAccount.submitPassword': 'Zapisz',
     'auth.claimAccount.description':
-      'Wybierz email i hasło, aby mieć dostęp do danych z dowolnego urządzenia. Nie ma możliwości resetu hasła, więc zapisz je w bezpiecznym miejscu.',
+      'Twoje dane są już zapisane w tej przeglądarce. Dodaj email i hasło, aby otwierać je na każdym urządzeniu i nie stracić ich po wyczyszczeniu przeglądarki. Nie ma resetu hasła przez email, więc zapisz hasło w bezpiecznym miejscu.',
     'auth.claimAccount.saved':
-      'Konto zapisane! Użyj tego emaila i hasła, aby zalogować się na innych urządzeniach.',
+      'Zapisano! Użyj tego emaila i hasła, aby zalogować się na innych urządzeniach.',
     'auth.changePassword.modalTitle': 'Zmień hasło',
     'auth.changePassword.currentPlaceholder': 'Obecne hasło',
     'auth.changePassword.submit': 'Zmień hasło',
     'auth.changePassword.updated': 'Hasło zmienione. Inne urządzenia zostały wylogowane.',
-    'onboarding.welcome': 'Witaj w Crescere!',
-    'onboarding.description':
-      'Widzisz przykładowe dane dla demonstracyjnego dziecka. Dodaj własne dziecko, aby śledzić prawdziwe pomiary wzrostu.',
-    'onboarding.saveAccount': 'Utwórz darmowe konto',
     'onboarding.guestWelcome': 'Korzystasz z trybu gościa',
     'onboarding.guestDescription':
-      'Twoje dane są powiązane z tą przeglądarką i mogą zostać utracone po wyczyszczeniu ciasteczek. Utwórz darmowe konto, aby je zabezpieczyć i mieć dostęp z dowolnego urządzenia.',
+      'Twoje dane są powiązane z tą przeglądarką i znikną po wyczyszczeniu ciasteczek. Zapisz je, podając email i hasło, aby były bezpieczne i dostępne na każdym urządzeniu.',
     'menu.showZScores': 'Pokaż Z-Score',
     'menu.showPercentiles': 'Pokaż percentyle',
     'print.title': 'Raport wzrostu',
@@ -435,7 +442,21 @@ const translations = {
     'measurements.planned': 'planowany',
     'measurements.history': 'Historia pomiarów',
     'measurements.history.hint': 'Wybierz pomiar, aby go edytować lub usunąć.',
-    'measurements.headShort': 'głowa'
+    'measurements.headShort': 'głowa',
+    'chart.unit.gPerDay': 'g/dzień',
+    'chart.unit.cmPerMonth': 'cm/mies.',
+    'chart.empty': 'Dodaj pomiar, aby zobaczyć ten wykres.',
+    'chart.empty.score': 'Dodaj pomiar, aby zobaczyć percentyle.',
+    'chart.empty.velocity': 'Tempo przyrostu wymaga co najmniej dwóch pomiarów.',
+    'auth.haveAccount': 'Masz już konto?',
+    'auth.forgotPassword':
+      'Nie pamiętasz hasła? Nie ma resetu przez email. Poproś osobę prowadzącą tę aplikację o jego zresetowanie.',
+    'auth.signIn.guestDataWarning':
+      'Dzieci dodane w trybie gościa nie zostaną przeniesione na to konto. Aby je zachować, zapisz dane zamiast logowania albo najpierw je wyeksportuj (⋮ → Eksportuj) i zaimportuj po zalogowaniu.',
+    'share.send': 'Wyślij',
+    'share.live.shareText': 'Wykres wzrostu udostępniony z Crescere',
+    'chart.axis.age.weeks': 'Wiek (tygodnie)',
+    'chart.axis.age.months': 'Wiek (miesiące)'
   }
 };
 

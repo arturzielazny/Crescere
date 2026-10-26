@@ -5,7 +5,9 @@ import {
   getZScoreColorClass,
   formatPercentile,
   computeVelocity,
-  niceRange
+  niceRange,
+  ageAxis,
+  DAYS_PER_MONTH
 } from './utils.js';
 
 describe('utils helpers', () => {
@@ -153,5 +155,36 @@ describe('niceRange', () => {
     const range = niceRange(5, 5);
     expect(range.max).toBeGreaterThan(range.min);
     expect(range.min).toBeLessThanOrEqual(5);
+  });
+});
+
+describe('ageAxis', () => {
+  it('uses weekly ticks for young babies', () => {
+    const axis = ageAxis(40);
+    expect(axis.stepSize).toBe(7);
+    expect(axis.max).toBe(42);
+    expect(axis.unit).toBe('weeks');
+    expect(axis.format(28)).toBe('4');
+    expect(ageAxis(80).stepSize).toBe(14);
+  });
+
+  it('switches to months after 13 weeks, ending on a whole tick', () => {
+    const axis = ageAxis(132);
+    expect(axis.stepSize).toBe(DAYS_PER_MONTH);
+    expect(axis.max).toBeCloseTo(5 * DAYS_PER_MONTH);
+    expect(axis.unit).toBe('months');
+    expect(axis.format(3 * DAYS_PER_MONTH)).toBe('3');
+  });
+
+  it('keeps about ten ticks or fewer for older children', () => {
+    for (const days of [400, 800, 1826]) {
+      const axis = ageAxis(days);
+      expect(axis.max / axis.stepSize).toBeLessThanOrEqual(11);
+      expect(axis.max).toBeGreaterThanOrEqual(days);
+    }
+  });
+
+  it('has a minimum span for empty charts', () => {
+    expect(ageAxis(0).max).toBe(7);
   });
 });

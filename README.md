@@ -8,10 +8,13 @@ A pediatric growth monitoring app based on WHO Child Growth Standards. Track you
 
 - **Multiple children** — Track growth for multiple children in one place
 - **Z-score calculations** — Automatic WHO standard z-scores (WAZ, LAZ, HCZ, WFL) with percentiles
-- **Visual charts** — Growth curves with ±1SD and ±2SD reference bands, z-score and growth velocity charts
+- **At a glance** — A summary card with the latest value, percentile and change for each measurement
+- **Visual charts** — Growth curves with ±1SD and ±2SD reference bands, percentile/z-score and gain-rate charts, with ages in weeks and months
 - **Future projections** — Add future measurements for growth forecasting
 - **Guest mode** — Start right away without an account; save it later with an email and password, keeping all data
 - **Live share links** — Give a partner or doctor read-only access to a child; revoke any time
+- **Quick entry** — Type weight in grams or kilograms; deleted measurements can be undone
+- **Installable** — Add it to your phone's home screen
 - **CSV export/import** and a print view
 - **Bilingual** — English and Polish interface
 

@@ -14,6 +14,12 @@
   export let mode = 'signIn';
   export let onClose = () => {};
   export let onSuccess = () => {};
+  /** Switch the dialog to another mode (the "Already have an account?" link) */
+  export let onSwitchMode = null;
+  /** Why the dialog was opened, shown above the form (e.g. sharing needs a saved account) */
+  export let notice = '';
+  /** A guest with their own children: signing in to another account leaves those behind */
+  export let guestHasData = false;
 
   const MIN_PASSWORD_LENGTH = 6;
 
@@ -146,8 +152,16 @@
       </button>
     </div>
 
+    {#if notice && !done}
+      <p class="text-sm text-blue-800 bg-blue-50 rounded px-3 py-2 mb-3">{notice}</p>
+    {/if}
     {#if description && !done}
       <p class="text-sm text-gray-500 mb-4">{description}</p>
+    {/if}
+    {#if mode === 'signIn' && guestHasData}
+      <p class="text-sm text-amber-800 bg-amber-50 rounded px-3 py-2 mb-4" role="note">
+        {$t('auth.signIn.guestDataWarning')}
+      </p>
     {/if}
 
     {#if done}
@@ -238,6 +252,20 @@
         >
           {submitLabel}
         </button>
+        {#if mode === 'signIn'}
+          <p class="text-xs text-gray-500">{$t('auth.forgotPassword')}</p>
+        {:else if mode === 'claimAccount' && onSwitchMode}
+          <p class="text-xs text-gray-600 text-center">
+            {$t('auth.haveAccount')}
+            <button
+              type="button"
+              on:click={() => onSwitchMode('signIn')}
+              class="font-medium text-blue-600 hover:underline"
+            >
+              {$t('auth.signIn')}
+            </button>
+          </p>
+        {/if}
       </form>
     {/if}
   </div>

@@ -172,3 +172,35 @@ export function niceRange(min, max, targetTicks = 6) {
   if (niceMax <= niceMin) niceMax = round(niceMin + step);
   return { min: niceMin, max: niceMax, step, decimals };
 }
+
+export const DAYS_PER_MONTH = 30.4375;
+
+/**
+ * Ticks for an age axis measured in days: weekly up to 13 weeks, then months
+ * (1, 2, 3, 6 or 12 per tick), like printed WHO charts. The axis end is rounded
+ * up to a whole tick so the last label is exact. Tick labels are plain numbers;
+ * `unit` says which, for the axis title.
+ * @param {number} maxDays - The furthest age the axis must show
+ * @returns {{ max: number, stepSize: number, unit: 'weeks' | 'months', format: (days: number) => string }}
+ */
+export function ageAxis(maxDays) {
+  const span = Math.max(maxDays || 0, 7);
+  if (span <= 13 * 7) {
+    const stepSize = span <= 8 * 7 ? 7 : 14;
+    return {
+      stepSize,
+      unit: 'weeks',
+      max: Math.ceil(span / stepSize) * stepSize,
+      format: (days) => String(Math.round(days / 7))
+    };
+  }
+  const months = span / DAYS_PER_MONTH;
+  const step = [1, 2, 3, 6].find((s) => months / s <= 10) ?? 12;
+  const stepSize = step * DAYS_PER_MONTH;
+  return {
+    stepSize,
+    unit: 'months',
+    max: Math.ceil(span / stepSize - 1e-9) * stepSize,
+    format: (days) => String(Math.round(days / DAYS_PER_MONTH))
+  };
+}

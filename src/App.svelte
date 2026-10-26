@@ -203,14 +203,39 @@
   })();
 
   let shareInfoMessage = '';
+  // Only the guest status stands in the way: saving the account unlocks sharing
+  $: guestCouldShare =
+    $isAnonymous &&
+    !!$activeChild &&
+    $activeChild.id !== $exampleChildId &&
+    !$sharedChildIds.has($activeChild.id);
+  /** A guest pressed Share: open sharing once the account is saved */
+  let shareAfterSave = false;
 
   function handleShare() {
     if (canShare) {
       showShareModal = true;
+    } else if (guestCouldShare) {
+      shareAfterSave = true;
+      authModalMode = 'claimAccount';
     } else if (shareDisabledReason) {
       shareInfoMessage = shareDisabledReason;
     }
   }
+
+  function closeAuthModal() {
+    authModalMode = null;
+    if (shareAfterSave) {
+      shareAfterSave = false;
+      if (canShare) showShareModal = true;
+    }
+  }
+
+  // Guests with their own children: worth saving, and lost if they sign in to another account
+  $: guestChildren = $isAnonymous
+    ? $childStore.children.filter((c) => c.id !== $exampleChildId && !$sharedChildIds.has(c.id))
+    : [];
+  $: guestHasMeasurements = guestChildren.some((c) => c.measurements.length > 0);
 
   $: isLoading = $authLoading || $dataLoading;
   $: footerStorageText =
@@ -332,12 +357,9 @@
         </div>
       {/if}
 
-      {#if $isAnonymous}
+      {#if guestHasMeasurements}
         <div class="print-hidden">
-          <OnboardingBanner
-            hasRealChildren={!$exampleChildId}
-            onSaveAccount={() => (authModalMode = 'claimAccount')}
-          />
+          <OnboardingBanner onSaveAccount={() => (authModalMode = 'claimAccount')} />
         </div>
       {/if}
 
@@ -474,16 +496,25 @@
 </div>
 
 {#if authModalMode}
-  <AuthModal
-    mode={authModalMode}
-    onClose={() => (authModalMode = null)}
-    onSuccess={authModalMode === 'signIn'
-      ? () => {
-          authModalMode = null;
-          handleSignedIn();
-        }
-      : () => (authModalMode = null)}
-  />
+  <!-- Remount on mode switch ("Already have an account?") so the form starts empty -->
+  {#key authModalMode}
+    <AuthModal
+      mode={authModalMode}
+      notice={shareAfterSave && authModalMode === 'claimAccount'
+        ? $t('app.share.disabled.guest')
+        : ''}
+      guestHasData={guestChildren.length > 0}
+      onSwitchMode={(mode) => (authModalMode = mode)}
+      onClose={closeAuthModal}
+      onSuccess={authModalMode === 'signIn'
+        ? () => {
+            shareAfterSave = false;
+            authModalMode = null;
+            handleSignedIn();
+          }
+        : closeAuthModal}
+    />
+  {/key}
 {/if}
 
 {#if measurementSheet}
