@@ -52,10 +52,10 @@
         {$chartDisplayMode === 'percentile' ? $t('menu.showZScores') : $t('menu.showPercentiles')}
       </button>
 
-      <!-- Print (mobile only) -->
+      <!-- Print -->
       <button
         on:click={() => handleAction(onPrint)}
-        class="w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-gray-700 hover:bg-gray-50 sm:hidden"
+        class="w-full text-left px-3 py-2 pointer-coarse:py-3 text-sm text-gray-700 hover:bg-gray-50"
       >
         {$t('app.print')}
       </button>

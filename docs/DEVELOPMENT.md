@@ -102,25 +102,32 @@ crescere/
 │   │   ├── AuthModal.svelte          # Sign in / save account / change password
 │   │   ├── UserMenu.svelte
 │   │   ├── OnboardingBanner.svelte
-│   │   ├── ChildList.svelte
+│   │   ├── ChildList.svelte          # Child switcher pills
+│   │   ├── ChildProfileSheet.svelte  # Edit/delete the active child
+│   │   ├── SummaryCard.svelte        # "Now" card: latest values and percentiles
 │   │   ├── MeasurementTable.svelte
-│   │   ├── ChartGrid.svelte          # Chart group layout + drag reorder
+│   │   ├── ChartPanel.svelte         # Chart tabs, maximize, print layout
+│   │   ├── ChartView.svelte          # Renders one chart for a group + view
 │   │   ├── GrowthMetricChart.svelte  # Raw measurement charts
+│   │   ├── PercentileChart.svelte    # Percentile charts
 │   │   ├── ZScoreChart.svelte        # Z-score deviation charts
 │   │   ├── VelocityChart.svelte      # Growth velocity charts
+│   │   ├── Sheet.svelte              # Bottom sheet (phones) / dialog (desktop)
 │   │   ├── ShareModal.svelte
 │   │   └── ...
 │   ├── stores/                 # Svelte stores (state management)
 │   │   ├── childStore.js       # Core data store (children, measurements)
 │   │   ├── authStore.js        # Authentication state + methods
-│   │   ├── chartStore.js       # Chart layout preferences
+│   │   ├── chartStore.js       # Selected chart tab/view, percentile vs z-score
 │   │   └── i18n.js             # Internationalization (en/pl)
 │   ├── lib/                    # Utility modules
 │   │   ├── api.js              # fetch client for the Worker API
 │   │   ├── zscore.js           # WHO LMS z-score calculations
 │   │   ├── share.js            # Live share link URLs
 │   │   ├── csv.js              # CSV export/import
-│   │   ├── utils.js            # Date formatting
+│   │   ├── summary.js          # Latest-values summary for SummaryCard
+│   │   ├── dialog.js           # Modal focus handling (Svelte action)
+│   │   ├── utils.js            # Formatting and chart helpers
 │   │   └── __mocks__/api.js    # In-memory API for unit tests
 │   └── data/                   # WHO reference datasets
 ├── eslint.config.js            # ESLint 9 flat config
@@ -152,7 +159,7 @@ The Worker serves both the API (`/api/*`) and the built SPA (static assets), so 
 
 - **Optimistic updates**: All mutations update the Svelte store immediately, then fire an async API call. On failure, the store rolls back. This makes the UI feel instant.
 - **No localStorage persistence for data**: Child data lives only in D1.
-- **Chart layout in localStorage**: Chart ordering and column preferences are stored in localStorage (via `chartStore.js`) since they're UI preferences, not user data.
+- **Chart choice in localStorage**: The selected chart tab and view, and percentile vs z-score mode, are stored in localStorage (via `chartStore.js`) since they're UI preferences, not user data.
 - **Authorization in the Worker**: D1 has no row-level security, so each route checks ownership itself (`requireOwnedChild`, `WHERE user_id = ?`).
 - **No email**: Nothing in the app sends email. There are no magic links, no email verification and no password reset email — see [Authentication](#authentication).
 
@@ -165,9 +172,9 @@ A full state diagram of auth, children, sharing and views is in [`state-transiti
 ```
 authStore.js          childStore.js              chartStore.js
    │                     │                           │
-   │ auth state          │ children, measurements    │ chart layout
-   │ sign in/out         │ CRUD operations           │ group order
-   │                     │                           │ columns
+   │ auth state          │ children, measurements    │ selected chart
+   │ sign in/out         │ CRUD operations           │ tab + view
+   │                     │                           │ display mode
    ▼                     ▼                           ▼
             api.js (fetch)                      localStorage
                │
@@ -229,20 +236,23 @@ Sharing is done via token-based live links:
 
 ### Organization
 
-Charts are organized into **groups**, displayed as vertical stacks:
+One chart is shown at a time (`ChartPanel.svelte`): tabs pick the **group**, a segmented control picks the **view**. `CHART_GROUPS` in `chartStore.js` lists which views each group offers:
 
-| Group              | Charts                                           |
-| ------------------ | ------------------------------------------------ |
-| Weight             | Weight over time, Weight z-score, Weight velocity |
-| Length             | Length over time, Length z-score, Length velocity |
-| Head Circumference | Head circ over time, Head circ z-score           |
-| Weight-for-Length  | WFL z-score                                      |
+| Group              | Views                                 |
+| ------------------ | ------------------------------------- |
+| Weight             | Curve, Percentile/Z-score, Gain rate  |
+| Length             | Curve, Percentile/Z-score, Gain rate  |
+| Head Circumference | Curve, Percentile/Z-score             |
+| Weight-for-Length  | Percentile/Z-score                    |
 
-Groups are draggable as a unit. A column selector (2/3/4) controls how many groups appear per row. Chart preferences persist in localStorage.
+The "score" view shows percentiles or z-scores depending on the display mode (toggled in the ⋮ menu). The selection persists in localStorage. The summary card's tiles switch the chart group too.
+
+**Printing** renders every chart: `App.svelte` sets `printing` (from the Print menu item, or `beforeprint` for Ctrl+P) and `ChartPanel` mounts all groups with animation off. They're rendered visibly, because Chart.js can't size a canvas inside a hidden container.
 
 ### Chart types
 
 - **Growth charts** (`GrowthMetricChart.svelte`): Raw measurements plotted against WHO reference bands (median, ±1SD, ±2SD)
+- **Percentile charts** (`PercentileChart.svelte`): Percentiles over time with P16–P84 and P2–P98 bands (±1 and ±2 SD)
 - **Z-score charts** (`ZScoreChart.svelte`): Standard deviation scores over time
 - **Velocity charts** (`VelocityChart.svelte`): Rate of change (g/day or cm/day) between consecutive measurements
 
@@ -447,11 +457,10 @@ Add the key to both `en` and `pl` objects in `src/stores/i18n.js`.
 
 ### Add a new chart type
 
-1. Create the chart component in `src/components/`
-2. Add chart entries to the relevant group in `chartStore.js` `defaultChartOrder`
-3. Update `chartGroupMap` if adding to an existing group or creating a new one
-4. Add translation keys for the chart title
-5. Add rendering logic in `ChartGrid.svelte` (growth/zscore/velocity switch)
+1. Create the chart component in `src/components/` (accept `showTitle` and `animate` props like the others)
+2. Add the view or group to `CHART_GROUPS` (and `VIEW_IDS` for a new view) in `chartStore.js`
+3. Add translation keys for the chart title and the tab/view label (`chart.tab.*`, `chart.view.*`)
+4. Add rendering logic in `ChartView.svelte`
 
 ### Modify WHO reference data
 

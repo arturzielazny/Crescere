@@ -38,6 +38,9 @@
   export let metric = 'all'; // 'waz', 'lhaz', 'headcz', 'wflz', or 'all'
   export let title = null;
   export let maxAge = null;
+  export let showTitle = true;
+  /** Off for print, where charts must be fully drawn before the page is captured */
+  export let animate = true;
 
   let canvas;
   let chart;
@@ -201,6 +204,7 @@
     return {
       responsive: true,
       maintainAspectRatio: false,
+      ...(animate ? {} : { animation: false }),
       interaction: {
         mode: 'nearest',
         intersect: true
@@ -316,7 +320,9 @@
 </script>
 
 <div class="p-4">
-  <h2 class="text-lg font-semibold text-gray-800 mb-4">{resolvedTitle}</h2>
+  {#if showTitle}
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">{resolvedTitle}</h2>
+  {/if}
 
   <div class="h-80" role="img" aria-label={resolvedTitle}>
     <canvas bind:this={canvas}></canvas>

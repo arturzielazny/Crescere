@@ -1,185 +1,108 @@
 import { writable, get } from 'svelte/store';
 
-const STORAGE_KEY = 'crescere-charts';
+const STORAGE_KEY = 'crescere-chart-view';
+// Pre-tabs format ({ chartOrder: [...] }); only its z-score/percentile choice is kept
+const LEGACY_KEY = 'crescere-charts';
 
-/** Map each chart ID to its group */
-const chartGroupMap = {
-  weight: 'weight',
-  waz: 'weight',
-  weightVelocity: 'weight',
-  length: 'length',
-  lhaz: 'length',
-  lengthVelocity: 'length',
-  headCirc: 'headCirc',
-  headcz: 'headCirc',
-  wflz: 'wfl'
+/**
+ * Chart groups and the views each one offers, mapped to the metric key the
+ * chart component takes. `score` is the percentile or z-score chart,
+ * depending on the display mode.
+ */
+export const CHART_GROUPS = {
+  weight: { growth: 'weight', score: 'waz', velocity: 'weight' },
+  length: { growth: 'length', score: 'lhaz', velocity: 'length' },
+  headCirc: { growth: 'headCirc', score: 'headcz' },
+  wfl: { score: 'wflz' }
 };
 
-const defaultChartOrder = [
-  {
-    groupId: 'weight',
-    charts: [
-      { id: 'weight', type: 'growth' },
-      { id: 'waz', type: 'percentile' },
-      { id: 'weightVelocity', type: 'velocity' }
-    ]
-  },
-  {
-    groupId: 'length',
-    charts: [
-      { id: 'length', type: 'growth' },
-      { id: 'lhaz', type: 'percentile' },
-      { id: 'lengthVelocity', type: 'velocity' }
-    ]
-  },
-  {
-    groupId: 'headCirc',
-    charts: [
-      { id: 'headCirc', type: 'growth' },
-      { id: 'headcz', type: 'percentile' }
-    ]
-  },
-  {
-    groupId: 'wfl',
-    charts: [{ id: 'wflz', type: 'percentile' }]
-  }
-];
+export const GROUP_IDS = Object.keys(CHART_GROUPS);
+export const VIEW_IDS = ['growth', 'score', 'velocity'];
 
 /**
- * Convert a flat chart order array to the grouped format.
- * Preserves group ordering by first appearance of any chart in that group.
+ * Return a valid {group, view}: unknown groups fall back to the first group,
+ * and a view the group doesn't offer falls back to the group's first view.
+ * @param {string} group
+ * @param {string} view
  */
-function convertFlatToGrouped(flatOrder) {
-  const groups = new Map();
-
-  for (const chart of flatOrder) {
-    const groupId = chartGroupMap[chart.id];
-    if (!groupId) continue;
-    if (!groups.has(groupId)) {
-      groups.set(groupId, []);
-    }
-    groups.get(groupId).push(chart);
-  }
-
-  // Add velocity charts if missing
-  for (const [groupId, charts] of groups) {
-    if (groupId === 'weight' && !charts.some((c) => c.id === 'weightVelocity')) {
-      charts.push({ id: 'weightVelocity', type: 'velocity' });
-    }
-    if (groupId === 'length' && !charts.some((c) => c.id === 'lengthVelocity')) {
-      charts.push({ id: 'lengthVelocity', type: 'velocity' });
-    }
-  }
-
-  return Array.from(groups.entries()).map(([groupId, charts]) => ({ groupId, charts }));
+export function resolveView(group, view) {
+  const g = CHART_GROUPS[group] ? group : GROUP_IDS[0];
+  const views = VIEW_IDS.filter((v) => CHART_GROUPS[g][v]);
+  return { group: g, view: views.includes(view) ? view : views[0] };
 }
 
 /**
- * Migrate zscore chart types to percentile.
+ * Read the display mode from the legacy chart settings, if any.
+ * @param {string | null} raw - The legacy localStorage value
+ * @returns {'percentile' | 'zscore' | null}
  */
-function migrateZScoreToPercentile(chartOrder) {
-  return chartOrder.map((group) => ({
-    ...group,
-    charts: group.charts.map((chart) =>
-      chart.type === 'zscore' ? { ...chart, type: 'percentile' } : chart
-    )
-  }));
-}
-
-/**
- * Get the current display mode from the chart order.
- * Returns 'percentile' if any chart uses percentile, otherwise 'zscore'.
- */
-function detectDisplayMode(chartOrder) {
-  for (const group of chartOrder) {
-    for (const chart of group.charts) {
-      if (chart.type === 'percentile') return 'percentile';
-      if (chart.type === 'zscore') return 'zscore';
-    }
-  }
-  return 'percentile';
-}
-
-function loadChartSettings() {
-  if (typeof localStorage === 'undefined') {
-    return { chartOrder: defaultChartOrder };
-  }
-
+export function legacyDisplayMode(raw) {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const order = JSON.parse(raw || 'null')?.chartOrder;
+    if (!Array.isArray(order)) return null;
+    const charts = order.flatMap((entry) => entry.charts || [entry]);
+    return charts.some((c) => c.type === 'zscore') ? 'zscore' : 'percentile';
+  } catch (_err) {
+    return null;
+  }
+}
+
+function loadSettings() {
+  const defaults = { group: 'weight', view: 'growth', mode: 'percentile' };
+  if (typeof localStorage === 'undefined') return defaults;
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     if (stored) {
-      const parsed = JSON.parse(stored);
-      // Migrate from old growthOrder/zscoreOrder format
-      if (parsed.growthOrder || parsed.zscoreOrder) {
-        return { chartOrder: defaultChartOrder };
-      }
-
-      let chartOrder = parsed.chartOrder || defaultChartOrder;
-
-      // Detect flat format: first element has no groupId property
-      if (chartOrder.length > 0 && !chartOrder[0].groupId) {
-        chartOrder = convertFlatToGrouped(chartOrder);
-      }
-
-      // Migrate existing zscore charts to percentile
-      chartOrder = migrateZScoreToPercentile(chartOrder);
-
-      return { chartOrder };
+      return {
+        ...resolveView(stored.group, stored.view),
+        mode: stored.mode === 'zscore' ? 'zscore' : 'percentile'
+      };
     }
-  } catch (_e) {
-    // Ignore parse errors
-  }
-
-  return { chartOrder: defaultChartOrder };
-}
-
-function saveChartSettings(settings) {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    const mode = legacyDisplayMode(localStorage.getItem(LEGACY_KEY));
+    localStorage.removeItem(LEGACY_KEY);
+    return { ...defaults, mode: mode || defaults.mode };
+  } catch (_err) {
+    return defaults;
   }
 }
 
-const initial = loadChartSettings();
+const initial = loadSettings();
 
-export const chartOrder = writable(initial.chartOrder);
-export const chartDisplayMode = writable(detectDisplayMode(initial.chartOrder));
-export const maximizedChart = writable(null);
+/** The chart shown on screen */
+export const chartView = writable(resolveView(initial.group, initial.view));
+/** Whether score charts show percentiles or z-scores */
+export const chartDisplayMode = writable(initial.mode);
+/** Whether the current chart is shown full screen */
+export const maximizedChart = writable(false);
 
-export function closeMaximize() {
-  maximizedChart.set(null);
+function save() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...get(chartView), mode: get(chartDisplayMode) })
+    );
+  } catch (_err) {
+    // Storage full or blocked: the choice just isn't remembered
+  }
 }
 
-// Auto-save on changes
-chartOrder.subscribe((order) => {
-  saveChartSettings({ chartOrder: order });
-});
+chartView.subscribe(save);
+chartDisplayMode.subscribe(save);
+
+/** Switch to another group, keeping the current view when that group has it */
+export function selectChartGroup(group) {
+  chartView.update((current) => resolveView(group, current.view));
+}
+
+export function selectChartView(view) {
+  chartView.update((current) => resolveView(current.group, view));
+}
 
 export function toggleChartMode() {
-  const currentMode = get(chartDisplayMode);
-  const newMode = currentMode === 'percentile' ? 'zscore' : 'percentile';
-  chartDisplayMode.set(newMode);
-
-  chartOrder.update((order) =>
-    order.map((group) => ({
-      ...group,
-      charts: group.charts.map((chart) => {
-        if (chart.type === 'zscore' && newMode === 'percentile') {
-          return { ...chart, type: 'percentile' };
-        }
-        if (chart.type === 'percentile' && newMode === 'zscore') {
-          return { ...chart, type: 'zscore' };
-        }
-        return chart;
-      })
-    }))
-  );
+  chartDisplayMode.update((mode) => (mode === 'percentile' ? 'zscore' : 'percentile'));
 }
 
-export function reorderCharts(fromIndex, toIndex) {
-  chartOrder.update((order) => {
-    const newOrder = [...order];
-    const [moved] = newOrder.splice(fromIndex, 1);
-    newOrder.splice(toIndex, 0, moved);
-    return newOrder;
-  });
+export function closeMaximize() {
+  maximizedChart.set(false);
 }

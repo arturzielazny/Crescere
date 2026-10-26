@@ -71,18 +71,20 @@ Svelte 5 SPA for pediatric growth monitoring, served by a Cloudflare Worker (`wo
 
 ### Charts
 
-Charts use Chart.js (tree-shaken imports) organized into **vertical groups** (Weight, Length, Head Circumference, Weight-for-Length). Groups are drag-reorderable as a unit; individual charts are not. Chart types within each group:
-- **Growth charts**: Raw measurements over time with WHO reference bands (±1SD, ±2SD)
-- **Z-score charts**: Standard deviation scores over time
-- **Velocity charts**: Daily gain rate between consecutive measurements
+Charts use Chart.js (tree-shaken imports). One chart is shown at a time in `ChartPanel.svelte`: tabs pick the **group** (Weight, Length, Head Circumference, Weight-for-Length), a segmented control picks the **view** (`CHART_GROUPS` in `src/stores/chartStore.js` lists which views each group has):
+- **Curve**: Raw measurements over time with WHO reference bands (±1SD, ±2SD)
+- **Percentile / Z-score**: score over time; the ⋮ menu switches between percentiles and z-scores
+- **Gain rate**: Daily gain between consecutive measurements
 
 Chart features:
 - Vertical "now" line at current age (chartjs-plugin-annotation)
-- 4-level z-score coloring: green bold (±1SD), yellow (±1-2SD), red (±2-3SD), red bold (>±3SD)
+- 4-level z-score coloring: green bold (±1SD), amber (±1-2SD), red (±2-3SD), red bold (>±3SD)
 - Future measurements as faded triangles
-- Column count selector (2/3/4 groups per row)
+- Printing renders every chart (`printing` flag in `App.svelte`, charts mounted with `animate={false}`)
 
-Chart configuration is persisted in localStorage via `src/stores/chartStore.js` with automatic migration from the old flat format to the grouped format.
+The selected tab/view and display mode are persisted in localStorage via `chartStore.js`.
+
+Above the charts, `SummaryCard.svelte` shows the latest value, percentile and change per metric (`src/lib/summary.js`). Children are switched with pills (`ChildList.svelte`); the active child's profile is edited in `ChildProfileSheet.svelte`. Modals use the `dialog` action (`src/lib/dialog.js`) for focus handling; bottom sheets use `Sheet.svelte`.
 
 ## Code Style
 

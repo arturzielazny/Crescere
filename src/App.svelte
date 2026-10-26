@@ -1,9 +1,11 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick, flushSync } from 'svelte';
   import ChildList from './components/ChildList.svelte';
   import MeasurementTable from './components/MeasurementTable.svelte';
   import ZScoreTable from './components/ZScoreTable.svelte';
-  import ChartGrid from './components/ChartGrid.svelte';
+  import ChartPanel from './components/ChartPanel.svelte';
+  import SummaryCard from './components/SummaryCard.svelte';
+  import ChildProfileSheet from './components/ChildProfileSheet.svelte';
   import ShareModal from './components/ShareModal.svelte';
   import Toast from './components/Toast.svelte';
   import UserMenu from './components/UserMenu.svelte';
@@ -22,7 +24,8 @@
     disableSync,
     acceptLiveShare,
     exampleChildId,
-    importChildren
+    importChildren,
+    addChild
   } from './stores/childStore.js';
   import {
     initAuth,
@@ -40,6 +43,10 @@
   import { dialog } from './lib/dialog.js';
 
   let showShareModal = false;
+  let showProfileSheet = false;
+  let explainOpen = false;
+  /** True while printing: the chart panel renders every chart for the print layout */
+  let printing = false;
   let toast = null;
   /** @type {null | 'signIn' | 'claimAccount' | 'changePassword'} */
   let authModalMode = null;
@@ -121,10 +128,14 @@
 
     // Listen for hash changes (when user opens share link while app is loaded)
     window.addEventListener('hashchange', checkForLiveShare);
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
   });
 
   onDestroy(() => {
     window.removeEventListener('hashchange', checkForLiveShare);
+    window.removeEventListener('beforeprint', handleBeforePrint);
+    window.removeEventListener('afterprint', handleAfterPrint);
   });
 
   function handleExport() {
@@ -209,8 +220,34 @@
     return '';
   })();
 
-  function handlePrint() {
+  // Browser print (Ctrl+P): render the print charts synchronously before the page is captured
+  function handleBeforePrint() {
+    if (printing) return;
+    printing = true;
+    flushSync();
+  }
+
+  function handleAfterPrint() {
+    printing = false;
+  }
+
+  // Print button: render the print charts and let them lay out before opening the dialog
+  async function handlePrint() {
+    printing = true;
+    await tick();
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     window.print();
+  }
+
+  async function handleExplain() {
+    explainOpen = true;
+    await tick();
+    document.getElementById('explain')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function handleAddChild() {
+    addChild();
+    showProfileSheet = true;
   }
 </script>
 
@@ -261,7 +298,7 @@
       {/if}
 
       <div class="print-hidden">
-        <ChildList onShare={handleShare} onPrint={handlePrint} />
+        <ChildList onEditProfile={() => (showProfileSheet = true)} />
       </div>
 
       <!-- Print-only header with child info -->
@@ -290,6 +327,13 @@
         </div>
       {/if}
 
+      <SummaryCard
+        onEditProfile={() => (showProfileSheet = true)}
+        onShare={handleShare}
+        onExplain={handleExplain}
+        onAddChild={handleAddChild}
+      />
+
       <div class="lg:flex lg:gap-6 lg:items-start print-full-width">
         <!-- Left panel: measurement entry (1/3) -->
         <aside
@@ -305,40 +349,64 @@
             <ZScoreTable />
           </div>
 
-          <ChartGrid />
+          <ChartPanel {printing} />
 
-          <div class="print-hidden">
+          <div class="print-hidden mt-6">
             <ZScoreTable />
           </div>
 
-          <section class="bg-white rounded-lg shadow p-6 mt-6 print-hidden">
-            <h2 class="text-lg font-semibold text-gray-800 mb-3">{$t('explain.title')}</h2>
-            <p class="text-sm text-gray-600 mb-3">
-              {$t('explain.summary')}
-            </p>
-            <p class="text-sm text-gray-600 mb-4">
-              {$t('explain.meaning')}
-            </p>
-            <h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('explain.shortcuts')}</h3>
-            <dl class="text-sm text-gray-600 space-y-3">
-              <div>
-                <dt class="font-medium text-gray-700">{$t('explain.waz.title')}</dt>
-                <dd class="ml-0 mt-0.5">{$t('explain.waz.desc')}</dd>
-              </div>
-              <div>
-                <dt class="font-medium text-gray-700">{$t('explain.lhaz.title')}</dt>
-                <dd class="ml-0 mt-0.5">{$t('explain.lhaz.desc')}</dd>
-              </div>
-              <div>
-                <dt class="font-medium text-gray-700">{$t('explain.headcz.title')}</dt>
-                <dd class="ml-0 mt-0.5">{$t('explain.headcz.desc')}</dd>
-              </div>
-              <div>
-                <dt class="font-medium text-gray-700">{$t('explain.wflz.title')}</dt>
-                <dd class="ml-0 mt-0.5">{$t('explain.wflz.desc')}</dd>
-              </div>
-            </dl>
-          </section>
+          <details
+            id="explain"
+            bind:open={explainOpen}
+            class="group bg-white rounded-lg shadow mt-6 print-hidden"
+          >
+            <summary
+              class="flex items-center justify-between gap-2 cursor-pointer select-none px-6 py-4 text-lg font-semibold text-gray-800 list-none [&::-webkit-details-marker]:hidden"
+            >
+              {$t('explain.title')}
+              <svg
+                class="w-5 h-5 text-gray-400 transition-transform group-open:rotate-180"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </summary>
+            <div class="px-6 pb-6">
+              <p class="text-sm text-gray-600 mb-3">
+                {$t('explain.summary')}
+              </p>
+              <p class="text-sm text-gray-600 mb-4">
+                {$t('explain.meaning')}
+              </p>
+              <h3 class="text-sm font-semibold text-gray-700 mb-3">{$t('explain.shortcuts')}</h3>
+              <dl class="text-sm text-gray-600 space-y-3">
+                <div>
+                  <dt class="font-medium text-gray-700">{$t('explain.waz.title')}</dt>
+                  <dd class="ml-0 mt-0.5">{$t('explain.waz.desc')}</dd>
+                </div>
+                <div>
+                  <dt class="font-medium text-gray-700">{$t('explain.lhaz.title')}</dt>
+                  <dd class="ml-0 mt-0.5">{$t('explain.lhaz.desc')}</dd>
+                </div>
+                <div>
+                  <dt class="font-medium text-gray-700">{$t('explain.headcz.title')}</dt>
+                  <dd class="ml-0 mt-0.5">{$t('explain.headcz.desc')}</dd>
+                </div>
+                <div>
+                  <dt class="font-medium text-gray-700">{$t('explain.wflz.title')}</dt>
+                  <dd class="ml-0 mt-0.5">{$t('explain.wflz.desc')}</dd>
+                </div>
+              </dl>
+            </div>
+          </details>
         </div>
       </div>
     {/if}
@@ -371,6 +439,10 @@
         }
       : () => (authModalMode = null)}
   />
+{/if}
+
+{#if showProfileSheet}
+  <ChildProfileSheet onClose={() => (showProfileSheet = false)} />
 {/if}
 
 {#if showShareModal}

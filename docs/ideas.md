@@ -36,7 +36,7 @@
 
 - ☑ **No print view.** Fixed — added Print button and `@media print` stylesheet. Hides UI chrome, shows a report header with child name/DOB/sex/age, renders charts full-width with page-break protection, starts z-score table on a new page. Uses `print-color-adjust: exact` for accurate chart colors.
 - ☐ **No date range filtering on charts.** Charts show all data. Can't zoom into last 3 months.
-- ☐ **Drag-to-reorder charts is desktop-only.** No touch drag support for mobile users.
+- ☑ **Drag-to-reorder charts is desktop-only.** Resolved — charts are now one tabbed panel (group tabs + view switch), so there is nothing to reorder. A "Now" summary card above it shows the latest values and percentiles.
 - ☑ **Share URLs can be very long.** Fixed — removed snapshot URL sharing (LZ-String compression). Sharing now uses short token-based live links only.
 - ☐ **No multi-child chart comparison.** Can't overlay two siblings' growth curves to compare.
 - ☐ **Missing keyboard shortcuts.** No way to navigate between children, add measurements, or switch chart views from keyboard.

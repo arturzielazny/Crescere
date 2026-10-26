@@ -12,7 +12,7 @@
 </script>
 
 {#if $activeChild && $measurementsWithZScores.length > 0}
-  <div class="bg-white rounded-lg shadow p-6 mb-6">
+  <div class="bg-white rounded-lg shadow p-4 sm:p-6">
     <h2 class="text-lg font-semibold text-gray-800 mb-4">{$t('measurements.zscores')}</h2>
     <div class="overflow-auto max-h-[32rem]">
       <table class="w-full text-sm">
